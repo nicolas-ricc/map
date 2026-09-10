@@ -1,5 +1,6 @@
 import { Container, Sprite, type Renderer, type Ticker } from "pixi.js";
 import { titleSignOps } from "../title-sign";
+import { Fireflies } from "./ambient";
 import { opsToTexture } from "./canvas";
 import { GLOW_H, GLOW_W, LANDMARK_SIZE, glowOps, landmarkFrames } from "./landmarks";
 import { ACCENTS } from "./palette";
@@ -12,6 +13,7 @@ export interface World {
   container: Container;
   zones: Record<ZoneId, ZoneNode>;
   river: [Sprite, Sprite];
+  hotZones(): Set<ZoneId>;
   tick(ticker: Ticker): void;
 }
 
@@ -46,11 +48,24 @@ export function buildWorld(renderer: Renderer, onSelect: (id: ZoneId) => void): 
     container.addChild(node);
   }
 
+  const fireflies = new Fireflies();
+  container.addChild(fireflies);
+
+  function hotZones(): Set<ZoneId> {
+    const hot = new Set<ZoneId>();
+    for (const id of Object.keys(zones) as ZoneId[]) {
+      const state = zones[id].state;
+      if (state === "hot" || state === "active") hot.add(id);
+    }
+    return hot;
+  }
+
   let riverClock = 0;
   return {
     container,
     zones,
     river,
+    hotZones,
     tick(ticker) {
       riverClock += ticker.deltaMS;
       if (riverClock > 400) {
@@ -59,6 +74,7 @@ export function buildWorld(renderer: Renderer, onSelect: (id: ZoneId) => void): 
         river[1].visible = !river[0].visible;
       }
       for (const id of Object.keys(zones) as ZoneId[]) zones[id].tick(ticker);
+      fireflies.tick(ticker, hotZones());
     },
   };
 }
