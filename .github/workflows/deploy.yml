@@ -2,13 +2,15 @@ name: deploy
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: pages
+  # por ref: un build de PR no debe cancelar el deploy de main
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
@@ -18,12 +20,19 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      # feed antes que typecheck: content/blog.generated.json está gitignoreado y
+      # main.ts lo importa, así que en un checkout limpio tsc no compila sin esto.
+      - run: npm run feed
+      - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
         with: { path: dist }
   deploy:
     needs: build
+    # los PR solo buildean/testean; deploy solo en push a main (o dispatch manual)
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

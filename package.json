@@ -2,7 +2,6 @@
   "name": "mapa",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "directories": {
     "doc": "docs"
   },
@@ -22,7 +21,7 @@
   "author": "",
   "license": "ISC",
   "type": "module",
-  "private": "true",
+  "private": true,
   "dependencies": {
     "pixi.js": "^8.20.1"
   },
