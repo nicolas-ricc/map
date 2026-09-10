@@ -1,5 +1,5 @@
 import { AnimatedSprite, Container, Polygon, Sprite, type Texture, type Ticker } from "pixi.js";
-import { DIM_BRIGHTNESS, IDLE_BRIGHTNESS, brightnessTint, flickerBrightness } from "./brightness";
+import { DIM_BRIGHTNESS, FLICKER_MS, IDLE_BRIGHTNESS, brightnessTint, flickerBrightness } from "./brightness";
 import { GLOW_H } from "./landmarks";
 import type { ZoneDef, ZoneId } from "./zones";
 
@@ -10,7 +10,8 @@ export interface ZoneTextures { frames: Texture[]; glow: Texture; label: Texture
 export class ZoneNode extends Container {
   private _state: ZoneState = "idle";
   private brightness = IDLE_BRIGHTNESS;
-  private hotSince = 0;
+  private hotElapsedMs = 0;
+  private idleElapsedMs = 0;
   private nextIdleFlicker = 0;
   private readonly overlay: Sprite;
   private readonly glow: Sprite;
@@ -43,6 +44,7 @@ export class ZoneNode extends Container {
     this.on("pointerover", hot).on("mouseover", hot);
     this.on("pointerout", cool).on("mouseout", cool);
     this.on("pointertap", () => onSelect(def.id));
+    this.glow.alpha = 0.25;
     this.applyBrightness();
   }
 
@@ -51,32 +53,37 @@ export class ZoneNode extends Container {
   setState(s: ZoneState): void {
     if (s === this._state) return;
     this._state = s;
-    if (s === "hot") this.hotSince = performance.now();
+    if (s === "hot") this.hotElapsedMs = 0;
     if (s === "hot" || s === "active") this.landmark.play();
     else this.landmark.gotoAndStop(0);
     this.eventMode = s === "dim" ? "none" : "static";
   }
 
   tick(ticker: Ticker): void {
-    const now = performance.now();
     let target: number;
     switch (this._state) {
-      case "hot": target = flickerBrightness(now - this.hotSince); break;
+      case "hot":
+        this.hotElapsedMs += ticker.deltaMS;
+        target = flickerBrightness(this.hotElapsedMs);
+        break;
       case "active": target = 1; break;
       case "dim": target = DIM_BRIGHTNESS; break;
-      default: target = this.idleWithFlicker(now);
+      default: target = this.idleWithFlicker(ticker.deltaMS);
     }
     // lerp suave salvo durante el flicker, que es instantáneo
-    const instant = this._state === "hot" && now - this.hotSince < 250;
+    const instant = this._state === "hot" && this.hotElapsedMs < FLICKER_MS;
     this.brightness = instant ? target : this.brightness + (target - this.brightness) * Math.min(1, ticker.deltaMS / 120);
     this.applyBrightness();
+    const glowTarget = this._state === "hot" || this._state === "active" ? 0.9 : this._state === "dim" ? 0 : 0.25;
+    this.glow.alpha += (glowTarget - this.glow.alpha) * Math.min(1, ticker.deltaMS / 120);
     if (this._state === "hot" || this._state === "active") this.landmark.update(ticker);
   }
 
-  private idleWithFlicker(now: number): number {
-    if (this.nextIdleFlicker === 0) this.nextIdleFlicker = now + 5000 + Math.random() * 10000;
-    if (now > this.nextIdleFlicker) {
-      if (now > this.nextIdleFlicker + 80) this.nextIdleFlicker = now + 5000 + Math.random() * 10000;
+  private idleWithFlicker(deltaMS: number): number {
+    this.idleElapsedMs += deltaMS;
+    if (this.nextIdleFlicker === 0) this.nextIdleFlicker = this.idleElapsedMs + 5000 + Math.random() * 10000;
+    if (this.idleElapsedMs > this.nextIdleFlicker) {
+      if (this.idleElapsedMs > this.nextIdleFlicker + 80) this.nextIdleFlicker = this.idleElapsedMs + 5000 + Math.random() * 10000;
       return 0.3;
     }
     return IDLE_BRIGHTNESS;
@@ -87,7 +94,5 @@ export class ZoneNode extends Container {
     this.overlay.tint = t;
     this.landmark.tint = t;
     this.labelSprite.tint = t;
-    const glowTarget = this._state === "hot" || this._state === "active" ? 0.9 : this._state === "dim" ? 0 : 0.25;
-    this.glow.alpha += (glowTarget - this.glow.alpha) * 0.15;
   }
 }
