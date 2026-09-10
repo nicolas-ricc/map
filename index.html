@@ -9,7 +9,12 @@
   </head>
   <body data-zone="">
     <div id="app">
-      <div id="canvas-host" aria-label="Mapa"></div>
+      <div id="canvas-host" aria-label="Mapa">
+        <div id="hud" hidden>
+          <a id="back" href="/">← Volver al mapa</a>
+          <h1 id="zone-title"></h1>
+        </div>
+      </div>
       <main id="content" hidden></main>
     </div>
     <script type="module" src="/src/main.ts"></script>
