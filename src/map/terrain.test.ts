@@ -26,6 +26,11 @@ describe("buildTerrain", () => {
     for (const id of ZONE_IDS) expect(inBounds(t.zoneOverlay[id])).toBe(true);
   });
 
+  it("zoneOverlay tiene exactamente las zonas de ZONE_IDS", () => {
+    const keys = Object.keys(buildTerrain(SEED).zoneOverlay).sort();
+    expect(keys).toEqual([...ZONE_IDS].sort());
+  });
+
   it("el primer op es el suelo completo", () => {
     const first = buildTerrain(SEED).base[0];
     expect(first).toEqual({ x: 0, y: 0, w: MAP_W, h: MAP_H, color: PALETTE.ground });

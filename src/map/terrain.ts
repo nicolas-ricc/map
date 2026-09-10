@@ -101,9 +101,9 @@ function paintVegetation(out: PixelOp[], rng: Rng): void {
 }
 
 function paintCables(out: PixelOp[]): void {
+  // todos los pares no ordenados de zonas: escala a N sin tocar nada más
   const pts = ZONES.map((z) => z.landmark);
-  const pairs: [number, number][] = [[0, 1], [0, 2], [1, 2]];
-  for (const [a, b] of pairs) {
+  for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) {
     const p = pts[a]!, q = pts[b]!;
     const steps = Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / 3);
     for (let i = 0; i <= steps; i += 2) {
@@ -119,8 +119,11 @@ function paintCables(out: PixelOp[]): void {
 }
 
 function zoneBleed(rng: Rng): Record<ZoneId, PixelOp[]> {
-  const result = { portfolio: [], cv: [], blog: [] } as Record<ZoneId, PixelOp[]>;
+  // una entrada por zona de ZONES: agregar una 4ta zona no deja huecos en el record
+  const result = {} as Record<ZoneId, PixelOp[]>;
   for (const z of ZONES) {
+    const ops: PixelOp[] = [];
+    result[z.id] = ops;
     const color = ACCENTS[z.accent].bleed;
     for (let i = 0; i < 200; i++) {
       const ang = rng.next() * Math.PI * 2;
@@ -128,7 +131,7 @@ function zoneBleed(rng: Rng): Record<ZoneId, PixelOp[]> {
       const x = Math.round(z.landmark.x + Math.cos(ang) * dist);
       const y = Math.round(z.landmark.y + Math.sin(ang) * dist * 0.6);
       if (!pointInPolygon(x, y, z.polygon)) continue;
-      result[z.id].push(px(x, y, color));
+      ops.push(px(x, y, color));
     }
   }
   return result;
