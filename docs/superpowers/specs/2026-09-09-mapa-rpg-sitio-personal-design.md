@@ -65,7 +65,6 @@ mapa/
     fetch-blog-feed.mjs      lee el RSS de myxomatosis.xyz y genera content/blog.generated.json
     prerender.mjs            genera el HTML estático de cada ruta con el contenido
   public/
-    sprites/                 PNGs de landmarks (32x32 o 48x48, 2-3 frames c/u)
     CNAME
   .github/workflows/deploy.yml
 ```
