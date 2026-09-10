@@ -15,4 +15,18 @@ describe("injectZone", () => {
   it("no toca el resto", () => {
     expect(out).toContain('<a id="back" href="/">←</a>');
   });
+
+  it("lanza si falta el marcador de <main>", () => {
+    const broken = index.replace('<main id="content" hidden></main>', "");
+    expect(() => injectZone(broken, "cv", "Currículum", "<h1>Currículum</h1>")).toThrow(
+      /injectZone: no se encontró.*main/i,
+    );
+  });
+
+  it("lanza si falta el <title>", () => {
+    const broken = index.replace("<title>Nicolás Riccomini</title>", "");
+    expect(() => injectZone(broken, "cv", "Currículum", "<h1>Currículum</h1>")).toThrow(
+      /injectZone: no se encontró.*title/i,
+    );
+  });
 });
