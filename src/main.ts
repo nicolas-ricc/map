@@ -8,6 +8,7 @@ import { mergeBlogFeed } from "./content/blog-feed";
 import { renderContent } from "./content/render";
 import type { ZoneContent } from "./content/types";
 import { buildWorld } from "./map/build-world";
+import { PALETTE } from "./map/palette";
 import { ZONE_IDS, zoneById, type ZoneId } from "./map/zones";
 import { pathForZone, zoneFromPath } from "./router";
 import { showMap, showZone } from "./views";
@@ -27,7 +28,7 @@ async function boot(): Promise<void> {
   // _activate(), así que sin esto la capa de accesibilidad nunca arranca.
   // (accessibilityOptions no está en el tipo de app.init; se compone aparte.)
   const initOptions: Partial<ApplicationOptions> & AccessibilitySystemOptions = {
-    resizeTo: host, background: 0x0b1620, antialias: false, resolution: 1, roundPixels: true,
+    resizeTo: host, background: PALETTE.ground, antialias: false, resolution: 1, roundPixels: true,
     accessibilityOptions: { enabledByDefault: true },
   };
   await app.init(initOptions);
@@ -63,6 +64,9 @@ async function boot(): Promise<void> {
   }
 
   function navigate(id: ZoneId | null, push: boolean): void {
+    // clic sobre la zona ya activa (o "volver" estando en el mapa): sin entrada de
+    // historial duplicada. popstate no pasa por acá: setea current antes de render.
+    if (id === current) return;
     current = id;
     if (push) history.pushState({ zone: id }, "", pathForZone(id));
     render(id, true);
@@ -90,4 +94,9 @@ async function boot(): Promise<void> {
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("no-anim")));
 }
 
-boot();
+boot().catch((e: unknown) => {
+  // Sin canvas (WebGL caído, init fallido) el sitio sigue siendo navegable: el CSS
+  // de .no-canvas revela el <nav id="zonas"> y el contenido prerenderizado.
+  console.error(e);
+  document.documentElement.classList.add("no-canvas");
+});

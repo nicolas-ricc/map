@@ -41,3 +41,16 @@ body.zone #content { opacity: 1; }
 /* divs de accesibilidad de Pixi sobre el canvas: el foco se dibuja como un marco
    fino sobre la zona, además de que la zona se enciende (spec §5). */
 #canvas-host > div > button:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
+
+/* Nav de zonas: existe siempre en el DOM para que los links a /portfolio/, /cv/ y
+   /blog/ sean crawleables y navegables sin JS. Fuera del flujo (position:absolute,
+   clip) para no romper la grilla de #app; se vuelve visible solo si el canvas no
+   arrancó (.no-canvas, ver el catch de boot() en main.ts). */
+#zonas { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.no-canvas, .no-canvas body { height: auto; overflow: auto; }
+.no-canvas #canvas-host { display: none; }
+.no-canvas #app { display: block; height: auto; }
+.no-canvas #content { opacity: 1; }
+.no-canvas #zonas { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: normal; padding: 2rem clamp(1rem, 4vw, 3rem) 0; }
+.no-canvas #zonas ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.no-canvas #zonas a { color: #7cf5ff; font-size: 1.1rem; }
