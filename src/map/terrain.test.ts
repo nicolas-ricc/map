@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { opsBounds } from "./ops";
+import { opsBounds, type PixelOp } from "./ops";
 import { PALETTE } from "./palette";
 import { SEED, buildTerrain } from "./terrain";
 import { MAP_H, MAP_W, ZONE_IDS } from "./zones";
 
-const inBounds = (ops: { x: number; y: number; w: number; h: number }[]) => {
+const inBounds = (ops: PixelOp[]) => {
   const b = opsBounds(ops);
   return b.minX >= 0 && b.minY >= 0 && b.maxX <= MAP_W && b.maxY <= MAP_H;
 };
