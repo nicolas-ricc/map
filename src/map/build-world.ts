@@ -74,7 +74,7 @@ export function buildWorld(renderer: Renderer, onSelect: (id: ZoneId) => void): 
         river[1].visible = !river[0].visible;
       }
       for (const id of Object.keys(zones) as ZoneId[]) zones[id].tick(ticker);
-      fireflies.tick(ticker, hotZones());
+      fireflies.tick(ticker, (id) => zones[id].state);
     },
   };
 }

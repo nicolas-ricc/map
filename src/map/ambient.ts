@@ -1,5 +1,6 @@
 import { Graphics, type Ticker } from "pixi.js";
 import { ACCENTS } from "./palette";
+import type { ZoneState } from "./zone-node";
 import { ZONES, type ZoneId } from "./zones";
 
 const PER_ZONE = 12;
@@ -8,12 +9,14 @@ export class Fireflies extends Graphics {
   private t = 0;
   private readonly phases = Array.from({ length: ZONES.length * PER_ZONE }, (_, i) => (i * 0.61803) % 1);
 
-  tick(ticker: Ticker, hot: Set<ZoneId>): void {
+  tick(ticker: Ticker, stateOf: (id: ZoneId) => ZoneState): void {
     this.t += ticker.deltaMS / 1000;
     this.clear();
     ZONES.forEach((z, zi) => {
       const color = ACCENTS[z.accent].core;
-      const alpha = hot.has(z.id) ? 0.9 : 0.3;
+      const state = stateOf(z.id);
+      const alpha = state === "hot" || state === "active" ? 0.9 : state === "dim" ? 0 : 0.3;
+      if (alpha === 0) return;
       for (let i = 0; i < PER_ZONE; i++) {
         const ph = this.phases[zi * PER_ZONE + i]! * Math.PI * 2;
         const a = this.t * 0.5 + ph;
