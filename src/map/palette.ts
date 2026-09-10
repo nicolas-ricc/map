@@ -20,8 +20,8 @@ export const PALETTE = {
 export type PaletteName = keyof typeof PALETTE;
 export type Accent = "cyan" | "amber" | "magenta";
 
-export const ACCENTS: Record<Accent, { core: number; mid: number; bleed: number }> = {
+export const ACCENTS = {
   cyan: { core: PALETTE.cyan, mid: PALETTE.cyanMid, bleed: PALETTE.cyanBleed },
   amber: { core: PALETTE.amber, mid: PALETTE.amberMid, bleed: PALETTE.amberBleed },
   magenta: { core: PALETTE.magenta, mid: PALETTE.magentaMid, bleed: PALETTE.magentaBleed },
-};
+} as const satisfies Record<Accent, { core: number; mid: number; bleed: number }>;
