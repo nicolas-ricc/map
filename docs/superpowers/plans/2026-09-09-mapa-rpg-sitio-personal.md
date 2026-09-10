@@ -1985,7 +1985,7 @@ git commit -m "feat: ZoneNode con estados idle/hot/active/dim y flicker"
   - `Camera.retarget(to: CameraState): void` y `get isTweening(): boolean` (agregados a `camera.ts`, con test).
   - `buildWorld(renderer: Renderer, onSelect: (id: ZoneId) => void): World` con `World = { container: Container; zones: Record<ZoneId, ZoneNode>; river: [Sprite, Sprite]; tick(ticker): void }`. Construye textura base, overlays, glows, labels, landmarks, cartel de bienvenida.
   - `titleSignOps(): PixelOp[]` en `title-sign.ts` — cartel "BIENVENIDO A" / "NICOLAS RICCOMINI" con marco roto, ubicado en (250, 236) del lienzo.
-  - `showMap(): void`, `showZone(id: ZoneId, html: string): void`, `setZoneTitle(name: string)` en `views.ts`.
+  - `showMap(): void`, `showZone(id: ZoneId, name: string, html: string | null): void` en `views.ts` (`html === null` conserva el contenido prerenderizado).
   - `index.html` gana dentro de `#canvas-host`: `<div id="hud"><a id="back" href="/">← Volver al mapa</a><h1 id="zone-title"></h1></div>`.
 
 - [ ] **Step 1: Test de `retarget` / `isTweening`**
