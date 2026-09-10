@@ -9,9 +9,14 @@
   "scripts": {
     "test": "vitest run",
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run prerender",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "validate": "tsx scripts/validate-content.ts",
+    "feed": "tsx scripts/fetch-blog-feed.ts",
+    "prerender": "tsx scripts/prerender.ts",
+    "prebuild": "npm run validate && npm run feed",
+    "predev": "npm run feed"
   },
   "keywords": [],
   "author": "",
