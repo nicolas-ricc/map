@@ -65,6 +65,19 @@ describe("Camera", () => {
     expect(cam.state.x).toBe(-100);
   });
 
+  it("retarget cambia el destino sin reiniciar el tween", async () => {
+    const cam = new Camera(() => {}, { duration: 100 });
+    cam.jumpTo({ x: 0, y: 0, scale: 1 });
+    const done = cam.tweenTo({ x: 100, y: 0, scale: 1 });
+    cam.tick(0);
+    expect(cam.isTweening).toBe(true);
+    cam.retarget({ x: 200, y: 0, scale: 1 });
+    cam.tick(100);
+    await done;
+    expect(cam.state.x).toBe(200);
+    expect(cam.isTweening).toBe(false);
+  });
+
   it("constantes", () => {
     expect(DURATION_MS).toBe(500);
     expect(ZOOM).toBe(2.5);

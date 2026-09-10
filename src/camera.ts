@@ -35,6 +35,12 @@ export class Camera {
     this.apply(this.state);
   }
 
+  get isTweening(): boolean { return this.tween !== null; }
+
+  retarget(to: CameraState): void {
+    if (this.tween) this.tween.to = { ...to };
+  }
+
   tweenTo(to: CameraState): Promise<void> {
     this.finishTween();
     return new Promise((resolve) => {
