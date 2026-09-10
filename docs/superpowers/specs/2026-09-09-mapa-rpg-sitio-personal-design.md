@@ -25,7 +25,7 @@ Criterios de éxito:
 | Dominio | Subdominio propio (p. ej. `yo.myxomatosis.xyz`), separado del blog Hugo |
 | Hosting | GitHub Pages, repo nuevo, deploy por GitHub Actions |
 | Renderer | PixiJS v8 con imports selectivos, Vite + TypeScript, sin framework de UI |
-| Arte | Híbrido: terreno procedural con `Graphics` en un lienzo low-res escalado con nearest-neighbor, más 3-5 sprites PNG para los landmarks |
+| Arte | Todo procedural en v1: terreno y landmarks como listas de rectángulos (`PixelOp[]`) pintadas con `Graphics` en un lienzo low-res escalado con nearest-neighbor. Los landmarks exponen `Texture[]` por frame, así se pueden reemplazar por PNG dibujados a mano sin tocar el resto |
 | Gamificación | Mapa interactivo sin personaje: hover ilumina, click hace zoom. Sin controles de movimiento ni progresión |
 | Tema | Post-apocalíptico irónico: nuestro mundo siglos después, selva sobre la ciudad, noche con luces artificiales |
 | Zonas v1 | Portfolio, Currículum, Blog |
@@ -44,7 +44,9 @@ mapa/
       canvas.ts              RenderTexture 480x270, sprite escalado nearest
       terrain.ts             pintores: agua, costa, pasto, bosque, montaña, camino
       zones.ts               definición de zonas: id, polígono, landmark, cartel
-      landmarks.ts           carga de sprites PNG y animación por frames
+      landmarks.ts           landmarks procedurales, PixelOp[] por frame
+      pixelfont.ts           fuente bitmap 3x5 como datos, texto -> PixelOp[]
+      ops.ts                 tipo PixelOp y applyOps(Graphics, ops)
       seed.ts                PRNG determinístico
       palette.ts             16 colores nombrados
       ambient.ts             luciérnagas, flicker, humo
@@ -64,7 +66,6 @@ mapa/
     prerender.mjs            genera el HTML estático de cada ruta con el contenido
   public/
     sprites/                 PNGs de landmarks (32x32 o 48x48, 2-3 frames c/u)
-    font/                    fuente bitmap pixel art (PNG + fnt), ~5 KB
     CNAME
   .github/workflows/deploy.yml
 ```
@@ -140,10 +141,13 @@ en un margen del mapa.
 
 ### Landmarks
 
-Sprites PNG de 48x48 con 2-3 frames de animación sutil (chispas de soldadura,
-letra del cartel que titila, estática del LED). Se animan a 8 fps con
-`AnimatedSprite` solo mientras la zona está en hover/foco o activa; en reposo
-quedan en el frame 0 (luz en "modo ahorro").
+Composiciones procedurales de ~40x40 px definidas en `landmarks.ts` como
+funciones que devuelven `PixelOp[]` por frame (2-3 frames: chispas de
+soldadura, letra del cartel que titila, estática del LED). Al cargar se
+renderizan a texturas con `renderer.generateTexture` y se muestran con
+`AnimatedSprite` a 8 fps solo mientras la zona está en hover/foco o activa; en
+reposo quedan en el frame 0 (luz en "modo ahorro"). Reemplazables por PNG
+dibujados a mano: la interfaz es `Texture[]`.
 
 ### Ambiente animado
 
@@ -257,8 +261,8 @@ lista de links. El mismo módulo lo usan el prerender (Node) y el cliente
 | Recurso | Presupuesto |
 |---|---|
 | JS total | < 200 KB gzip (Pixi selectivo ~130-150) |
-| Sprites y glows | < 40 KB en total |
-| Fuente bitmap | ~5 KB |
+| Sprites y glows | 0 KB de binarios; se generan en runtime |
+| Fuente bitmap | 0 KB, glifos 3x5 en código |
 | Web fonts | ninguna; el contenido usa fuentes del sistema |
 | Primer render del mapa | < 1 s en 4G |
 
