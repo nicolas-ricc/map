@@ -1,0 +1,10 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1620;
+  --fg: #e6edf3;
+  --muted: #9aa7b2;
+}
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+#app { height: 100%; }
+#canvas-host { position: relative; width: 100%; height: 100%; overflow: hidden; }
+#canvas-host canvas { display: block; image-rendering: pixelated; }
