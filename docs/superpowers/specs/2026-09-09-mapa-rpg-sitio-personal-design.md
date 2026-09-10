@@ -27,6 +27,7 @@ Criterios de éxito:
 | Renderer | PixiJS v8 con imports selectivos, Vite + TypeScript, sin framework de UI |
 | Arte | Híbrido: terreno procedural con `Graphics` en un lienzo low-res escalado con nearest-neighbor, más 3-5 sprites PNG para los landmarks |
 | Gamificación | Mapa interactivo sin personaje: hover ilumina, click hace zoom. Sin controles de movimiento ni progresión |
+| Tema | Post-apocalíptico irónico: nuestro mundo siglos después, selva sobre la ciudad, noche con luces artificiales |
 | Zonas v1 | Portfolio, Currículum, Blog |
 | Navegación | URL propia por zona + transición sin recarga (History API) |
 | Contenido | JSON estático en el repo, validado en build. Últimos posts del blog leídos del RSS en build time |
@@ -45,6 +46,8 @@ mapa/
       zones.ts               definición de zonas: id, polígono, landmark, cartel
       landmarks.ts           carga de sprites PNG y animación por frames
       seed.ts                PRNG determinístico
+      palette.ts             16 colores nombrados
+      ambient.ts             luciérnagas, flicker, humo
     camera.ts                tween de position/scale del contenedor raíz
     router.ts                pushState/popstate, mapea URL <-> zona
     views/
@@ -66,7 +69,30 @@ mapa/
   .github/workflows/deploy.yml
 ```
 
-## 4. El mapa
+## 4. Mundo y atmósfera
+
+### Tema
+
+Nuestro mundo, siglos después de un colapso que a nadie le importó demasiado.
+La selva se comió las ciudades pero la infraestructura barata sobrevivió: los
+carteles LED siguen prendidos porque nadie encontró el interruptor. Es de
+noche. Las únicas luces son artificiales, medio rotas, y son exactamente las
+zonas del mapa. Tono irónico y rastrero (Fallout con menos épica y más kiosco):
+lo que quedó de la civilización es publicidad, cables y containers.
+
+### Paleta (16 colores)
+
+- **Base nocturna** (7): azul petróleo muy oscuro para el suelo, dos verdes
+  profundos casi negros para vegetación, gris-violeta y gris oscuro para
+  concreto, marrón óxido para metal, negro azulado para el río.
+- **Acentos de luz artificial** (3 × 3 = 9): uno por zona, cada uno con tres
+  tonos (núcleo, medio, sangrado sobre la vegetación cercana).
+  - Portfolio: cian de tubo fluorescente.
+  - CV: ámbar de lámpara de sodio.
+  - Blog: magenta de neón.
+
+La paleta vive en un único módulo (`palette.ts`) y todo el terreno y los
+landmarks la referencian por nombre.
 
 ### Lienzo
 
@@ -80,34 +106,54 @@ que se dibuja en coordenadas del lienzo usa enteros.
 Generación con seed fija en `seed.ts`, así el mapa es idéntico en cada carga.
 Capas, de abajo hacia arriba:
 
-1. **Agua**: relleno base más franja de costa con 2 frames alternados cada
-   300 ms (única capa que se redibuja; se pinta a un `RenderTexture` propio).
-2. **Tierra**: isla o continente central con borde de arena de 1-2 px.
-3. **Pasto**: variación de tono en manchas.
-4. **Bosque**: círculos apilados en 2 tonos con sombra a la derecha-abajo.
-5. **Montañas**: triángulos con cara iluminada y cara en sombra, nieve en la punta.
-6. **Caminos**: línea punteada de 1 px conectando los tres landmarks.
-
-Paleta fija de ~16 colores estilo SNES, definida en un solo lugar.
+1. **Suelo**: relleno azul petróleo oscuro.
+2. **Cuadrícula urbana rota**: restos de calles como líneas grises de 1-2 px
+   en grilla, con tramos borrados al azar. Cimientos rectangulares como
+   manchas gris-violeta.
+3. **Río**: curva oscura que cruza el mapa; sobre él, reflejos de 1 px con
+   el color de la zona más cercana, alternando 2 frames cada 400 ms (única
+   capa de terreno que se redibuja).
+4. **Autopista elevada**: banda gris con línea central, cortada en dos o tres
+   puntos, que sale del mapa por el borde del lado del Blog.
+5. **Vegetación**: copas de árboles como círculos apilados en los dos verdes,
+   tapando parcialmente calles y cimientos. Enredaderas como líneas de 1 px
+   sobre las estructuras.
+6. **Rutas**: torres de alta tensión caídas; los cables son líneas punteadas
+   de 1 px que conectan los tres landmarks.
 
 ### Zonas
 
-| id | Nombre | Landmark | Idea |
-|---|---|---|---|
-| `portfolio` | Portfolio | Castillo-taller | Donde se construyen las cosas |
-| `cv` | Currículum | Torre de archivo | Registro de lo hecho |
-| `blog` | Blog | Puerto con barco | De ahí se "sale" del mapa a myxomatosis.xyz |
+| id | Nombre | Landmark | Luz | Idea |
+|---|---|---|---|---|
+| `portfolio` | Portfolio | Torre de containers apilados con grúa oxidada encima, taller con chispas | Cian, soldadura parpadeando | "Acá se construyen cosas", con chatarra. La grúa se mueve sola |
+| `cv` | Currículum | Edificio de oficinas hundido en la selva, un solo piso con luz, cartel "ABIERTO" con una letra que falla | Ámbar de tubo | El único que sigue yendo a la oficina |
+| `blog` | Blog | Cartel publicitario gigante sobre la autopista cortada, con enredaderas, pantalla LED con estática | Magenta neón | El cartel muestra texto glitcheado. Es la "salida" del mapa |
 
 Cada zona: polígono en coordenadas del lienzo, posición del landmark, cartel
 con el nombre en fuente bitmap. Cada zona es un `Container` propio que agrupa
-su terreno, su landmark y su cartel, para poder aplicarle `tint` y filtros por
+su terreno, su landmark, su glow y su cartel, para poder aplicarle `tint` por
 separado.
+
+Título del sitio en el mapa: cartel de bienvenida municipal roto, tipo
+"BIENVENIDO A NICOLÁS RICCOMINI" con letras caídas, en fuente bitmap, ubicado
+en un margen del mapa.
 
 ### Landmarks
 
-Sprites PNG de 32x32 o 48x48 con 2-3 frames de animación sutil (bandera,
-humo, luz). Se animan a 8 fps con `AnimatedSprite` solo mientras la zona está
-en hover/foco o activa; en reposo quedan en el frame 0.
+Sprites PNG de 48x48 con 2-3 frames de animación sutil (chispas de soldadura,
+letra del cartel que titila, estática del LED). Se animan a 8 fps con
+`AnimatedSprite` solo mientras la zona está en hover/foco o activa; en reposo
+quedan en el frame 0 (luz en "modo ahorro").
+
+### Ambiente animado
+
+Barato, pocos frames, todo pausable:
+
+- Luciérnagas: `ParticleContainer` con ~30 partículas de 1 px alrededor de
+  cada luz, movimiento lento, parpadeo por alpha.
+- Flicker aleatorio de los carteles en reposo (1 frame apagado cada 5-15 s).
+- Humo de una chimenea sin dueño: 3 frames en loop.
+- Estática del LED del blog: 2 frames alternados.
 
 ## 5. Interacción
 
@@ -115,9 +161,9 @@ en hover/foco o activa; en reposo quedan en el frame 0.
 
 | Estado | Visual |
 |---|---|
-| Reposo | `tint` al ~70% de brillo, landmark en frame 0, cartel visible |
-| Hover / foco teclado | `tint` a 100% en ~150 ms; glow detrás del landmark (sprite radial, blend `add`, pulso lento); landmark animado |
-| Activa | Cámara a ~2.5x centrada en el landmark; resto de zonas al 40% |
+| Reposo | Luz en "modo ahorro": `tint` al ~60% de brillo, landmark en frame 0, glow apenas visible, flicker ocasional |
+| Hover / foco teclado | El cartel "se prende": 2-3 parpadeos de arranque de tubo fluorescente en ~250 ms y luego `tint` fijo al 100%; glow (sprite radial con el acento de la zona, blend `add`) a plena intensidad; landmark animado; luciérnagas se acercan |
+| Activa | Cámara a ~2.5x centrada en el landmark; resto de zonas al 35% de brillo, sus luces apagadas |
 
 Eventos: `eventMode: 'static'`, `hitArea` con el polígono de la zona,
 `cursor: 'pointer'`. Accesibilidad con el `AccessibilitySystem` de Pixi:
@@ -211,13 +257,13 @@ lista de links. El mismo módulo lo usan el prerender (Node) y el cliente
 | Recurso | Presupuesto |
 |---|---|
 | JS total | < 200 KB gzip (Pixi selectivo ~130-150) |
-| Sprites | < 30 KB en total |
+| Sprites y glows | < 40 KB en total |
 | Fuente bitmap | ~5 KB |
 | Web fonts | ninguna; el contenido usa fuentes del sistema |
 | Primer render del mapa | < 1 s en 4G |
 
 El loop de Pixi está casi ocioso: el terreno es una textura estática y solo se
-animan la costa y los landmarks activos. `ticker.maxFPS = 30` alcanza. Se
+animan los reflejos del río, las luciérnagas y los landmarks activos. `ticker.maxFPS = 30` alcanza. Se
 pausa el ticker con `visibilitychange` cuando la pestaña no está visible.
 
 ## 8. Deploy
