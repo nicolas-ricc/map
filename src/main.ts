@@ -82,7 +82,12 @@ async function boot(): Promise<void> {
 
   app.ticker.add((ticker) => { camera.tick(performance.now()); world.tick(ticker); });
 
+  // El primer render (sobre todo en una carga directa de /cv/) no debe animar: la clase
+  // .zone recién se aplica acá, después del primer paint, y la grilla animaría sola.
+  const root = document.documentElement;
+  root.classList.add("no-anim");
   render(current, false);
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("no-anim")));
 }
 
 boot();

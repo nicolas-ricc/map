@@ -1,11 +1,30 @@
-import { AnimatedSprite, Container, Polygon, Sprite, type Texture, type Ticker } from "pixi.js";
+import { AnimatedSprite, Container, Sprite, type Texture, type Ticker } from "pixi.js";
 import { DIM_BRIGHTNESS, FLICKER_MS, IDLE_BRIGHTNESS, brightnessTint, flickerBrightness } from "./brightness";
 import { GLOW_H } from "./landmarks";
-import type { ZoneDef, ZoneId } from "./zones";
+import { pointInPolygon, type ZoneDef, type ZoneId } from "./zones";
 
 export type ZoneState = "idle" | "hot" | "active" | "dim";
 
 export interface ZoneTextures { frames: Texture[]; glow: Texture; label: Texture; overlay: Texture }
+
+interface BoxHitArea { x: number; y: number; width: number; height: number; contains(x: number, y: number): boolean }
+
+/**
+ * Pixi usa `contains()` para el puntero y `x/y/width/height` para ubicar el div de
+ * accesibilidad. Un `Polygon` no expone esos campos (y leerlos dispara deprecations
+ * en 8.20), así que combinamos el bounding box con el test poligonal exacto.
+ */
+function polygonHitArea(points: number[]): BoxHitArea {
+  const xs = points.filter((_, i) => i % 2 === 0);
+  const ys = points.filter((_, i) => i % 2 === 1);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return {
+    x, y,
+    width: Math.max(...xs) - x,
+    height: Math.max(...ys) - y,
+    contains: (px, py) => pointInPolygon(px, py, points),
+  };
+}
 
 export class ZoneNode extends Container {
   private _state: ZoneState = "idle";
@@ -33,7 +52,7 @@ export class ZoneNode extends Container {
 
     this.eventMode = "static";
     this.cursor = "pointer";
-    this.hitArea = new Polygon(def.polygon);
+    this.hitArea = polygonHitArea(def.polygon);
     this.accessible = true;
     this.accessibleTitle = def.name;
     this.accessibleHint = `Ir a ${def.name}`;
@@ -57,6 +76,8 @@ export class ZoneNode extends Container {
     if (s === "hot" || s === "active") this.landmark.play();
     else this.landmark.gotoAndStop(0);
     this.eventMode = s === "dim" ? "none" : "static";
+    // una zona apagada tampoco debe recibir foco de teclado: sería un botón inerte
+    this.accessible = s !== "dim";
   }
 
   tick(ticker: Ticker): void {

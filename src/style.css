@@ -33,6 +33,8 @@ body.zone #content { opacity: 1; }
   #app { grid-template-columns: 1fr; grid-template-rows: 1fr 0fr; transition-property: grid-template-rows; }
   body.zone #app { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; }
 }
+/* primer frame del boot: sin transiciones (ver main.ts) */
+.no-anim #app, .no-anim #content { transition: none !important; }
 @media (prefers-reduced-motion: reduce) {
   #app, #content { transition: none; }
 }

@@ -6,27 +6,13 @@ import { ACCENTS } from "./palette";
 import { textOps, textWidth, GLYPH_H } from "./pixelfont";
 import { SEED, buildTerrain } from "./terrain";
 import { ZoneNode } from "./zone-node";
-import { MAP_H, MAP_W, ZONES, pointInPolygon, type ZoneId } from "./zones";
+import { MAP_H, MAP_W, ZONES, type ZoneId } from "./zones";
 
 export interface World {
   container: Container;
   zones: Record<ZoneId, ZoneNode>;
   river: [Sprite, Sprite];
   tick(ticker: Ticker): void;
-}
-
-interface BoxHitArea { x: number; y: number; width: number; height: number; contains(x: number, y: number): boolean }
-
-function polygonHitArea(points: number[]): BoxHitArea {
-  const xs = points.filter((_, i) => i % 2 === 0);
-  const ys = points.filter((_, i) => i % 2 === 1);
-  const x = Math.min(...xs), y = Math.min(...ys);
-  return {
-    x, y,
-    width: Math.max(...xs) - x,
-    height: Math.max(...ys) - y,
-    contains: (px, py) => pointInPolygon(px, py, points),
-  };
 }
 
 export function buildWorld(renderer: Renderer, onSelect: (id: ZoneId) => void): World {
@@ -50,15 +36,12 @@ export function buildWorld(renderer: Renderer, onSelect: (id: ZoneId) => void): 
     const label = opsToTexture(renderer, labelOps, textWidth(def.name), GLYPH_H);
     const overlay = opsToTexture(renderer, terrain.zoneOverlay[def.id], MAP_W, MAP_H);
     const node = new ZoneNode(def, { frames, glow, label, overlay }, onSelect);
-    // tabIndex positivo: los 1..n van antes que cualquier tabindex=0, así el orden
-    // de tabulación es portfolio, cv, blog (spec §5).
-    node.tabIndex = ZONES.indexOf(def) + 1;
+    // tabIndex 0: los divs de accesibilidad se agregan en orden de escena (portfolio,
+    // cv, blog), así que el orden del DOM ya alcanza. Un tabindex positivo se saltearía
+    // el resto de la página.
+    node.tabIndex = 0;
     // los divs de accesibilidad viven sobre el canvas: que no coman el hover del mouse
     node.accessiblePointerEvents = "none";
-    // hitArea con contains() poligonal + bounding box: Pixi usa contains() para el
-    // puntero y x/y/width/height para ubicar el div de accesibilidad. Un Polygon
-    // no expone esos campos (y leerlos dispara deprecations en 8.20).
-    node.hitArea = polygonHitArea(def.polygon);
     zones[def.id] = node;
     container.addChild(node);
   }
