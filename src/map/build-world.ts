@@ -13,7 +13,6 @@ export interface World {
   container: Container;
   zones: Record<ZoneId, ZoneNode>;
   river: [Sprite, Sprite];
-  hotZones(): Set<ZoneId>;
   tick(ticker: Ticker): void;
 }
 
@@ -51,21 +50,11 @@ export function buildWorld(renderer: Renderer, onSelect: (id: ZoneId) => void): 
   const fireflies = new Fireflies();
   container.addChild(fireflies);
 
-  function hotZones(): Set<ZoneId> {
-    const hot = new Set<ZoneId>();
-    for (const id of Object.keys(zones) as ZoneId[]) {
-      const state = zones[id].state;
-      if (state === "hot" || state === "active") hot.add(id);
-    }
-    return hot;
-  }
-
   let riverClock = 0;
   return {
     container,
     zones,
     river,
-    hotZones,
     tick(ticker) {
       riverClock += ticker.deltaMS;
       if (riverClock > 400) {

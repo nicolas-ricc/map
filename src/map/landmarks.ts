@@ -67,7 +67,7 @@ function blog(): PixelOp[][] {
     rect(0, 36, 40, 2, RD), // autopista debajo
   ];
   const textA = textOps("BLOG", 12, 14, M.core);
-  const textB = textOps("BL0G", 12, 14, M.core); // glitch: cero por O
+  const textB = textOps("BL G", 12, 14, M.core); // glitch: se apaga la O (el cero es idéntico a la O en la fuente)
   const staticA = [px(7, 10, M.mid), px(30, 12, M.bleed), px(9, 22, M.bleed), px(28, 21, M.mid), rect(6, 18, 6, 1, M.bleed)];
   const staticB = [px(8, 11, M.bleed), px(31, 10, M.mid), px(12, 23, M.mid), rect(24, 19, 8, 1, M.bleed)];
   const staticC = [rect(5, 12, 30, 1, M.bleed), px(20, 20, M.mid)];
