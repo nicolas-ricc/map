@@ -1,6 +1,6 @@
 {
   "id": "cv",
-  "titulo": "Currículum",
+  "titulo": "Resume",
   "descripcion": "Ingeniero de software. Backend, sistemas, y últimamente electrónica.",
   "secciones": [
     { "subtitulo": "Experiencia", "items": [ { "titulo": "Illustrate", "descripcion": "Rol y fechas pendientes.", "links": [] } ] },

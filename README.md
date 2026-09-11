@@ -1,6 +1,6 @@
 # mapa
 
-Sitio personal: un mapa RPG pixel art nocturno con tres zonas (Portfolio, Currículum, Blog).
+Sitio personal: un mapa RPG pixel art nocturno con tres zonas (Portfolio, Resume, Blog).
 
 - `npm run dev` — desarrollo (baja el feed del blog primero).
 - `npm test` — tests unitarios (Vitest).

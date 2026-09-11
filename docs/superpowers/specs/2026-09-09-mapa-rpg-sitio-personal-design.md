@@ -28,7 +28,7 @@ Criterios de éxito:
 | Arte | Todo procedural en v1: terreno y landmarks como listas de rectángulos (`PixelOp[]`) pintadas con `Graphics` en un lienzo low-res escalado con nearest-neighbor. Los landmarks exponen `Texture[]` por frame, así se pueden reemplazar por PNG dibujados a mano sin tocar el resto |
 | Gamificación | Mapa interactivo sin personaje: hover ilumina, click hace zoom. Sin controles de movimiento ni progresión |
 | Tema | Post-apocalíptico irónico: nuestro mundo siglos después, selva sobre la ciudad, noche con luces artificiales |
-| Zonas v1 | Portfolio, Currículum, Blog |
+| Zonas v1 | Portfolio, Resume, Blog |
 | Navegación | URL propia por zona + transición sin recarga (History API) |
 | Contenido | JSON estático en el repo, validado en build. Últimos posts del blog leídos del RSS en build time |
 | Panel de contenido | HTML común posicionado con CSS, no `DOMContainer` (experimental en v8) |
@@ -126,14 +126,14 @@ Capas, de abajo hacia arriba:
 | id | Nombre | Landmark | Luz | Idea |
 |---|---|---|---|---|
 | `portfolio` | Portfolio | Torre de containers apilados con grúa oxidada encima, taller con chispas | Cian, soldadura parpadeando | "Acá se construyen cosas", con chatarra. La grúa se mueve sola |
-| `cv` | Currículum | Torre de oficinas hundida en la selva, un solo piso con luz, papeles volando por la ventana | Ámbar de tubo | El único que sigue yendo a la oficina. Sin carteles: el único texto del mapa son los nombres de zona y el cartel de bienvenida |
+| `cv` | Resume | Torre de oficinas hundida en la selva, un solo piso con luz, papeles volando por la ventana | Ámbar de tubo | El único que sigue yendo a la oficina. Sin carteles: el único texto del mapa son los nombres de zona y el cartel con el nombre del sitio |
 | `blog` | Blog | Faro sobre un promontorio rocoso en la costa, casa del farero, haz magenta que gira | Magenta neón | Emitir al vacío. Es la "salida" del mapa: luz que guía hacia afuera |
 
 Cada zona: polígono en coordenadas del lienzo, posición del landmark, cartel
 con el nombre en fuente bitmap. **Los tres polígonos cubren el lienzo entero**
-(tercios sin huecos, partidos a lo largo del río) y cada uno tiene terreno
+(sin huecos: Portfolio y Resume iguales a la izquierda, Blog una franja más angosta a la derecha del río) y cada uno tiene terreno
 propio con carácter propio: Portfolio es el puerto (muelle, galpones, vías,
-containers), Currículum es la ciudad de oficinas en cuadrícula tragada por la
+containers), Resume es la ciudad de oficinas en cuadrícula tragada por la
 selva, Blog es la costa (descampado, autopista rota que muere en el mar, faro).
 Cada zona es un `Container` propio que agrupa su terreno recortado al polígono,
 su landmark, su glow y su cartel, para poder aplicarle `tint` por separado.
@@ -141,7 +141,7 @@ Al pasar el mouse por un tercio, ese tercio entero se enciende al 100% y los
 otros dos bajan al 35%; el nombre de cada zona nunca se tiñe, para que se lea
 aunque su tercio esté apagado.
 
-Título del sitio en el mapa: cartel de bienvenida municipal roto, tipo
+Título del sitio en el mapa: cartel municipal roto con el nombre del sitio, tipo
 "BIENVENIDO A NICOLÁS RICCOMINI" con letras caídas, en fuente bitmap, ubicado
 en un margen del mapa.
 

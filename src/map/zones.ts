@@ -1,4 +1,4 @@
-import { MAP_H, MAP_W, riverCenter } from "./geo";
+import { MAP_H, MAP_W, splitX } from "./geo";
 import type { Accent } from "./palette";
 
 export { MAP_H, MAP_W };
@@ -15,16 +15,16 @@ export interface ZoneDef {
   label: { x: number; y: number };
 }
 
-/** y donde Portfolio (arriba) y Currículum (abajo) se parten, sobre el río y sobre el borde izquierdo. */
+/** y donde Portfolio (arriba) y Resume (abajo) se parten, sobre la línea de partición y sobre el borde izquierdo. */
 const SPLIT_Y_RIVER = 140;
 const SPLIT_Y_LEFT = 144;
 
-/** Vértices sobre el centro del río entre y0 e y1 (inclusive), cada 20 px más los extremos. */
-function riverVertices(y0: number, y1: number): number[] {
+/** Vértices sobre la línea de partición entre y0 e y1 (inclusive), cada 20 px más los extremos. */
+function splitVertices(y0: number, y1: number): number[] {
   const ys: number[] = [];
   for (let y = y0; y < y1; y += 20) ys.push(y);
   ys.push(y1);
-  return ys.flatMap((y) => [riverCenter(y), y]);
+  return ys.flatMap((y) => [splitX(y), y]);
 }
 
 function reversePairs(flat: number[]): number[] {
@@ -35,31 +35,32 @@ function reversePairs(flat: number[]): number[] {
 
 /**
  * Los tres polígonos cubren el lienzo entero sin huecos: comparten exactamente
- * los mismos vértices a lo largo del río (izquierda/derecha) y de la línea de
- * partición (arriba/abajo a la izquierda).
+ * los mismos vértices a lo largo de la línea de partición (izquierda/derecha,
+ * a la derecha del río: Blog es la franja más angosta) y de la partición
+ * arriba/abajo a la izquierda (Portfolio y Resume, iguales).
  */
 export const ZONES: readonly ZoneDef[] = [
   {
     id: "portfolio",
     name: "Portfolio",
     accent: "cyan",
-    polygon: [0, 0, ...riverVertices(0, SPLIT_Y_RIVER), 0, SPLIT_Y_LEFT],
+    polygon: [0, 0, ...splitVertices(0, SPLIT_Y_RIVER), 0, SPLIT_Y_LEFT],
     landmark: { x: 226, y: 92 },
     label: { x: 208, y: 100 },
   },
   {
     id: "cv",
-    name: "Currículum",
+    name: "Resume",
     accent: "amber",
-    polygon: [0, SPLIT_Y_LEFT, ...riverVertices(SPLIT_Y_RIVER, MAP_H), 0, MAP_H],
+    polygon: [0, SPLIT_Y_LEFT, ...splitVertices(SPLIT_Y_RIVER, MAP_H), 0, MAP_H],
     landmark: { x: 130, y: 206 },
-    label: { x: 110, y: 214 },
+    label: { x: 118, y: 214 },
   },
   {
     id: "blog",
     name: "Blog",
     accent: "magenta",
-    polygon: [MAP_W, 0, MAP_W, MAP_H, ...reversePairs(riverVertices(0, MAP_H))],
+    polygon: [MAP_W, 0, MAP_W, MAP_H, ...reversePairs(splitVertices(0, MAP_H))],
     landmark: { x: 384, y: 120 },
     label: { x: 376, y: 128 },
   },

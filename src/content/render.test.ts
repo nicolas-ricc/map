@@ -4,7 +4,7 @@ import type { ZoneContent } from "./types";
 
 const zone: ZoneContent = {
   id: "cv",
-  titulo: "Currículum",
+  titulo: "Resume",
   descripcion: "Quién soy & qué hago",
   pdf: "/cv.pdf",
   secciones: [{ subtitulo: "Experiencia", items: [{ titulo: "Illustrate <dev>", descripcion: "Backend", links: [{ label: "Sitio", url: "https://illustrate.example" }] }] }],
@@ -13,7 +13,7 @@ const zone: ZoneContent = {
 describe("renderContent", () => {
   const html = renderContent(zone);
   it("estructura semántica", () => {
-    expect(html).toContain("<h1>Currículum</h1>");
+    expect(html).toContain("<h1>Resume</h1>");
     expect(html).toContain('<p class="lead">Quién soy &amp; qué hago</p>');
     expect(html).toContain('<a class="pdf" href="/cv.pdf"');
     expect(html).toContain("<h2>Experiencia</h2>");

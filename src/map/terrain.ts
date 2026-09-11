@@ -142,7 +142,7 @@ function paintHighway(out: PixelOp[], zone: ZoneId): void {
 const QUAY_W = 60;
 
 function paintPortfolio(out: PixelOp[], rng: Rng): void {
-  const area: Box = { x0: 0, y0: 0, x1: 300, y1: 146 };
+  const area: Box = { x0: 0, y0: 0, x1: 344, y1: 146 };
   // calles: una avenida horizontal y una vertical
   push(out, clampRect(0, 44, 230, 4, P.road));
   push(out, clampRect(100, 0, 4, 146, P.road));
@@ -153,6 +153,7 @@ function paintPortfolio(out: PixelOp[], rng: Rng): void {
     [8, 10, 40, 28], [52, 12, 44, 26], [108, 8, 36, 30], [148, 14, 44, 24],
     [8, 54, 44, 22], [56, 52, 40, 24], [108, 56, 48, 22], [8, 84, 84, 14], [108, 84, 52, 14],
     [8, 110, 40, 26], [52, 112, 44, 24], [108, 112, 60, 22],
+    [298, 18, 36, 24], [300, 62, 34, 26], // orilla derecha del río
   ];
   for (const [x, y, w, h] of sheds) {
     box(out, x, y, w, h, P.concrete, P.concreteLight, P.concreteDark);
@@ -191,24 +192,24 @@ function paintPortfolio(out: PixelOp[], rng: Rng): void {
   push(out, clampRect(riverCenter(24) - RIVER_HALF - 12, 8, 2, 24, P.rustDark));
   push(out, clampRect(riverCenter(24) - RIVER_HALF - 12, 8, 1, 24, P.rustLight));
   push(out, clampRect(riverCenter(24) - RIVER_HALF - 26, 8, 30, 1, P.rust));
-  paintJungle(out, rng, area, 12, (x, y) => nearWater(6)(x, y) || (x > riverCenter(y) - RIVER_HALF - QUAY_W - 4 && y > 8 && y < 138) || nearLandmark("portfolio", 30)(x, y));
+  paintJungle(out, rng, area, 18, (x, y) => nearWater(6)(x, y) || (x > riverCenter(y) - RIVER_HALF - QUAY_W - 4 && y > 8 && y < 138) || nearLandmark("portfolio", 30)(x, y));
 }
 
-// ---------------------------------------------------------------- Currículum: oficinas
+// ---------------------------------------------------------------- Resume: oficinas
 
 function paintCv(out: PixelOp[], rng: Rng): void {
-  const area: Box = { x0: 0, y0: 138, x1: 300, y1: 270 };
+  const area: Box = { x0: 0, y0: 138, x1: 344, y1: 270 };
   const BLOCK_W = 30, BLOCK_H = 24, STREET = 4;
-  for (let bx = 0; bx < 300; bx += BLOCK_W) {
+  for (let bx = 0; bx < 344; bx += BLOCK_W) {
     push(out, clampRect(bx, 138, STREET, 132, P.road));
     for (let y = 140; y < 270; y += 8) push(out, clampRect(bx + 1, y, 1, 3, P.roadLight));
   }
   for (let by = 146; by < 270; by += BLOCK_H) {
-    push(out, clampRect(0, by, 300, STREET, P.road));
-    if (((by - 146) / BLOCK_H) % 2 === 0) for (let x = 2; x < 300; x += 8) push(out, clampRect(x, by + 1, 3, 1, P.roadLight));
+    push(out, clampRect(0, by, 344, STREET, P.road));
+    if (((by - 146) / BLOCK_H) % 2 === 0) for (let x = 2; x < 344; x += 8) push(out, clampRect(x, by + 1, 3, 1, P.roadLight));
   }
   const skip = nearLandmark("cv", 24);
-  for (let bx = 0; bx < 300; bx += BLOCK_W) {
+  for (let bx = 0; bx < 344; bx += BLOCK_W) {
     for (let by = 146; by < 270; by += BLOCK_H) {
       const x = bx + STREET, y = by + STREET, w = BLOCK_W - STREET, h = BLOCK_H - STREET;
       if (nearWater(4)(x + w, y) || nearWater(4)(x, y + h)) continue;

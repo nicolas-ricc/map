@@ -19,6 +19,11 @@ export function coastX(y: number): number {
   return Math.round(418 + 20 * head + 6 * Math.sin(y / 23) + 3 * Math.sin(y / 9 + 2));
 }
 
+/** x donde termina la mitad izquierda (Portfolio arriba, Resume abajo) y empieza Blog. A la derecha del río. */
+export function splitX(y: number): number {
+  return Math.round(336 + 6 * Math.sin(y / 30) + 3 * Math.sin(y / 11));
+}
+
 export function isWater(x: number, y: number): boolean {
   return Math.abs(x - riverCenter(y)) <= RIVER_HALF || x >= coastX(y);
 }

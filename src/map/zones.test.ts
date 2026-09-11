@@ -54,7 +54,7 @@ describe("zones", () => {
   });
 
   it("zoneById devuelve la zona y tira si no existe", () => {
-    expect(zoneById("cv").name).toBe("Currículum");
+    expect(zoneById("cv").name).toBe("Resume");
     // @ts-expect-error id inválido
     expect(() => zoneById("nada")).toThrow();
   });
