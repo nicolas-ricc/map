@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ACCENTS, PALETTE } from "./palette";
 
 describe("PALETTE", () => {
-  it("tiene exactamente 16 colores", () => {
-    expect(Object.keys(PALETTE)).toHaveLength(16);
+  it("tiene exactamente 25 colores", () => {
+    expect(Object.keys(PALETTE)).toHaveLength(25);
   });
   it("no repite colores", () => {
     const values = Object.values(PALETTE);

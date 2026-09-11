@@ -126,13 +126,20 @@ Capas, de abajo hacia arriba:
 | id | Nombre | Landmark | Luz | Idea |
 |---|---|---|---|---|
 | `portfolio` | Portfolio | Torre de containers apilados con grúa oxidada encima, taller con chispas | Cian, soldadura parpadeando | "Acá se construyen cosas", con chatarra. La grúa se mueve sola |
-| `cv` | Currículum | Edificio de oficinas hundido en la selva, un solo piso con luz, cartel "ABIERTO" con una letra que falla | Ámbar de tubo | El único que sigue yendo a la oficina |
-| `blog` | Blog | Cartel publicitario gigante sobre la autopista cortada, con enredaderas, pantalla LED con estática | Magenta neón | El cartel muestra texto glitcheado. Es la "salida" del mapa |
+| `cv` | Currículum | Torre de oficinas hundida en la selva, un solo piso con luz, papeles volando por la ventana | Ámbar de tubo | El único que sigue yendo a la oficina. Sin carteles: el único texto del mapa son los nombres de zona y el cartel de bienvenida |
+| `blog` | Blog | Faro sobre un promontorio rocoso en la costa, casa del farero, haz magenta que gira | Magenta neón | Emitir al vacío. Es la "salida" del mapa: luz que guía hacia afuera |
 
 Cada zona: polígono en coordenadas del lienzo, posición del landmark, cartel
-con el nombre en fuente bitmap. Cada zona es un `Container` propio que agrupa
-su terreno, su landmark, su glow y su cartel, para poder aplicarle `tint` por
-separado.
+con el nombre en fuente bitmap. **Los tres polígonos cubren el lienzo entero**
+(tercios sin huecos, partidos a lo largo del río) y cada uno tiene terreno
+propio con carácter propio: Portfolio es el puerto (muelle, galpones, vías,
+containers), Currículum es la ciudad de oficinas en cuadrícula tragada por la
+selva, Blog es la costa (descampado, autopista rota que muere en el mar, faro).
+Cada zona es un `Container` propio que agrupa su terreno recortado al polígono,
+su landmark, su glow y su cartel, para poder aplicarle `tint` por separado.
+Al pasar el mouse por un tercio, ese tercio entero se enciende al 100% y los
+otros dos bajan al 35%; el nombre de cada zona nunca se tiñe, para que se lea
+aunque su tercio esté apagado.
 
 Título del sitio en el mapa: cartel de bienvenida municipal roto, tipo
 "BIENVENIDO A NICOLÁS RICCOMINI" con letras caídas, en fuente bitmap, ubicado

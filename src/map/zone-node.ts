@@ -5,7 +5,7 @@ import { pointInPolygon, type ZoneDef, type ZoneId } from "./zones";
 
 export type ZoneState = "idle" | "hot" | "active" | "dim";
 
-export interface ZoneTextures { frames: Texture[]; glow: Texture; label: Texture; overlay: Texture }
+export interface ZoneTextures { terrain: Texture; frames: Texture[]; glow: Texture; label: Texture; overlay: Texture }
 
 interface BoxHitArea { x: number; y: number; width: number; height: number; contains(x: number, y: number): boolean }
 
@@ -32,23 +32,25 @@ export class ZoneNode extends Container {
   private hotElapsedMs = 0;
   private idleElapsedMs = 0;
   private nextIdleFlicker = 0;
+  private readonly terrain: Sprite;
   private readonly overlay: Sprite;
   private readonly glow: Sprite;
   private readonly landmark: AnimatedSprite;
-  private readonly labelSprite: Sprite;
 
   constructor(readonly def: ZoneDef, tex: ZoneTextures, onSelect: (id: ZoneId) => void) {
     super();
+    this.terrain = new Sprite(tex.terrain);
     this.overlay = new Sprite(tex.overlay);
     this.glow = new Sprite({ texture: tex.glow, anchor: { x: 0.5, y: 0.5 }, blendMode: "add", alpha: 0.25 });
-    this.glow.position.set(def.landmark.x, def.landmark.y - GLOW_H / 4);
+    this.glow.position.set(def.landmark.x, def.landmark.y - GLOW_H / 6); // charco de luz al pie del edificio
     this.landmark = new AnimatedSprite({ textures: tex.frames, autoUpdate: false });
     this.landmark.anchor.set(0.5, 1);
     this.landmark.position.set(def.landmark.x, def.landmark.y);
     this.landmark.animationSpeed = 8 / 60;
-    this.labelSprite = new Sprite(tex.label);
-    this.labelSprite.position.set(def.label.x, def.label.y);
-    this.addChild(this.overlay, this.glow, this.landmark, this.labelSprite);
+    // el nombre nunca se tiñe: se lee aunque el tercio esté apagado
+    const label = new Sprite(tex.label);
+    label.position.set(def.label.x, def.label.y);
+    this.addChild(this.terrain, this.overlay, this.glow, this.landmark, label);
 
     this.eventMode = "static";
     this.cursor = "pointer";
@@ -63,7 +65,6 @@ export class ZoneNode extends Container {
     this.on("pointerover", hot).on("mouseover", hot);
     this.on("pointerout", cool).on("mouseout", cool);
     this.on("pointertap", () => onSelect(def.id));
-    this.glow.alpha = 0.25;
     this.applyBrightness();
   }
 
@@ -80,7 +81,11 @@ export class ZoneNode extends Container {
     this.accessible = s !== "dim";
   }
 
-  tick(ticker: Ticker): void {
+  /**
+   * `shaded`: otro tercio tiene el hover. Este se oscurece como si estuviera
+   * apagado pero sigue siendo clickeable.
+   */
+  tick(ticker: Ticker, shaded = false): void {
     let target: number;
     switch (this._state) {
       case "hot":
@@ -89,15 +94,16 @@ export class ZoneNode extends Container {
         break;
       case "active": target = 1; break;
       case "dim": target = DIM_BRIGHTNESS; break;
-      default: target = this.idleWithFlicker(ticker.deltaMS);
+      default: target = shaded ? DIM_BRIGHTNESS : this.idleWithFlicker(ticker.deltaMS);
     }
     // lerp suave salvo durante el flicker, que es instantáneo
     const instant = this._state === "hot" && this.hotElapsedMs < FLICKER_MS;
     this.brightness = instant ? target : this.brightness + (target - this.brightness) * Math.min(1, ticker.deltaMS / 120);
     this.applyBrightness();
-    const glowTarget = this._state === "hot" || this._state === "active" ? 0.9 : this._state === "dim" ? 0 : 0.25;
+    const lit = this._state === "hot" || this._state === "active";
+    const glowTarget = lit ? 0.9 : this._state === "dim" || shaded ? 0 : 0.25;
     this.glow.alpha += (glowTarget - this.glow.alpha) * Math.min(1, ticker.deltaMS / 120);
-    if (this._state === "hot" || this._state === "active") this.landmark.update(ticker);
+    if (lit) this.landmark.update(ticker);
   }
 
   private idleWithFlicker(deltaMS: number): number {
@@ -112,8 +118,8 @@ export class ZoneNode extends Container {
 
   private applyBrightness(): void {
     const t = brightnessTint(this.brightness);
+    this.terrain.tint = t;
     this.overlay.tint = t;
     this.landmark.tint = t;
-    this.labelSprite.tint = t;
   }
 }
