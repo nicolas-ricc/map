@@ -17,4 +17,13 @@ describe("router", () => {
   it("es inverso", () => {
     for (const id of ["portfolio", "cv", "blog"] as const) expect(zoneFromPath(pathForZone(id))).toBe(id);
   });
+  it("respeta el prefijo base del deploy (/map/)", () => {
+    expect(zoneFromPath("/map/", "/map/")).toBeNull();
+    expect(zoneFromPath("/map/cv/", "/map/")).toBe("cv");
+    expect(zoneFromPath("/map/blog/index.html", "/map/")).toBe("blog");
+    expect(zoneFromPath("/cv/", "/map/")).toBeNull(); // fuera del prefijo no es nuestro
+    expect(pathForZone(null, "/map/")).toBe("/map/");
+    expect(pathForZone("portfolio", "/map/")).toBe("/map/portfolio/");
+    for (const id of ["portfolio", "cv", "blog"] as const) expect(zoneFromPath(pathForZone(id, "/map/"), "/map/")).toBe(id);
+  });
 });

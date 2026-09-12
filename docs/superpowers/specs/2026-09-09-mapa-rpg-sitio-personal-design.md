@@ -22,7 +22,7 @@ Criterios de éxito:
 
 | Tema | Decisión |
 |---|---|
-| Dominio | Subdominio propio (p. ej. `yo.myxomatosis.xyz`), separado del blog Hugo |
+| Dominio | `myxomatosis.xyz/map/`: project site de GitHub Pages (repo `map`) bajo el dominio del blog, sin DNS extra |
 | Hosting | GitHub Pages, repo nuevo, deploy por GitHub Actions |
 | Renderer | PixiJS v8 con imports selectivos, Vite + TypeScript, sin framework de UI |
 | Arte | Todo procedural en v1: terreno y landmarks como listas de rectángulos (`PixelOp[]`) pintadas con `Graphics` en un lienzo low-res escalado con nearest-neighbor. Los landmarks exponen `Texture[]` por frame, así se pueden reemplazar por PNG dibujados a mano sin tocar el resto |
