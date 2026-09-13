@@ -9,9 +9,10 @@ describe("laboratorio fuera de producción", () => {
   });
   it("vite.config no agrega el laboratorio al build", () => {
     const cfg = readFileSync(`${ROOT}vite.config.ts`, "utf8");
-    expect(cfg).not.toMatch(/lab/);
+    expect(cfg).not.toMatch(/rollupOptions|input\s*:/);
   });
   it("prerender no lo copia", () => {
-    expect(readFileSync(`${ROOT}scripts/prerender.ts`, "utf8")).not.toMatch(/lab/);
+    // \blab\b para no matchear "slab" ni "label".
+    expect(readFileSync(`${ROOT}scripts/prerender.ts`, "utf8")).not.toMatch(/\blab\b/);
   });
 });
