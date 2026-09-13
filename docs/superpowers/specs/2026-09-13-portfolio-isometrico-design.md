@@ -1,7 +1,7 @@
 # Portfolio isométrico low-poly — diseño
 
 **Fecha:** 2026-09-13
-**Estado:** aprobado; plan en `docs/superpowers/plans/2026-09-13-portfolio-isometrico.md`
+**Estado:** implementado en el laboratorio; reintegración al mapa pendiente (spec aparte)
 **Antecede:** `2026-09-09-mapa-rpg-sitio-personal-design.md` (mapa top-down pixel art)
 
 ## 1. Objetivo
