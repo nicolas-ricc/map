@@ -253,7 +253,7 @@ export function shipyard(rng: Rng): Scene {
   materialYard(solids, rng);
   dryDock(solids, ground);
   halls(solids, accents);
-  street(ground);
+  street(solids);
   slipways(solids, weldSpots);
   const g = gantry(solids);
   workshops(solids, rng);
