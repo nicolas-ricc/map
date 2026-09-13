@@ -1,0 +1,50 @@
+import { describe, expect, it } from "vitest";
+import { ISO_COLORS, ISO_TONES, allIsoColors } from "../map/palette-iso";
+import { v3 } from "./geometry";
+import { buildRenderList, type Layer } from "./render-list";
+import type { Solid } from "./solids";
+
+const prism: Solid = { kind: "prism", at: v3(0, 0, 0), w: 2, d: 2, h: 2, mat: "concrete" };
+const slab: Solid = { kind: "ground", mat: "slab", tris: [{ pts: [v3(0, 0, 0), v3(10, 0, 0), v3(0, 10, 0)] }, { pts: [v3(10, 0, 0), v3(10, 10, 0), v3(0, 10, 0)], toneOffset: -1 }] };
+
+describe("buildRenderList", () => {
+  it("capas en orden ground < shadow < solid", () => {
+    const items = buildRenderList([prism, slab]);
+    const layers = items.map((i) => i.layer);
+    const last = (l: Layer) => layers.lastIndexOf(l), first = (l: Layer) => layers.indexOf(l);
+    expect(last("ground")).toBeLessThan(first("shadow"));
+    expect(last("shadow")).toBeLessThan(first("solid"));
+  });
+
+  it("un prisma produce una sombra y tres caras con los tres tonos del material", () => {
+    const items = buildRenderList([prism]);
+    expect(items.filter((i) => i.layer === "shadow")).toHaveLength(1);
+    expect(items.find((i) => i.layer === "shadow")!.color).toBe(ISO_COLORS.shadow);
+    const colors = items.filter((i) => i.layer === "solid").map((i) => i.color).sort();
+    expect(colors).toEqual([ISO_TONES.concrete.top, ISO_TONES.concrete.lit, ISO_TONES.concrete.shade].sort());
+  });
+
+  it("el offset de tono del suelo baja un escalón", () => {
+    const items = buildRenderList([slab]).filter((i) => i.layer === "ground");
+    expect(items.map((i) => i.color)).toEqual([ISO_TONES.slab.top, ISO_TONES.slab.down]);
+  });
+
+  it("los puntos están proyectados a pantalla, planos", () => {
+    const top = buildRenderList([prism]).find((i) => i.layer === "solid" && i.color === ISO_TONES.concrete.top)!;
+    expect(top.pts).toHaveLength(8);
+    expect(top.pts).toContain(-2.8); // project(0,0,2).y
+  });
+
+  it("todo color sale del atlas", () => {
+    const all = allIsoColors();
+    for (const i of buildRenderList([prism, slab, { kind: "cone", at: v3(5, 5, 0), r: 2, h: 4, mat: "leaf" }])) expect(all.has(i.color)).toBe(true);
+  });
+
+  it("los sólidos salen en orden painter", () => {
+    const far: Solid = { ...prism, at: v3(0, 0, 0) }, near: Solid = { ...prism, at: v3(6, 6, 0) };
+    const items = buildRenderList([near, far]).filter((i) => i.layer === "solid");
+    const nearY = Math.max(...items.slice(3).flatMap((i) => i.pts.filter((_, k) => k % 2 === 1)));
+    const farY = Math.max(...items.slice(0, 3).flatMap((i) => i.pts.filter((_, k) => k % 2 === 1)));
+    expect(farY).toBeLessThan(nearY);
+  });
+});
