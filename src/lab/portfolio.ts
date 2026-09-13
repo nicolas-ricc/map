@@ -32,9 +32,11 @@ async function boot(): Promise<void> {
   gAccents.blendMode = "add";
   gTrolleyLamp.blendMode = "add";
   gSparks.blendMode = "add";
-  world.addChild(gGround, gWater, gShadow, gSolid, gTrolleyShadow, gTrolley, gAccents, gTrolleyLamp, gSparks);
+  world.addChild(gGround, gWater, gShadow, gTrolleyShadow, gSolid, gTrolley, gAccents, gTrolleyLamp, gSparks);
 
   const staticItems = buildRenderList([...scene.ground, ...scene.solids]);
+  // Encuadre con todo lo que puede aparecer en pantalla (agua y carro incluidos), calculado una sola vez al boot.
+  const fitItems = buildRenderList([...scene.ground, ...scene.water, ...scene.solids, scene.trolley]);
   drawLayer(gGround, staticItems, "ground");
   drawLayer(gShadow, staticItems, "shadow");
   drawLayer(gSolid, staticItems, "solid");
@@ -52,7 +54,7 @@ async function boot(): Promise<void> {
   drawAccents(gSparks, []);
 
   const fit = (): void => {
-    const f = fitTransform(staticItems, host.clientWidth, host.clientHeight);
+    const f = fitTransform(fitItems, host.clientWidth, host.clientHeight);
     world.position.set(f.x, f.y);
     world.scale.set(f.scale);
   };
