@@ -187,7 +187,7 @@ function dryDock(out: Solid[], ground: Solid[]): void {
   out.push(prism(QUAY_X - 3, y + 2, z, 3, d - 4, depth + 1, "rust"));   // compuerta
   out.push({ kind: "hull", at: v3(x + 6, y + d / 2, z), len: 60, beam: 10, h: 5, mat: "hull" });
   out.push(prism(x + 12, y + d / 2 - 2.5, z + 5, 8, 5, 3, "concrete")); // superestructura
-  out.push(prism(x + w + 2, 0, 0, 8, 4, 4, "concrete", "step"));        // casa de bombas
+  out.push(prism(x + w - 10, 0, 0, 8, 4, 4, "concrete", "step"));       // casa de bombas (x 182..190, no pisa el muelle en 198..202)
 }
 
 // ---------------------------------------------------------------- talleres, playa, vías (SO)
