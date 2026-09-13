@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const SRC = new URL("../", import.meta.url).pathname; // src/
 
 /** palette.ts define los colores; seed.ts usa 0x6d2b79f5, la constante de mulberry32. */
-const EXEMPT = new Set(["map/palette.ts", "map/seed.ts"]);
+const EXEMPT = new Set(["map/palette.ts", "map/palette-iso.ts", "map/seed.ts"]);
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
