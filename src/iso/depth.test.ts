@@ -43,8 +43,11 @@ describe("depth", () => {
 
   it("no muta la entrada y conserva todos los elementos", () => {
     const input = [box(6, 6, 0), box(0, 0, 0)];
+    const snapshot = [...input];
     const out = sortByDepth(input);
-    expect(input[0]).toBe(input[0]);
+    expect(input).toEqual(snapshot);        // mismo contenido y orden
+    expect(out).not.toBe(input);            // array nuevo
     expect(out).toHaveLength(2);
+    expect(out).toEqual([input[1], input[0]]); // ordenado de atrás hacia adelante
   });
 });
