@@ -16,8 +16,8 @@ aparte.
 
 Criterios de éxito:
 
-- Al abrir `/lab/portfolio` se ve el astillero completo en proyección
-  dimétrica 2:1, con volúmenes de tres tonos, sombras largas hacia el SE y
+- Al abrir `/map/lab/portfolio.html` se ve el astillero completo en proyección
+  dimétrica 2:1, con volúmenes de tres tonos, sombras largas hacia el ENE y
   terreno facetado.
 - Un cambio de posición o altura en un sólido se refleja sin tocar nada más.
 - El motor (`iso/`) no depende de PixiJS y está cubierto por tests numéricos.
@@ -30,7 +30,7 @@ Criterios de éxito:
 |---|---|
 | Motor | PixiJS 8 (stack actual). Proyección isométrica calculada a mano, sin Three.js |
 | Textura | Vectores nítidos con antialias a resolución nativa. Se abandona el lienzo 480×270 con nearest para esta escena |
-| Proyección | Dimétrica 2:1 (ángulo de 26.57°), ortográfica, cámara fija mirando desde el SO. Eje Z (altura) exagerado ×1.4 |
+| Proyección | Dimétrica 2:1 (ángulo de 26.57°), ortográfica, cámara fija en el SE mirando al NO. Eje Z (altura) exagerado ×1.4 |
 | Luz | Atardecer rasante: sol a ~25° de elevación desde el **oeste-sudoeste**. Sombras largas y duras hacia el ENE (a la derecha en pantalla). Con la cámara al SE, las paredes visibles son la sur y la este: la sur queda iluminada, la este en sombra. (Un sol al NO dejaría las dos en sombra.) |
 | Paleta | Atlas nuevo `palette-iso.ts`: base cálida (hormigón ocre, óxido, losa arena), sombra fría azulada, agua verde oscuro, selva en dos verdes, cian como único acento artificial. Tres tonos por material, generados una vez y congelados en el atlas |
 | Alcance | Laboratorio (`lab/portfolio.html` → `/map/lab/portfolio.html` en dev), excluido del build de producción. Con animación: carro de la grúa, agua, chispas de soldadura |
@@ -84,7 +84,7 @@ src/
     palette-iso.ts           atlas atardecer: material → { top, lit, shade } + acentos
   lab/
     portfolio.ts             runtime: Application, encuadre, Graphics por capa, ticker
-lab.html                     entrada Vite de desarrollo, no se copia a dist
+lab/portfolio.html           entrada Vite de desarrollo, no se copia a dist
 ```
 
 ### 4.1 `iso/`: contratos
