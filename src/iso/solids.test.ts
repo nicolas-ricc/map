@@ -1,7 +1,7 @@
 // src/iso/solids.test.ts
 import { describe, expect, it } from "vitest";
 import { v3 } from "./geometry";
-import { isFlat, tessellate, tessellateAll, type Solid } from "./solids";
+import { bounds, isFlat, tessellate, tessellateAll, type Solid } from "./solids";
 
 const prism: Solid = { kind: "prism", at: v3(0, 0, 0), w: 2, d: 3, h: 4, mat: "concrete" };
 
@@ -104,5 +104,18 @@ describe("tessellate", () => {
     expect(vis[1]!.tone).not.toBe("top");
     expect(vis[1]!.toneOffset).toBe(1);
     expect(vis.every((f) => f.normal.z > 0)).toBe(true);
+  });
+});
+
+describe("bounds", () => {
+  it("AABB de un prisma", () => {
+    expect(bounds({ kind: "prism", at: v3(1, 2, 3), w: 4, d: 5, h: 6, mat: "steel" })).toEqual({ min: { x: 1, y: 2, z: 3 }, max: { x: 5, y: 7, z: 9 } });
+  });
+  it("AABB de un gable incluye la cumbrera", () => {
+    expect(bounds({ kind: "prism", at: v3(0, 0, 0), w: 10, d: 4, h: 4, mat: "steel", roof: "gable" }).max.z).toBeCloseTo(5.4);
+  });
+  it("AABB de un suelo", () => {
+    const b = bounds({ kind: "ground", mat: "slab", tris: [{ pts: [v3(0, 0, -1), v3(6, 0, 0), v3(0, 6, 1)] }] });
+    expect(b).toEqual({ min: { x: 0, y: 0, z: -1 }, max: { x: 6, y: 6, z: 1 } });
   });
 });

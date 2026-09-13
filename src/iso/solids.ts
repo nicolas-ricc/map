@@ -162,3 +162,15 @@ export function tessellate(s: Solid): Face[] {
   const all = tessellateAll(s);
   return isFlat(s) ? all : all.filter((f) => dot(f.normal, VIEW_DIR) > 0);
 }
+
+export interface Bounds { min: Vec3; max: Vec3 }
+
+/** Caja de alineación de eje que contiene todos los vértices del sólido. */
+export function bounds(s: Solid): Bounds {
+  const min = v3(Infinity, Infinity, Infinity), max = v3(-Infinity, -Infinity, -Infinity);
+  for (const f of tessellateAll(s)) for (const p of f.pts) {
+    min.x = Math.min(min.x, p.x); min.y = Math.min(min.y, p.y); min.z = Math.min(min.z, p.z);
+    max.x = Math.max(max.x, p.x); max.y = Math.max(max.y, p.y); max.z = Math.max(max.z, p.z);
+  }
+  return { min, max };
+}

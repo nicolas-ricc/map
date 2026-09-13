@@ -1,6 +1,7 @@
 import type { Tone } from "../map/palette-iso";
-import { dot, normalize, type Vec2, type Vec3 } from "./geometry";
+import { convexHull, dot, normalize, type Vec2, type Vec3 } from "./geometry";
 import { Z_SCALE } from "./project";
+import { isFlat, tessellateAll, type Solid } from "./solids";
 
 export const SUN_ELEVATION = (25 * Math.PI) / 180;
 
@@ -31,4 +32,21 @@ export function shadeTone(n: Vec3): Tone {
 export function shadowPoint(p: Vec3): Vec2 {
   const len = Math.max(0, p.z) * SHADOW_PER_UNIT;
   return { x: p.x + SHADOW_DIR.x * len, y: p.y + SHADOW_DIR.y * len };
+}
+
+/**
+ * Sombra al suelo: casco convexo de todos los vértices proyectados por el sol.
+ * Los vértices bajo el suelo se quedan donde están (la parte hundida no tapa luz).
+ * Sólidos planos o enteramente hundidos no proyectan.
+ */
+export function shadowPolygon(s: Solid): Vec2[] | null {
+  if (isFlat(s)) return null;
+  const pts: Vec2[] = [];
+  let above = false;
+  for (const f of tessellateAll(s)) for (const p of f.pts) {
+    if (p.z > 0) above = true;
+    pts.push(shadowPoint(p));
+  }
+  if (!above) return null;
+  return convexHull(pts);
 }

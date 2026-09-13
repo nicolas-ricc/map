@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { v3 } from "./geometry";
-import { SHADOW_DIR, SHADOW_PER_UNIT, TO_SUN, shadeTone, shadowPoint } from "./light";
+import { SHADOW_DIR, SHADOW_PER_UNIT, TO_SUN, shadeTone, shadowPoint, shadowPolygon } from "./light";
+import type { Solid } from "./solids";
 
 describe("light", () => {
   it("el sol está bajo, al oeste-sudoeste", () => {
@@ -33,5 +34,26 @@ describe("light", () => {
 
   it("bajo el suelo no hay sombra: el punto queda donde está", () => {
     expect(shadowPoint(v3(3, 4, -2))).toEqual({ x: 3, y: 4 });
+  });
+});
+
+describe("shadowPolygon", () => {
+  it("un prisma 1×1×h proyecta un casco convexo que llega a 1 + 0.894·L·h en x", () => {
+    const h = 2;
+    const poly = shadowPolygon({ kind: "prism", at: v3(0, 0, 0), w: 1, d: 1, h, mat: "steel" })!;
+    expect(poly.length).toBeGreaterThanOrEqual(4);
+    expect(Math.max(...poly.map((p) => p.x))).toBeCloseTo(1 + SHADOW_DIR.x * SHADOW_PER_UNIT * h, 6);
+    expect(Math.min(...poly.map((p) => p.y))).toBeCloseTo(SHADOW_DIR.y * SHADOW_PER_UNIT * h, 6);
+    expect(poly).toContainEqual({ x: 0, y: 0 });
+    expect(poly).toContainEqual({ x: 0, y: 1 });
+  });
+  it("suelo, franjas y sólidos hundidos no proyectan", () => {
+    expect(shadowPolygon({ kind: "strip", path: [{ x: 0, y: 0 }, { x: 1, y: 0 }], width: 1, z: 0, mat: "road" })).toBeNull();
+    expect(shadowPolygon({ kind: "ground", mat: "slab", tris: [] })).toBeNull();
+    expect(shadowPolygon({ kind: "prism", at: v3(0, 0, -6), w: 2, d: 2, h: 6, mat: "concrete" })).toBeNull();
+  });
+  it("un cono proyecta la base más el ápice desplazado", () => {
+    const poly = shadowPolygon({ kind: "cone", at: v3(0, 0, 0), r: 1, h: 3, mat: "leaf" })!;
+    expect(Math.max(...poly.map((p) => p.x))).toBeCloseTo(SHADOW_DIR.x * SHADOW_PER_UNIT * 3, 6);
   });
 });
