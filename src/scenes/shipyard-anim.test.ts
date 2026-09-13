@@ -53,6 +53,7 @@ describe("shipyard-anim", () => {
   it("las chispas aparecen en una cuaderna, duran tres frames y desaparecen", () => {
     const { scene, anim } = setup();
     let seen = 0, maxFrames = 0, run = 0;
+    let runSpot: { x: number; y: number } | null = null;
     for (let t = 0; t < 20000; t += 100) {
       anim.tick(100);
       const s = anim.sparks();
@@ -61,7 +62,24 @@ describe("shipyard-anim", () => {
         expect(s.length).toBeGreaterThanOrEqual(4);
         expect(s.length).toBeLessThanOrEqual(6);
         expect(scene.weldSpots.some((w) => Math.abs(w.x - s[0]!.at.x) < 3 && Math.abs(w.y - s[0]!.at.y) < 3)).toBe(true);
-      } else run = 0;
+        if (run === 1) {
+          // primera frame del evento: fija la cuaderna que todo el flicker debe respetar.
+          // Se promedia la frame para cancelar el jitter y se toma la cuaderna más
+          // cercana (no la primera que matchee un umbral, porque hay varias a <3u).
+          const cx = s.reduce((sum, a) => sum + a.at.x, 0) / s.length;
+          const cy = s.reduce((sum, a) => sum + a.at.y, 0) / s.length;
+          runSpot = scene.weldSpots.reduce((best, w) => {
+            const d = Math.hypot(w.x - cx, w.y - cy);
+            return d < best.d ? { w, d } : best;
+          }, { w: scene.weldSpots[0]!, d: Infinity }).w;
+        } else if (runSpot) {
+          // frames siguientes del mismo evento: todas las chispas cerca de la MISMA cuaderna
+          for (const a of s) {
+            expect(Math.abs(a.at.x - runSpot.x)).toBeLessThan(3);
+            expect(Math.abs(a.at.y - runSpot.y)).toBeLessThan(3);
+          }
+        }
+      } else { run = 0; runSpot = null; }
     }
     expect(seen).toBeGreaterThan(5);
     expect(maxFrames).toBeLessThanOrEqual(3);

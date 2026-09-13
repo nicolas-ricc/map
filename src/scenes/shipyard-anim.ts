@@ -1,4 +1,4 @@
-import { v3 } from "../iso/geometry";
+import { v3, type Vec3 } from "../iso/geometry";
 import type { Rng } from "../map/seed";
 import type { Accent, Scene } from "./shipyard";
 
@@ -35,20 +35,25 @@ export function createShipyardAnim(scene: Scene, rng: Rng, opts: { reducedMotion
   const tris = water.kind === "ground" ? water.tris : [];
   const centers = tris.map((t) => (t.pts[0].x + t.pts[1].x + t.pts[2].x + t.pts[0].y + t.pts[1].y + t.pts[2].y) / 3);
 
+  const nextGap = () => rng.int(SPARK_GAP_MS[0], SPARK_GAP_MS[1]);
+
   let clock = 0;
   let waterStep = -1;
-  let sparkTimer = rng.int(SPARK_GAP_MS[0], SPARK_GAP_MS[1]);
+  let sparkTimer = nextGap();
   let sparkFrame = -1;
+  let spot: Vec3 | null = null;
   let live: Accent[] = [];
 
   const trolleyLamp = (): Accent => ({ at: v3(scene.trolley.at.x + 2.5, scene.trolley.at.y + 2, scene.trolley.at.z - 1), r: 1.4, color: "cyanMid" });
 
+  // Reutiliza `spot` (fijado al arrancar el evento) para las 3 frames del flicker:
+  // solo el jitter alrededor se re-randomiza, la cuaderna elegida es la misma.
   const burst = (): void => {
-    const spot = rng.pick(scene.weldSpots);
+    const s = spot!;
     live = [];
     const n = rng.int(4, 6);
     for (let i = 0; i < n; i++) {
-      live.push({ at: v3(spot.x + (rng.next() * 2 - 1) * 1.5, spot.y + (rng.next() * 2 - 1) * 1.5, spot.z + rng.next() * 1.5), r: 0.6, color: rng.chance(0.6) ? "cyan" : "cyanMid" });
+      live.push({ at: v3(s.x + (rng.next() * 2 - 1) * 1.5, s.y + (rng.next() * 2 - 1) * 1.5, s.z + rng.next() * 1.5), r: 0.6, color: rng.chance(0.6) ? "cyan" : "cyanMid" });
     }
   };
 
@@ -75,13 +80,13 @@ export function createShipyardAnim(scene: Scene, rng: Rng, opts: { reducedMotion
         sparkTimer -= dtMs;
         if (sparkTimer <= 0) {
           sparkFrame++;
-          if (sparkFrame >= SPARK_FRAMES) { sparkFrame = -1; live = []; sparkTimer = rng.int(SPARK_GAP_MS[0], SPARK_GAP_MS[1]); }
+          if (sparkFrame >= SPARK_FRAMES) { sparkFrame = -1; spot = null; live = []; sparkTimer = nextGap(); }
           else { sparkTimer = SPARK_FRAME_MS; burst(); }
           changes.sparks = true;
         }
       } else {
         sparkTimer -= dtMs;
-        if (sparkTimer <= 0) { sparkFrame = 0; sparkTimer = SPARK_FRAME_MS; burst(); changes.sparks = true; }
+        if (sparkTimer <= 0) { sparkFrame = 0; sparkTimer = SPARK_FRAME_MS; spot = rng.pick(scene.weldSpots); burst(); changes.sparks = true; }
       }
       return changes;
     },
