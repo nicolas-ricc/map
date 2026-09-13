@@ -1,29 +1,30 @@
 /**
- * Atlas de la escena isométrica: atardecer rasante. Cinco tonos por material,
- * generados una vez (lit = top×0.80 +azul, shade = top×0.52 +más azul,
- * up = top×1.10, down = top×0.90 +azul) y pegados como literales para que el
- * guard de colores los vea. No calcular colores en runtime.
+ * Atlas de la escena isométrica: atardecer bajo. Cinco tonos por material,
+ * generados una vez (lit = top×0.76 corrido a naranja: la pared que mira al
+ * sol; shade = top×0.45 corrido a azul violáceo; down = top×0.88 frío, la
+ * vertiente a contraluz; up = top×1.12 cálido, el destello) y pegados como
+ * literales para que el guard de colores los vea. No calcular colores en runtime.
  */
 export const ISO_TONES = {
-  slab:      { top: 0xb7a58a, lit: 0x8e8476, shade: 0x56565a, up: 0xc9b698, down: 0xa39580 },
-  concrete:  { top: 0xc9bca5, lit: 0x9d968c, shade: 0x606268, up: 0xddcfb6, down: 0xb3a999 },
-  rust:      { top: 0x9c5a32, lit: 0x794830, shade: 0x482f2c, up: 0xac6337, down: 0x8a5131 },
-  steel:     { top: 0x8e939c, lit: 0x6e7685, shade: 0x414c63, up: 0x9ca2ac, down: 0x7e8490 },
-  road:      { top: 0x6b6a6e, lit: 0x525560, shade: 0x2f374b, up: 0x767579, down: 0x5e5f67 },
-  rail:      { top: 0xd3c9b2, lit: 0xa5a196, shade: 0x65696f, up: 0xe8ddc4, down: 0xbcb5a4 },
-  water:     { top: 0x2f5f66, lit: 0x224c5a, shade: 0x0f3147, up: 0x346970, down: 0x285660 },
-  waterDeep: { top: 0x244b52, lit: 0x193c4a, shade: 0x0a273d, up: 0x28535a, down: 0x1e444e },
-  leaf:      { top: 0x4d7a3a, lit: 0x3a6236, shade: 0x1f3f30, up: 0x558640, down: 0x436e38 },
-  leafDark:  { top: 0x35592a, lit: 0x26472a, shade: 0x132e28, up: 0x3a622e, down: 0x2e502a },
-  rock:      { top: 0x7d7468, lit: 0x605d5b, shade: 0x383c48, up: 0x8a8072, down: 0x6f6862 },
-  sand:      { top: 0xc7b48b, lit: 0x9b9077, shade: 0x5e5e5a, up: 0xdbc699, down: 0xb1a281 },
-  hull:      { top: 0x7a3b2a, lit: 0x5e2f2a, shade: 0x361f28, up: 0x86412e, down: 0x6c352a },
-  deck:      { top: 0xb59a6e, lit: 0x8d7b60, shade: 0x55504b, up: 0xc7a979, down: 0xa18b67 },
+  slab:      { top: 0x9a7f62, lit: 0x81613e, shade: 0x3d3942, up: 0xb89268, down: 0x82705e },
+  concrete:  { top: 0xb08f72, lit: 0x926d4b, shade: 0x474049, up: 0xd1a47a, down: 0x957e6c },
+  rust:      { top: 0x8c4a26, lit: 0x763811, shade: 0x372127, up: 0xa95725, down: 0x754129 },
+  steel:     { top: 0x6f7280, lit: 0x605755, shade: 0x2a3350, up: 0x888489, down: 0x5c6479 },
+  road:      { top: 0x4f4a52, lit: 0x483832, shade: 0x1c213b, up: 0x645756, down: 0x404150 },
+  rail:      { top: 0xb8a68c, lit: 0x987e5e, shade: 0x4b4b55, up: 0xdabe97, down: 0x9c9283 },
+  water:     { top: 0x1f4a55, lit: 0x243835, shade: 0x06213c, up: 0x2f5759, down: 0x154153 },
+  waterDeep: { top: 0x1c4450, lit: 0x213431, shade: 0x051f3a, up: 0x2b5054, down: 0x133c4e },
+  leaf:      { top: 0x3f6a33, lit: 0x3c511b, shade: 0x14302d, up: 0x537b33, down: 0x315d35 },
+  leafDark:  { top: 0x2a4a27, lit: 0x2c3812, shade: 0x0b2128, up: 0x3b5726, down: 0x1f412a },
+  rock:      { top: 0x6b5f55, lit: 0x5d4835, shade: 0x282b3c, up: 0x846e59, down: 0x585453 },
+  sand:      { top: 0xa88f6a, lit: 0x8c6d45, shade: 0x444046, up: 0xc8a471, down: 0x8e7e65 },
+  hull:      { top: 0x6e3323, lit: 0x60270f, shade: 0x2a1726, up: 0x873d21, down: 0x5b2d27 },
+  deck:      { top: 0x9c7f5a, lit: 0x836138, shade: 0x3e393f, up: 0xbb925f, down: 0x837057 },
 } as const;
 
 export const ISO_COLORS = {
-  shadow: 0x1c2438,
-  sky: 0x141a26,
+  shadow: 0x1a1830,
+  sky: 0x171423,
   cyan: 0x7cf5ff,
   cyanMid: 0x27b3c9,
   cyanBleed: 0x134a52,

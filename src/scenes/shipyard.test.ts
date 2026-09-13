@@ -39,7 +39,7 @@ describe("shipyard", () => {
     const s = scene();
     const kinds = (k: Solid["kind"]) => s.solids.filter((x) => x.kind === k);
     expect(s.solids.filter((x) => x.kind === "prism" && x.roof === "gable").length).toBeGreaterThanOrEqual(2);
-    expect(kinds("ramp")).toHaveLength(2);
+    expect(kinds("ramp").filter((r) => r.kind === "ramp" && r.at.z === 0)).toHaveLength(2); // las gradas; los dientes de sierra van en alto
     expect(kinds("hull").length).toBeGreaterThanOrEqual(1);
     expect(s.weldSpots.length).toBeGreaterThan(10);
     const tall = s.solids.filter((x) => bounds(x).max.z >= 24);
