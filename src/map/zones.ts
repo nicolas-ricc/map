@@ -45,8 +45,8 @@ export const ZONES: readonly ZoneDef[] = [
     name: "Portfolio",
     accent: "cyan",
     polygon: [0, 0, ...splitVertices(0, SPLIT_Y_RIVER), 0, SPLIT_Y_LEFT],
-    landmark: { x: 226, y: 92 },
-    label: { x: 208, y: 100 },
+    landmark: { x: 196, y: 118 },
+    label: { x: 178, y: 126 },
   },
   {
     id: "cv",

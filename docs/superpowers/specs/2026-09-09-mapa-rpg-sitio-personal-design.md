@@ -125,21 +125,43 @@ Capas, de abajo hacia arriba:
 
 | id | Nombre | Landmark | Luz | Idea |
 |---|---|---|---|---|
-| `portfolio` | Portfolio | Torre de containers apilados con grúa oxidada encima, taller con chispas | Cian, soldadura parpadeando | "Acá se construyen cosas", con chatarra. La grúa se mueve sola |
+| `portfolio` | Portfolio | Torre de containers apilados con grúa oxidada encima, taller con chispas, al pie del muelle de un astillero | Cian, soldadura parpadeando | "Acá se construyen cosas", con chatarra. La grúa se mueve sola |
 | `cv` | Resume | Torre de oficinas hundida en la selva, un solo piso con luz, papeles volando por la ventana | Ámbar de tubo | El único que sigue yendo a la oficina. Sin carteles: el único texto del mapa son los nombres de zona y el cartel con el nombre del sitio |
 | `blog` | Blog | Faro sobre un promontorio rocoso en la costa, casa del farero, haz magenta que gira | Magenta neón | Emitir al vacío. Es la "salida" del mapa: luz que guía hacia afuera |
 
 Cada zona: polígono en coordenadas del lienzo, posición del landmark, cartel
 con el nombre en fuente bitmap. **Los tres polígonos cubren el lienzo entero**
 (sin huecos: Portfolio y Resume iguales a la izquierda, Blog una franja más angosta a la derecha del río) y cada uno tiene terreno
-propio con carácter propio: Portfolio es el puerto (muelle, galpones, vías,
-containers), Resume es la ciudad de oficinas en cuadrícula tragada por la
+propio con carácter propio: Portfolio es un astillero leído como foto satelital
+(ver abajo), Resume es la ciudad de oficinas en cuadrícula tragada por la
 selva, Blog es la costa (descampado, autopista rota que muere en el mar, faro).
 Cada zona es un `Container` propio que agrupa su terreno recortado al polígono,
 su landmark, su glow y su cartel, para poder aplicarle `tint` por separado.
 Al pasar el mouse por un tercio, ese tercio entero se enciende al 100% y los
 otros dos bajan al 35%; el nombre de cada zona nunca se tiñe, para que se lea
 aunque su tercio esté apagado.
+
+#### Portfolio: astillero
+
+Un lugar donde se construyen cosas, no donde se estacionan. Línea de
+producción de oeste a este que termina en el agua: patio de material → nave de
+montaje → grada → río. Todo lo largo va horizontal (eje perpendicular a la
+orilla); lo único norte-sur es la calle de transferencia, la viga de la grúa
+pórtico y el muelle. El río se draga del lado del astillero: la ribera
+izquierda es una recta en x=200 (canal rectificado contra el río que serpentea
+del otro lado, que es lo que más lee como foto aérea).
+
+Piezas: patio de material (chapas, caños, bobinas, tanques) al NO; dique seco
+con un casco en reparación al NE; dos naves de montaje con techo de claraboyas
+en fila con dos gradas (una con solo quilla y cuadernas, otra con el casco casi
+cerrado) y rampa sumergida; grúa pórtico N-S sobre las gradas con sombra
+proyectada al SE; talleres chicos, playa de estacionamiento y vías al SO; el
+landmark (taller + grúa mayor) al pie del muelle; muelle de alistamiento con
+dos naves finas del lado este del río. Reglas de textura: luz desde el NO, todo
+lo alto proyecta sombra al SE; losa con juntas sutiles y charcos; nada mide
+menos que su escala real (camión 3×2, persona 1 px). La selva solo come la
+esquina SO y el borde norte. Vive en `terrain-portfolio.ts`; los helpers de
+pintura comunes en `paint.ts`.
 
 Título del sitio en el mapa: cartel municipal roto con el nombre del sitio, tipo
 "BIENVENIDO A NICOLÁS RICCOMINI" con letras caídas, en fuente bitmap, ubicado

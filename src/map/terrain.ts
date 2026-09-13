@@ -1,5 +1,7 @@
 import { MAP_H, MAP_W, RIVER_HALF, coastX, isWater, riverCenter } from "./geo";
 import { px, rect, type PixelOp } from "./ops";
+import { box, clampRect, nearLandmark, nearWater, paintJungle, push, tree, type Box } from "./paint";
+import { paintPortfolio } from "./terrain-portfolio";
 import { ACCENTS, PALETTE } from "./palette";
 import { createRng, type Rng } from "./seed";
 import { ZONES, pointInPolygon, zoneAt, zoneById, type ZoneId } from "./zones";
@@ -16,58 +18,6 @@ export interface Terrain {
 }
 
 const P = PALETTE;
-
-const clampRect = (x: number, y: number, w: number, h: number, color: number): PixelOp | null => {
-  const x0 = Math.max(0, Math.round(x)), y0 = Math.max(0, Math.round(y));
-  const x1 = Math.min(MAP_W, Math.round(x + w)), y1 = Math.min(MAP_H, Math.round(y + h));
-  if (x1 <= x0 || y1 <= y0) return null;
-  return rect(x0, y0, x1 - x0, y1 - y0, color);
-};
-
-const push = (out: PixelOp[], op: PixelOp | null): void => { if (op) out.push(op); };
-
-/** Caja con volumen: base, borde superior claro, borde derecho e inferior oscuros. */
-function box(out: PixelOp[], x: number, y: number, w: number, h: number, base: number, light: number, dark: number): void {
-  push(out, clampRect(x, y, w, h, base));
-  push(out, clampRect(x, y, w, 1, light));
-  push(out, clampRect(x, y, 1, h, light));
-  push(out, clampRect(x + w - 1, y + 1, 1, h - 1, dark));
-  push(out, clampRect(x + 1, y + h - 1, w - 1, 1, dark));
-}
-
-function tree(out: PixelOp[], x: number, y: number, r: number): void {
-  push(out, clampRect(x - r, y - r + 1, r * 2, r * 2 - 2, P.leafDark));
-  push(out, clampRect(x - r + 1, y - r, r * 2 - 2, r * 2, P.leafDark));
-  push(out, clampRect(x - r + 1, y - r + 1, r, r, P.leaf));
-}
-
-interface Box { x0: number; y0: number; x1: number; y1: number }
-
-/** Selva en masas: centros de racimo y 3-7 copas alrededor de cada uno. */
-function paintJungle(out: PixelOp[], rng: Rng, area: Box, clusters: number, avoid: (x: number, y: number) => boolean): void {
-  for (let c = 0; c < clusters; c++) {
-    const cx = rng.int(area.x0, area.x1), cy = rng.int(area.y0, area.y1);
-    if (avoid(cx, cy)) continue;
-    const n = rng.int(3, 7);
-    for (let i = 0; i < n; i++) {
-      const x = cx + rng.int(-10, 10), y = cy + rng.int(-7, 7);
-      if (avoid(x, y)) continue;
-      tree(out, x, y, rng.int(3, 6));
-    }
-  }
-  for (let i = 0; i < clusters * 2; i++) {
-    const x = rng.int(area.x0, area.x1), y = rng.int(area.y0, area.y1);
-    if (!avoid(x, y)) push(out, clampRect(x, y, 1, rng.int(3, 9), P.leaf)); // enredaderas
-  }
-}
-
-const nearLandmark = (id: ZoneId, r: number) => (x: number, y: number): boolean => {
-  const l = zoneById(id).landmark;
-  return Math.abs(x - l.x) < r && y > l.y - r * 1.6 && y < l.y + r * 0.5;
-};
-
-const nearWater = (margin: number) => (x: number, y: number): boolean =>
-  Math.abs(x - riverCenter(y)) < RIVER_HALF + margin || x > coastX(y) - margin;
 
 // ---------------------------------------------------------------- compartido
 
@@ -135,64 +85,6 @@ function paintHighway(out: PixelOp[], zone: ZoneId): void {
       push(out, clampRect(x + 7, y + 11, 1, 12, P.rustLight));
     }
   }
-}
-
-// ---------------------------------------------------------------- Portfolio: puerto
-
-const QUAY_W = 60;
-
-function paintPortfolio(out: PixelOp[], rng: Rng): void {
-  const area: Box = { x0: 0, y0: 0, x1: 344, y1: 146 };
-  // calles: una avenida horizontal y una vertical
-  push(out, clampRect(0, 44, 230, 4, P.road));
-  push(out, clampRect(100, 0, 4, 146, P.road));
-  for (let x = 2; x < 230; x += 8) push(out, clampRect(x, 45, 3, 1, P.roadLight));
-  for (let y = 2; y < 146; y += 8) push(out, clampRect(101, y, 1, 3, P.roadLight));
-  // galpones
-  const sheds: [number, number, number, number][] = [
-    [8, 10, 40, 28], [52, 12, 44, 26], [108, 8, 36, 30], [148, 14, 44, 24],
-    [8, 54, 44, 22], [56, 52, 40, 24], [108, 56, 48, 22], [8, 84, 84, 14], [108, 84, 52, 14],
-    [8, 110, 40, 26], [52, 112, 44, 24], [108, 112, 60, 22],
-    [298, 18, 36, 24], [300, 62, 34, 26], // orilla derecha del río
-  ];
-  for (const [x, y, w, h] of sheds) {
-    box(out, x, y, w, h, P.concrete, P.concreteLight, P.concreteDark);
-    push(out, clampRect(x + 3, y + Math.floor(h / 2), w - 6, 1, P.concreteDark)); // cumbrera
-    for (let i = 0; i < 3; i++) push(out, clampRect(x + rng.int(2, w - 5), y + rng.int(2, h - 4), rng.int(2, 4), rng.int(1, 2), P.rust));
-    if (rng.chance(0.5)) push(out, clampRect(x + rng.int(2, w - 4), y + rng.int(2, h - 3), 2, 2, P.ground)); // claraboya rota
-  }
-  // vías del tren hacia el muelle
-  const railEnd = riverCenter(124) - RIVER_HALF - 2 - QUAY_W - 2;
-  for (let x = 0; x < railEnd; x += 4) push(out, clampRect(x, 121, 1, 6, P.road));
-  push(out, clampRect(0, 122, railEnd, 1, P.roadLight));
-  push(out, clampRect(0, 125, railEnd, 1, P.roadLight));
-  // muelle: losa de hormigón pegada a la orilla izquierda del río
-  for (let y = 10; y < 136; y++) {
-    const x1 = riverCenter(y) - RIVER_HALF - 2, x0 = x1 - QUAY_W;
-    push(out, clampRect(x0, y, x1 - x0, 1, y === 10 ? P.concreteLight : P.concrete));
-    push(out, clampRect(x1 - 1, y, 1, 1, P.concreteDark));
-    if (y % 12 === 4) push(out, clampRect(x1 - 3, y, 1, 1, P.rust)); // bolardos
-  }
-  for (let i = 0; i < 40; i++) {
-    const y = rng.int(12, 134);
-    push(out, clampRect(riverCenter(y) - RIVER_HALF - 4 - rng.int(0, QUAY_W - 6), y, rng.int(1, 3), 1, P.concreteDark)); // grietas
-  }
-  // containers chicos apilados en el muelle, lejos de la torre
-  for (const y of [14, 20, 26, 124, 130]) {
-    for (let i = 0; i < 4; i++) {
-      if (!rng.chance(0.7)) continue;
-      const x = riverCenter(y) - RIVER_HALF - QUAY_W + i * 11 + rng.int(0, 2);
-      const c = rng.chance(0.5) ? [P.rust, P.rustLight, P.rustDark] : [P.concrete, P.concreteLight, P.concreteDark];
-      push(out, clampRect(x, y, 9, 4, c[0]!));
-      push(out, clampRect(x, y, 9, 1, c[1]!));
-      push(out, clampRect(x + 8, y, 1, 4, c[2]!));
-    }
-  }
-  // grúa portuaria chica al fondo del muelle
-  push(out, clampRect(riverCenter(24) - RIVER_HALF - 12, 8, 2, 24, P.rustDark));
-  push(out, clampRect(riverCenter(24) - RIVER_HALF - 12, 8, 1, 24, P.rustLight));
-  push(out, clampRect(riverCenter(24) - RIVER_HALF - 26, 8, 30, 1, P.rust));
-  paintJungle(out, rng, area, 18, (x, y) => nearWater(6)(x, y) || (x > riverCenter(y) - RIVER_HALF - QUAY_W - 4 && y > 8 && y < 138) || nearLandmark("portfolio", 30)(x, y));
 }
 
 // ---------------------------------------------------------------- Resume: oficinas
