@@ -1,7 +1,7 @@
 # Portfolio isométrico low-poly — diseño
 
 **Fecha:** 2026-09-13
-**Estado:** aprobado en conversación, pendiente de plan de implementación
+**Estado:** aprobado; plan en `docs/superpowers/plans/2026-09-13-portfolio-isometrico.md`
 **Antecede:** `2026-09-09-mapa-rpg-sitio-personal-design.md` (mapa top-down pixel art)
 
 ## 1. Objetivo
@@ -31,9 +31,9 @@ Criterios de éxito:
 | Motor | PixiJS 8 (stack actual). Proyección isométrica calculada a mano, sin Three.js |
 | Textura | Vectores nítidos con antialias a resolución nativa. Se abandona el lienzo 480×270 con nearest para esta escena |
 | Proyección | Dimétrica 2:1 (ángulo de 26.57°), ortográfica, cámara fija mirando desde el SO. Eje Z (altura) exagerado ×1.4 |
-| Luz | Atardecer rasante: sol a ~25° de elevación desde el NO. Sombras largas y duras hacia el SE. Tres factores fijos por normal: techo, cara iluminada (NO), cara en sombra (SE) |
+| Luz | Atardecer rasante: sol a ~25° de elevación desde el **oeste-sudoeste**. Sombras largas y duras hacia el ENE (a la derecha en pantalla). Con la cámara al SE, las paredes visibles son la sur y la este: la sur queda iluminada, la este en sombra. (Un sol al NO dejaría las dos en sombra.) |
 | Paleta | Atlas nuevo `palette-iso.ts`: base cálida (hormigón ocre, óxido, losa arena), sombra fría azulada, agua verde oscuro, selva en dos verdes, cian como único acento artificial. Tres tonos por material, generados una vez y congelados en el atlas |
-| Alcance | Laboratorio (`lab.html` → `/lab/portfolio`), excluido del build de producción. Con animación: carro de la grúa, agua, chispas de soldadura |
+| Alcance | Laboratorio (`lab/portfolio.html` → `/map/lab/portfolio.html` en dev), excluido del build de producción. Con animación: carro de la grúa, agua, chispas de soldadura |
 | Modelo | Lista declarativa de sólidos en coordenadas de mundo → motor puro proyecta, sombrea, ordena → runtime vuelca a `Graphics` |
 | Plan urbano | El mismo del astillero top-down (commit `6c2b795`): línea de producción O→E que muere en el agua, calle de transferencia N-S, ribera dragada recta, dique seco, dos gradas, grúa pórtico, talleres + playa + vías al SO, muelle de alistamiento al este del río. En dimétrico, el eje O→E queda en diagonal, cumpliendo la grilla de "evitar oclusión" |
 
@@ -46,15 +46,19 @@ Criterios de éxito:
    → naves y talleres (`z ≤ 12`) → grúa pórtico y tanques (`z ≤ 24`). Los techos
    llevan perfil: cumbrera a dos aguas en las naves, escalón en los talleres,
    unidades de ventilación y claraboyas como prismas chicos sobre el techo.
-3. **Tres valores por volumen.** Cada cara recibe uno de tres factores según
-   su normal (techo 1.0, NO 0.82, SE 0.55). Los colores resultantes existen en
-   el atlas, no se calculan en runtime.
+3. **Tres valores por volumen.** Cada cara recibe un tono según su normal:
+   techo, pared iluminada (sur) o en sombra (este). Las vertientes (techos a dos
+   aguas, conos, folds del suelo) usan dos pasos extra, `up` y `down`, según
+   miren o no al sol. Escalera de cinco tonos por material
+   (`shade < lit < down < top < up`), literales en el atlas, nada se calcula en
+   runtime.
 4. **Legibilidad adelante-atrás.** Fondo (patio de material, muelle de
    alistamiento) con prismas de 4 caras simples; detalle denso (autos, postes,
    bolardos, bobinas) solo sobre la calle de transferencia y el frente de las
    gradas.
 5. **Sombras exageradas.** Cada sólido proyecta su sombra como un polígono al
-   plano del suelo, con longitud `altura / tan(25°)` en dirección SE. Además,
+   plano del suelo (casco convexo de sus vértices proyectados), con longitud
+   `altura × Z_SCALE / tan(25°)` en dirección ENE. Además,
    un halo oscuro de 1-2 unidades pegado a la base de cada edificio y en el
    fondo de los cañones entre naves (oclusión ambiental falsa).
 6. **Suelo geométrico.** Calles, vías y canal como franjas levemente hundidas
@@ -109,8 +113,8 @@ depthKey(s: Solid | Face): number                 // x + y + z ponderado
 buildRenderList(solids: Solid[]): RenderItem[]
 ```
 
-- `project` implementa dimétrico 2:1: `sx = (x - y) * cos30`, `sy = (x + y) * sin30 - z * Z_SCALE`,
-  con `Z_SCALE = 1.4`. Constantes en un solo lugar.
+- `project` implementa dimétrico 2:1: `sx = x - y`, `sy = (x + y) / 2 - z * Z_SCALE`,
+  con `Z_SCALE = 1.4`. La cámara queda al SE mirando al NO. Constantes en un solo lugar.
 - `ground` con `tone: number` usa la inclinación del triángulo para elegir un
   paso `-1 | 0 | +1` del atlas; nunca un color interpolado.
 - Sombras: se dibujan **todas** antes que cualquier sólido, con un color único
@@ -160,8 +164,8 @@ Con `prefers-reduced-motion`, las tres quedan en su frame 0.
 
 ### 4.4 `lab/portfolio.ts`
 
-- `lab.html` en la raíz con `<div id="lab-host">` y `<script type="module" src="/src/lab/portfolio.ts">`.
-- Vite: `lab.html` solo existe en dev; `build.rollupOptions.input` sigue siendo
+- `lab/portfolio.html` con `<div id="lab-host">` y `<script type="module" src="/src/lab/portfolio.ts">`.
+- Vite: la página solo existe en dev; `build.rollupOptions.input` sigue siendo
   `index.html`. Se verifica con un test que `dist/` no contiene `lab`.
 - `Application` con `antialias: true`, `resolution: devicePixelRatio`,
   `background: ISO_PALETTE.sky`, `resizeTo: host`, `maxFPS: 30`.
