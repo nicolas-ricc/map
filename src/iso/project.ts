@@ -1,10 +1,14 @@
-import type { Vec2, Vec3 } from "./geometry";
+import { normalize, v3, type Vec2, type Vec3 } from "./geometry";
 
 /** Exageración vertical: los edificios se estiran para que proyecten perfil. */
 export const Z_SCALE = 1.4;
 
-/** Dirección hacia la cámara (dimétrica 2:1: elevación ≈ 30° desde el SE). Para descartar caras ocultas. */
-export const VIEW_DIR: Vec3 = { x: 0.61, y: 0.61, z: 0.5 };
+/**
+ * Dirección hacia la cámara: la misma que `project()` colapsa al proyectar
+ * (mismos coeficientes que la fórmula de abajo), normalizada. Para descartar
+ * caras ocultas.
+ */
+export const VIEW_DIR: Vec3 = normalize(v3(Z_SCALE, Z_SCALE, 1));
 
 /** Mundo (x este, y sur, z arriba) → pantalla. */
 export function project(v: Vec3): Vec2 {
