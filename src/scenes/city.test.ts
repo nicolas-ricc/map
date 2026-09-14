@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildRenderList } from "../iso/render-list";
 import { bounds, type Solid } from "../iso/solids";
-import { ZONE_SPLIT_X, ZONE_SPLIT_Y, WORLD_H } from "../map/geo";
+import { QUAY_X, ZONE_SPLIT_X, ZONE_SPLIT_Y, WORLD_H } from "../map/geo";
 import { allIsoColors, type Material } from "../map/palette-iso";
 import { createRng } from "../map/seed";
-import { PLAZA, TOWER, blocks, inBlock, inCrater } from "./city-grid";
+import { CRATERS, MALECON, PLAZA, TOWER, blocks, estuaryEast, inBlock, inCrater } from "./city-grid";
 import { MAX_BUILDING_H, PLINTH_H, TOWER_H, city, type CityScene } from "./city";
 
 const scene = (): CityScene => city(createRng(7));
@@ -87,7 +87,7 @@ describe("city", () => {
       const onCity = c.at.x >= 12 && c.at.x < 334 && c.at.y >= 158 && c.at.y < 264 && !(c.at.x > 198 && c.at.x < 270);
       if (onCity) expect(inBlock(c.at.x, c.at.y) || inCrater(c.at.x, c.at.y) || (c.at.y >= 210 && c.at.y <= 214)).toBe(true);
     }
-    expect(s.accents.length).toBeGreaterThanOrEqual(6); // umbral temporal: sin boulevard/derrumbe la Task 5 lo vuelve a > 6
+    expect(s.accents.length).toBeGreaterThan(6);
     expect(s.accents.every((a) => a.color.startsWith("amber"))).toBe(true);
   });
 
@@ -95,5 +95,79 @@ describe("city", () => {
     const s = scene();
     const colors = allIsoColors();
     for (const i of buildRenderList(all(s))) expect(colors.has(i.color)).toBe(true);
+  });
+
+  it("avenida: boulevard, carriles, sendas y semáforos; faroles solo en avenida, puente, plaza y malecón", () => {
+    const s = scene();
+    const strips = s.ground.filter((g) => g.kind === "strip");
+    expect(strips.length).toBeGreaterThan(60);
+    expect(strips.every((g) => g.kind === "strip" && g.mat === "paving" && g.z > 0 && g.z < 0.1)).toBe(true);
+    // ninguna raya pisa el estuario (el suelo se dibuja encima del agua): el anillo este se corta donde entra el agua
+    for (const g of strips) if (g.kind === "strip") for (const p of g.path) expect(p.x <= QUAY_X || p.x > estuaryEast(p.y)).toBe(true);
+    const boulevard = s.solids.filter((x) => x.kind === "prism" && x.mat === "leafDark");
+    expect(boulevard.length).toBeGreaterThanOrEqual(8);
+    expect(boulevard.every((x) => bounds(x).min.y >= 210 && bounds(x).max.y <= 214)).toBe(true);
+    const lamps = s.accents.filter((a) => a.kind === "dot" && a.color === "amber");
+    expect(lamps.length).toBeGreaterThanOrEqual(20);
+    for (const l of lamps) {
+      if (l.kind !== "dot") continue;
+      const onAvenue = l.at.y >= 203 && l.at.y <= 221, onMalecon = l.at.x >= 334, onPlaza = inRect({ min: l.at, max: l.at }, PLAZA);
+      expect(onAvenue || onMalecon || onPlaza).toBe(true);
+    }
+  });
+
+  it("puente: tablero sobre el agua de muelle a anillo, pilotes hasta el fondo, rampas en las cabeceras", () => {
+    const s = scene();
+    const deck = s.solids.find((x) => x.kind === "prism" && x.mat === "asphalt" && x.w > 60)!;
+    expect(deck.kind === "prism" && deck.at.x).toBe(192);
+    expect(deck.kind === "prism" && deck.at.x + deck.w).toBe(276);
+    expect(deck.kind === "prism" && deck.at.z).toBe(1.2);
+    const piers = s.solids.filter((x) => x.kind === "prism" && x.mat === "plaza" && x.at.z === -1 && x.at.y === 207);
+    expect(piers).toHaveLength(4);
+    const ramps = s.solids.filter((x) => x.kind === "ramp" && x.mat === "asphalt" && x.at.y === 207);
+    expect(ramps.map((r) => r.kind === "ramp" && r.dir).sort()).toEqual(["e", "w"]);
+  });
+
+  it("muelle oeste y malecón: muros desde el agua, parapeto, escaleras dentro de la zona", () => {
+    const s = scene();
+    const walls = s.solids.filter((x) => x.kind === "prism" && x.at.z === -1 && x.d > 30);
+    expect(walls.length).toBeGreaterThanOrEqual(4); // dos tramos por lado
+    expect(walls.some((x) => x.kind === "prism" && x.mat === "plaza" && x.at.x === 192)).toBe(true);
+    expect(walls.some((x) => x.kind === "prism" && x.mat === "paving" && x.at.x === 334)).toBe(true);
+    const parapet = s.solids.filter((x) => x.kind === "prism" && x.at.x >= 342 && x.h === 0.8);
+    expect(parapet.length).toBeGreaterThanOrEqual(2);
+    const stairs = s.solids.filter((x) => x.kind === "ramp" && x.at.z === -1);
+    expect(stairs.length).toBeGreaterThanOrEqual(2);
+    for (const st of stairs) expect(bounds(st).max.x).toBeLessThanOrEqual(ZONE_SPLIT_X);
+  });
+
+  it("derrumbe: rampa al agua y bloques hundidos; el resto de la ciudad no tiene nada bajo z 0 salvo muros y pilotes", () => {
+    const s = scene();
+    const sunk = s.solids.filter((x) => x.kind === "prism" && x.mat === "officeDark" && x.at.z < 0);
+    expect(sunk.length).toBeGreaterThanOrEqual(3);
+    for (const b of sunk) expect(b.kind === "prism" && b.at.y).toBeGreaterThanOrEqual(240);
+    // el cuarto bloque, caído en la calle frente al malecón (la spec lo pide; el mar frente al malecón ya es zona Blog)
+    expect(s.solids.some((x) => x.kind === "prism" && x.mat === "officeDark" && x.at.z === 0 && x.h <= 1 && x.at.x >= MALECON.x0 - 10 && x.at.x + x.w <= MALECON.x0)).toBe(true);
+    expect(s.solids.some((x) => x.kind === "ramp" && x.mat === "asphalt" && x.dir === "w" && x.at.y === 242)).toBe(true);
+  });
+
+  it("autos pegados al cordón, en calles E-O, nunca sobre un cráter", () => {
+    const s = scene();
+    const cars = s.solids.filter((x): x is Solid & { kind: "prism" } => x.kind === "prism" && (x.mat === "steel" || x.mat === "rust") && x.h === 1.2);
+    expect(cars.length).toBeGreaterThanOrEqual(20);
+    for (const c of cars) {
+      expect(inBlock(c.at.x + 1.5, c.at.y + 0.75)).toBe(false);
+      expect(inCrater(c.at.x + 1.5, c.at.y + 0.75)).toBe(false);
+    }
+  });
+
+  it("selva: cinturón norte, bordes oeste y sur, ribera este y cráteres, más de 60 conos", () => {
+    const s = scene();
+    const cones = s.solids.filter((x) => x.kind === "cone" && (x.mat === "leaf" || x.mat === "leafDark"));
+    expect(cones.length).toBeGreaterThan(60);
+    expect(cones.some((c) => c.kind === "cone" && c.at.y < 158)).toBe(true);           // cinturón
+    expect(cones.some((c) => c.kind === "cone" && c.at.x < 12)).toBe(true);            // borde oeste
+    expect(cones.some((c) => c.kind === "cone" && c.at.x > 198 && c.at.x < 270)).toBe(true); // ribera este
+    for (const cr of CRATERS) expect(cones.some((c) => c.kind === "cone" && inCrater(c.at.x, c.at.y) && Math.hypot(c.at.x - cr.x, c.at.y - cr.y) <= cr.r)).toBe(true);
   });
 });

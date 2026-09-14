@@ -1,11 +1,12 @@
 import type { Accent } from "../iso/accent";
 import { facadeAccents, isWall, windowPatches, type Facade } from "../iso/facade";
-import { centroid, v3, type Vec3 } from "../iso/geometry";
+import { centroid, v3, type Vec2, type Vec3 } from "../iso/geometry";
 import { STEP_INSET, STEP_RATIO, tessellate, type Solid, type Tri } from "../iso/solids";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { PLAZA, SIDEWALK, TOWER, blocks, type Block, type Rect } from "./city-grid";
+import { AVENUE, BLOCK_D, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_COLS, EAST_RING, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, WEST_COLS, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inCrater, type Block, type Rect } from "./city-grid";
 import { jungle } from "./flora";
+import { QUAY_X, ZONE_SPLIT_Y } from "../map/geo";
 
 /**
  * Resume: ciudad de oficinas en grilla, tragada por la selva, partida por el
@@ -84,9 +85,9 @@ function building(out: Solid[], rng: Rng, x: number, y: number, z: number, w: nu
 function roofDetail(out: Solid[], rng: Rng, x: number, y: number, w: number, d: number, z: number): void {
   const cx = x + w / 2, cy = y + d / 2;
   switch (rng.int(0, 3)) {
-    case 0: // tanque de agua sobre cuatro postes
-      for (const [dx, dy] of [[-0.8, -0.8], [0.8, -0.8], [0.8, 0.8], [-0.8, 0.8]] as const) out.push(prism(cx + dx - 0.15, cy + dy - 0.15, z, 0.3, 0.3, 1.2, "steel"));
-      out.push({ kind: "cylinder", at: v3(cx, cy, z + 1.2), r: 1.2, h: 2, mat: "rust", sides: 6 });
+    case 0: // tanque de agua sobre cuatro postes (1.1, no 1.2: distingue el poste del auto en el filtro de tests)
+      for (const [dx, dy] of [[-0.8, -0.8], [0.8, -0.8], [0.8, 0.8], [-0.8, 0.8]] as const) out.push(prism(cx + dx - 0.15, cy + dy - 0.15, z, 0.3, 0.3, 1.1, "steel"));
+      out.push({ kind: "cylinder", at: v3(cx, cy, z + 1.1), r: 1.2, h: 2, mat: "rust", sides: 6 });
       return;
     case 1: out.push(prism(x + 1, y + 1, z, 4, 3, 2, "officeDark")); return; // sala de máquinas
     case 2: out.push({ kind: "cylinder", at: v3(x + w - 1.5, y + 1.5, z), r: 0.2, h: 4, mat: "steel", sides: 4 }); return; // antena
@@ -164,11 +165,133 @@ function plazaAndTower(solids: Solid[], ground: Solid[], accents: Accent[], rng:
   return { litWindows, antenna: v3(mast.x, mast.y, mast.z + 5), paperWindow };
 }
 
+const strip = (path: Vec2[], width: number, mat: Material): Solid => ({ kind: "strip", path, width, z: 0.02, mat });
+
+/** Carril discontinuo (tramo 3, hueco 2) a lo largo de una calle N-S (x fijo) o E-O (y fijo). */
+function dashes(out: Solid[], from: Vec2, to: Vec2): void {
+  const len = Math.hypot(to.x - from.x, to.y - from.y), ux = (to.x - from.x) / len, uy = (to.y - from.y) / len;
+  for (let s = 0; s + 3 <= len; s += 5) out.push(strip([{ x: from.x + ux * s, y: from.y + uy * s }, { x: from.x + ux * (s + 3), y: from.y + uy * (s + 3) }], 0.4, "paving"));
+}
+
+// ---------------------------------------------------------------- calles y avenida
+
+function streets(ground: Solid[], solids: Solid[], accents: Accent[]): void {
+  const westX = [...WEST_COLS.map((x) => x + BLOCK_W + STREET / 2)];            // centros de las calles N-S del oeste (39..189)
+  const eastX = [EAST_RING.x0 + STREET / 2, EAST_COLS[0] + BLOCK_W + STREET / 2]; // 273, 307
+  for (const cx of [...westX, ...eastX]) {
+    dashes(ground, { x: cx, y: CITY_EDGE.north }, { x: cx, y: AVENUE.y0 });
+    // al sur de la avenida el anillo este se corta donde entra el estuario: el suelo se dibuja encima del agua
+    const yEnd = cx > QUAY_X ? Math.min(CITY_EDGE.south, estuaryReaches(cx) - 1) : CITY_EDGE.south;
+    if (yEnd > AVENUE.y1 + 3) dashes(ground, { x: cx, y: AVENUE.y1 }, { x: cx, y: yEnd });
+  }
+  const rowsY = [CITY_EDGE.north + STREET / 2, ...ROWS.slice(1).map((y) => y - STREET / 2), CITY_EDGE.south - 2].filter((y) => y < AVENUE.y0 || y > AVENUE.y1); // 161, 185, 239, 262 (la calle sur es de 4)
+  for (const cy of rowsY) {
+    dashes(ground, { x: CITY_EDGE.west, y: cy }, { x: WEST_QUAY.x0, y: cy });
+    dashes(ground, { x: Math.max(EAST_RING.x0, Math.ceil(estuaryEast(cy)) + 1), y: cy }, { x: MALECON.x0, y: cy }); // arranca en tierra
+  }
+  // avenida: doble línea continua a cada lado del boulevard, sendas en cada cruce, boulevard por tramo de manzana
+  for (const [x0, x1] of [[CITY_EDGE.west, WEST_QUAY.x0], [EAST_RING.x1, MALECON.x0]] as const) {
+    ground.push(strip([{ x: x0, y: BOULEVARD.y0 - 0.3 }, { x: x1, y: BOULEVARD.y0 - 0.3 }], 0.4, "paving"));
+    ground.push(strip([{ x: x0, y: BOULEVARD.y1 + 0.3 }, { x: x1, y: BOULEVARD.y1 + 0.3 }], 0.4, "paving"));
+  }
+  for (const cx of [...westX, ...eastX]) for (let k = -2; k <= 2; k++) ground.push(strip([{ x: cx + k, y: AVENUE.y0 }, { x: cx + k, y: AVENUE.y1 }], 0.5, "paving"));
+  for (const x of [...WEST_COLS, ...EAST_COLS]) {
+    solids.push(prism(x, BOULEVARD.y0, 0, BLOCK_W, BOULEVARD.y1 - BOULEVARD.y0, 0.3, "leafDark"));
+    for (const dx of [4, 12, 20]) solids.push({ kind: "cone", at: v3(x + dx, BOULEVARD.y0 + 2, 0.3), r: 1.5, h: 4, mat: "leaf" });
+  }
+  // semáforos apagados en las esquinas de la avenida, faroles cada 12 u sobre la vereda norte
+  for (const cx of [...westX, ...eastX]) for (const [x, y] of [[cx - 3.5, AVENUE.y0 - 1], [cx + 3, AVENUE.y1 + 0.5]] as const) {
+    solids.push(prism(x, y, PLINTH_H, 0.3, 0.3, 4, "steel"), prism(x - 0.1, y - 0.1, PLINTH_H + 4, 0.5, 0.5, 1.2, "officeDark"));
+  }
+  for (let x = CITY_EDGE.west + 6; x < WEST_QUAY.x0 - 6; x += 12) lamp(solids, accents, x, AVENUE.y0 - 1.3, PLINTH_H);
+  for (let x = EAST_RING.x1 + 6; x < MALECON.x0 - 6; x += 12) lamp(solids, accents, x, AVENUE.y0 - 1.3, PLINTH_H);
+}
+
+// ---------------------------------------------------------------- puente, muelle oeste y malecón
+
+function bridge(solids: Solid[], accents: Accent[]): void {
+  const { x0, x1, y0, y1, z, deckH } = BRIDGE;
+  const top = z + deckH, d = y1 - y0;
+  solids.push(prism(x0, y0, z, x1 - x0, d, deckH, "asphalt"));
+  solids.push({ kind: "ramp", at: v3(x0 - STREET, y0, 0), w: STREET, d, h: top, mat: "asphalt", dir: "w" });
+  solids.push({ kind: "ramp", at: v3(x1, y0, 0), w: STREET, d, h: top, mat: "asphalt", dir: "e" });
+  for (let x = x0 + 18; x < x1; x += 18) solids.push(prism(x - 1, y0, -1, 2, d, z + 1, "plaza")); // pilotes: 210, 228, 246, 264
+  solids.push(prism(x0, y0, top, x1 - x0, 0.3, 0.8, "officeDark"), prism(x0, y1 - 0.3, top, x1 - x0, 0.3, 0.8, "officeDark")); // barandas
+  lamp(solids, accents, x0 + 30, y0 + 0.4, top);
+  lamp(solids, accents, x1 - 30, y1 - 1, top);
+  solids.push(prism(x0 + 40, y0 + 1.5, top, 3, 1.5, 1.2, "steel"), prism(x0 + 58, y1 - 3, top, 3, 1.5, 1.2, "rust")); // autos detenidos
+}
+
+function westQuay(solids: Solid[]): void {
+  const { x0, x1 } = WEST_QUAY, w = x1 - x0;
+  solids.push(prism(x0, CITY_EDGE.north, -1, w, 194 - CITY_EDGE.north, 1.6, "plaza"), prism(x0, 200, -1, w, CITY_EDGE.south - 200, 1.6, "plaza"));
+  solids.push({ kind: "ramp", at: v3(x0, 194, -1), w, d: 6, h: 1.6, mat: "plaza", dir: "e" }); // escalera al agua
+  for (const y of [192, 201]) solids.push({ kind: "cylinder", at: v3(x0 + 3, y, 0.6), r: 0.4, h: 0.8, mat: "rust", sides: 6 });
+}
+
+function malecon(solids: Solid[], accents: Accent[]): void {
+  const { x0, x1, y0, y1, z } = MALECON, w = x1 - x0, stairsY = 227;
+  solids.push(prism(x0, y0, -1, w, stairsY - y0, z + 1, "paving"), prism(x0, stairsY + 6, -1, w, y1 - stairsY - 6, z + 1, "paving"));
+  solids.push({ kind: "ramp", at: v3(x1 - 6, stairsY, -1), w: 6, d: 6, h: z + 1, mat: "paving", dir: "e" }); // escalera, hacia adentro de la zona
+  solids.push(prism(x0, stairsY, -1, w - 6, 6, z + 1, "paving"));
+  solids.push(prism(x1 - 1.5, y0, z, 1.5, stairsY - y0, 0.8, "paving"), prism(x1 - 1.5, stairsY + 6, z, 1.5, y1 - stairsY - 6, 0.8, "paving")); // parapeto
+  for (const y of [170, 200, 245, 258]) solids.push(prism(x0 + 2, y, z, 2, 0.6, 0.5, "paving")); // bancos
+  for (const y of [180, 210, 250]) lamp(solids, accents, x1 - 3, y, z);
+  for (const y of [stairsY - 1.5, stairsY + 6.5]) solids.push({ kind: "cylinder", at: v3(x1 - 3, y, z), r: 0.4, h: 0.8, mat: "rust", sides: 6 });
+}
+
+// ---------------------------------------------------------------- derrumbe, cráteres, selva, autos
+
+function collapsed(solids: Solid[], rng: Rng): void {
+  const c = COLLAPSED;
+  solids.push({ kind: "ramp", at: v3(c.x, c.y, -1.2), w: 12, d: c.d, h: 1.5, mat: "asphalt", dir: "w" }); // la mitad oeste se hunde en el estuario
+  solids.push(prism(c.x + 12, c.y, 0, 12, c.d, PLINTH_H, "paving"));
+  solids.push(prism(c.x + 14, c.y + 4, PLINTH_H, 8, 10, rng.int(2, 3), "officeDark")); // ruina sin fachada
+  for (const [x, y, z, w, d] of [[c.x - 12, c.y + 6, -0.5, 3, 3], [c.x - 8, c.y + 12, -0.7, 4, 3], [c.x - 4, c.y + 2, -0.4, 3, 4]] as const) solids.push(prism(x, y, z, w, d, 1.5, "officeDark"));
+  solids.push(prism(MALECON.x0 - 8, 237.5, 0, 6, 3, 1, "officeDark")); // el cuarto, caído en la calle 236..242 frente al malecón (el agua frente al malecón es zona Blog)
+}
+
+function greenery(solids: Solid[], rng: Rng): void {
+  jungle(solids, rng, { x0: 3, x1: 340, y0: ZONE_SPLIT_Y + 1, y1: CITY_EDGE.north - 2 }, 30);           // cinturón de costura
+  jungle(solids, rng, { x0: 3, x1: CITY_EDGE.west - 3, y0: CITY_EDGE.north, y1: CITY_EDGE.south }, 12);  // borde oeste (ruling: x0 3, no 2, para no salir de la zona)
+  jungle(solids, rng, { x0: CITY_EDGE.west, x1: 330, y0: CITY_EDGE.south, y1: 267 }, 14);                 // borde sur (r ≤ 4: no sale del mundo)
+  for (let y = ROWS[0]; y < COLLAPSED.y; y += 8) {                                                        // ribera este del estuario
+    const x0 = Math.ceil(estuaryEast(y + 6)) + 2, x1 = EAST_RING.x0 - 3;
+    if (x1 - x0 >= 2) jungle(solids, rng, { x0, x1, y0: y, y1: y + 6 }, rng.int(1, 2));
+  }
+  for (const c of CRATERS) { // cuadrado inscripto (0.7·r): todo cono queda dentro del círculo
+    const k = Math.floor(c.r * 0.7);
+    jungle(solids, rng, { x0: c.x - k, x1: c.x + k, y0: c.y - k, y1: c.y + k }, rng.int(4, 6), 0.2);
+  }
+}
+
+function cars(solids: Solid[], rng: Rng): void {
+  for (const b of blocks()) {
+    if (b.kind === "plaza") continue;
+    const n = rng.int(1, 3);
+    for (let i = 0; i < n; i++) {
+      const x = b.x + rng.int(2, b.w - 5);
+      const y = rng.chance(0.5) ? b.y + b.d + 0.4 : b.y - 1.9; // vereda sur o norte de la manzana
+      if (y < CITY_EDGE.north || y + 1.5 > CITY_EDGE.south) continue;
+      if (y >= AVENUE.y0 - 2 && y <= AVENUE.y1) continue;      // la avenida no tiene autos en el cordón
+      if (inCrater(x + 1.5, y + 0.75) || CRATERS.some((c) => Math.hypot(x + 1.5 - c.x, y + 0.75 - c.y) <= c.r + 2)) continue;
+      solids.push(prism(x, y, 0, 3, 1.5, 1.2, rng.chance(0.6) ? "steel" : "rust"));
+    }
+  }
+}
+
 // ---------------------------------------------------------------- escena
 
 export function city(rng: Rng): CityScene {
   const ground: Solid[] = [], solids: Solid[] = [], accents: Accent[] = [];
   for (const b of blocks()) if (b.kind === "block") block(solids, ground, rng, b, maxHeightFor(b));
   const tower = plazaAndTower(solids, ground, accents, rng);
+  streets(ground, solids, accents);
+  bridge(solids, accents);
+  westQuay(solids);
+  malecon(solids, accents);
+  collapsed(solids, rng);
+  greenery(solids, rng);
+  cars(solids, rng);
   return { ground, solids, accents, tower };
 }
