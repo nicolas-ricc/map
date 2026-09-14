@@ -11,12 +11,20 @@ const setup = (reducedMotion = false) => {
 const dot = (a: Accent): Extract<Accent, { kind: "dot" }> => { if (a.kind !== "dot") throw new Error("se esperaba dot"); return a; };
 
 describe("city-anim", () => {
-  it("frame 0: piso encendido, papeles en la ventana, antena a radio 1.1", () => {
+  it("frame 0: piso encendido, papeles escalonados desde la ventana, antena a radio 1.1", () => {
     const { tower, anim } = setup();
+    const w = tower.paperWindow;
     expect(anim.lit()).toEqual(tower.litWindows);
     expect(anim.papers().length).toBeGreaterThanOrEqual(5);
     expect(anim.papers().length).toBeLessThanOrEqual(8);
-    for (const p of anim.papers()) expect(dot(p).at).toEqual(tower.paperWindow);
+    // el reguero arranca en la ventana y se estira: uno está exactamente ahí y ninguno pasa PAPER_RANGE
+    expect(anim.papers().some((p) => dot(p).at.x === w.x && dot(p).at.y === w.y && dot(p).at.z === w.z)).toBe(true);
+    for (const p of anim.papers()) {
+      const d = dot(p);
+      expect(Math.hypot(d.at.x - w.x, d.at.y - w.y)).toBeLessThanOrEqual(PAPER_RANGE + 2);
+      expect(d.r).toBeGreaterThanOrEqual(0.12 - 1e-6);
+      expect(d.r).toBeLessThanOrEqual(0.4 + 1e-6);
+    }
     expect(dot(anim.antenna()).r).toBeCloseTo(1.1, 6);
     expect(dot(anim.antenna()).color).toBe("amberMid");
   });
@@ -67,8 +75,9 @@ describe("city-anim", () => {
 
   it("con reduced-motion nada cambia", () => {
     const { tower, anim } = setup(true);
+    const before = JSON.stringify(anim.papers());
     for (let t = 0; t < 5000; t += 33) expect(anim.tick(33)).toEqual({ lit: false, papers: false, antenna: false });
     expect(anim.lit()).toEqual(tower.litWindows);
-    for (const p of anim.papers()) expect(dot(p).at).toEqual(tower.paperWindow);
+    expect(JSON.stringify(anim.papers())).toBe(before); // el reguero queda congelado donde arrancó
   });
 });

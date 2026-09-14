@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { MOUTH_Y, WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y } from "../map/geo";
+import { MOUTH_Y, QUAY_X, WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y } from "../map/geo";
 import { createRng } from "../map/seed";
 import type { Solid, Tri } from "../iso/solids";
-import { QUAY_X } from "./shipyard";
 import { CELL, buildTerrain, seaTerrainAt, shipyardTerrainAt, terrainAt } from "./terrain";
 
 const tris = (s: Solid): Tri[] => (s.kind === "ground" ? s.tris : []);

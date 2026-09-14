@@ -44,9 +44,13 @@ export function createCityAnim(tower: CityScene["tower"], rng: Rng, opts: { redu
     p.side = (rng.next() * 2 - 1) * PAPER_SIDE;
     p.speed = 0.8 + rng.next() * 0.4;
   };
-  const papers: Paper[] = Array.from({ length: rng.int(5, 8) }, () => {
+  // escalonados de arranque: el papel i nace ya a (i / n)·PAPER_RANGE de la
+  // ventana, así el frame 0 (y reduced-motion) muestra un reguero y no un punto.
+  const n = rng.int(5, 8);
+  const papers: Paper[] = Array.from({ length: n }, (_, i) => {
     const p: Paper = { dist: 0, phase: 0, side: 0, speed: 1 };
     respawn(p);
+    p.dist = (i / n) * PAPER_RANGE;
     return p;
   });
 
@@ -64,7 +68,7 @@ export function createCityAnim(tower: CityScene["tower"], rng: Rng, opts: { redu
   const antennaR = (): number => ANTENNA_BASE_R + ANTENNA_PULSE_R * (1 + Math.sin((antennaStep * ANTENNA_STEP_MS) / ANTENNA_PERIOD));
 
   return {
-    lit: () => (off ? [] : tower.litWindows),
+    lit: () => (off ? [] : [...tower.litWindows]), // copia: el consumidor no puede tocar la escena
     papers: () => papers.map(paperAt),
     antenna: () => ({ kind: "dot", at: tower.antenna, r: antennaR(), color: "amberMid" }),
     tick(dtMs) {

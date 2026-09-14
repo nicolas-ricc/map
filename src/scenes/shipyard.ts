@@ -5,7 +5,6 @@ import { BOTTOM, DOCK, MOUTH_Y, QUAY_W, QUAY_X, eastBank } from "../map/geo";
 import type { Rng } from "../map/seed";
 import { jungle as flora } from "./flora";
 
-export { BOTTOM, DOCK, QUAY_W, QUAY_X, eastBank };
 
 /**
  * Portfolio: astillero en 2.5D. Mismo plano que terrain-portfolio.ts: línea de

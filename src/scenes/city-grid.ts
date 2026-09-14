@@ -26,6 +26,8 @@ export const TOWER: Rect = { x: 121, y: 220, w: 16, d: 14 }; // centrada en (129
 export const BRIDGE = { x0: 192, x1: 276, y0: 207, y1: 217, z: 1.2, deckH: 0.6 } as const;
 export const MALECON = { x0: 334, x1: 344, y0: 158, y1: 266, z: 0.6 } as const;
 export const COLLAPSED: Rect = { x: 280, y: 242, w: 24, d: 18 }; // el estuario ya llega a x ≈ 281 en y 260
+/** El cuarto bloque del derrumbe, caído en la calle frente al malecón: lo dibuja `collapsed()` y los autos lo esquivan. */
+export const FALLEN_BLOCK: Rect = { x: MALECON.x0 - 8, y: 237.5, w: 6, d: 3 };
 export const CRATERS: readonly { x: number; y: number; r: number }[] = [{ x: 60, y: 185, r: 5 }, { x: 150, y: 239, r: 6 }, { x: 307, y: 224, r: 5 }];
 
 /**
