@@ -1,6 +1,20 @@
 import type { Graphics } from "pixi.js";
 import { accentItem, type Accent } from "../iso/accent";
+import { v3 } from "../iso/geometry";
+import { project } from "../iso/project";
 import type { Layer, RenderItem } from "../iso/render-list";
+import { WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y, type WorldZone } from "../map/geo";
+
+const FRAME_H = 30; // alto de referencia para que entren los landmarks
+
+/** Caja de una zona (o del mundo) proyectada, como un RenderItem para fitTransform. */
+export function zoneFrame(zone: WorldZone | "all"): RenderItem[] {
+  const box = { all: [0, 0, WORLD_W, WORLD_H], portfolio: [0, 0, ZONE_SPLIT_X, ZONE_SPLIT_Y], cv: [0, ZONE_SPLIT_Y, ZONE_SPLIT_X, WORLD_H], blog: [ZONE_SPLIT_X, 0, WORLD_W, WORLD_H] }[zone];
+  const [x0, y0, x1, y1] = box as [number, number, number, number];
+  const pts: number[] = [];
+  for (const [x, y, z] of [[x0, y0, FRAME_H], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0]] as const) { const p = project(v3(x, y, z)); pts.push(p.x, p.y); }
+  return [{ layer: "ground", pts, color: 0 }];
+}
 
 export interface Fit { x: number; y: number; scale: number }
 
