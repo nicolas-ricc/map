@@ -27,3 +27,70 @@ export function splitX(y: number): number {
 export function isWater(x: number, y: number): boolean {
   return Math.abs(x - riverCenter(y)) <= RIVER_HALF || x >= coastX(y);
 }
+
+// ---------------------------------------------------------------- mundo isométrico
+
+/** El mundo iso es más ancho que el lienzo viejo: el mar merece espacio. Mismas unidades. */
+export const WORLD_W = 560;
+export const WORLD_H = 270;
+/** Blog es todo lo que está al este de ZONE_SPLIT_X; Resume, lo que está al sur de ZONE_SPLIT_Y del lado oeste. */
+export const ZONE_SPLIT_X = 344;
+export const ZONE_SPLIT_Y = 146;
+
+export type WorldZone = "portfolio" | "cv" | "blog";
+
+export function worldZoneAt(x: number, y: number): WorldZone {
+  if (x >= ZONE_SPLIT_X) return "blog";
+  return y >= ZONE_SPLIT_Y ? "cv" : "portfolio";
+}
+
+/**
+ * Desembocadura: en el mapa viejo el río corría de norte a sur sin tocar el
+ * mar. Ahora, por encima de MOUTH_Y, todo lo que hay al este de la orilla
+ * oeste del río es una bahía que abre al mar. Es la única salida de los barcos.
+ */
+export const MOUTH_Y = 24;
+
+export function inMouth(x: number, y: number): boolean {
+  return y < MOUTH_Y && x >= riverCenter(y) - RIVER_HALF;
+}
+
+/** Punta del faro: nace en el muelle de alistamiento (x 330..344) y se adelgaza hasta x = 400. Sentido horario. */
+export const HEADLAND: readonly [number, number][] = [
+  [330, 100], [344, 97], [372, 104], [400, 114], [400, 122], [372, 132], [344, 134], [330, 130],
+];
+const HEADLAND_FLAT = HEADLAND.flat();
+
+export function inHeadland(x: number, y: number): boolean {
+  return pointInPolygon(x, y, HEADLAND_FLAT);
+}
+
+function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy || 1;
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
+  return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+}
+
+/** Distancia al borde de la punta; 0 adentro. Para clasificar arrecife y orilla. */
+export function distToHeadland(x: number, y: number): number {
+  if (inHeadland(x, y)) return 0;
+  let best = Infinity;
+  for (let i = 0; i < HEADLAND.length; i++) {
+    const [ax, ay] = HEADLAND[i]!, [bx, by] = HEADLAND[(i + 1) % HEADLAND.length]!;
+    best = Math.min(best, distToSegment(x, y, ax, ay, bx, by));
+  }
+  return best;
+}
+
+export function pointInPolygon(x: number, y: number, polygon: number[]): boolean {
+  let inside = false;
+  const n = polygon.length / 2;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = polygon[i * 2]!, yi = polygon[i * 2 + 1]!;
+    const xj = polygon[j * 2]!, yj = polygon[j * 2 + 1]!;
+    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
