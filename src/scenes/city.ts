@@ -4,7 +4,7 @@ import { centroid, v3, type Vec2, type Vec3 } from "../iso/geometry";
 import { STEP_INSET, STEP_RATIO, tessellate, type Solid, type Tri } from "../iso/solids";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { AVENUE, BLOCK_D, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_COLS, EAST_RING, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, WEST_COLS, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inCrater, type Block, type Rect } from "./city-grid";
+import { AVENUE, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_COLS, EAST_RING, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, WEST_COLS, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inBlock, inCrater, type Block, type Rect } from "./city-grid";
 import { jungle } from "./flora";
 import { QUAY_X, ZONE_SPLIT_Y } from "../map/geo";
 
@@ -167,16 +167,30 @@ function plazaAndTower(solids: Solid[], ground: Solid[], accents: Accent[], rng:
 
 const strip = (path: Vec2[], width: number, mat: Material): Solid => ({ kind: "strip", path, width, z: 0.02, mat });
 
-/** Carril discontinuo (tramo 3, hueco 2) a lo largo de una calle N-S (x fijo) o E-O (y fijo). */
+/**
+ * Carril discontinuo (tramo 3, hueco 2) a lo largo de una calle N-S (x fijo) o
+ * E-O (y fijo). Un tramo con cualquiera de sus dos puntas dentro de un cráter
+ * no se pinta: el suelo se dibuja encima del pozo.
+ */
 function dashes(out: Solid[], from: Vec2, to: Vec2): void {
   const len = Math.hypot(to.x - from.x, to.y - from.y), ux = (to.x - from.x) / len, uy = (to.y - from.y) / len;
-  for (let s = 0; s + 3 <= len; s += 5) out.push(strip([{ x: from.x + ux * s, y: from.y + uy * s }, { x: from.x + ux * (s + 3), y: from.y + uy * (s + 3) }], 0.4, "paving"));
+  for (let s = 0; s + 3 <= len; s += 5) {
+    const p0 = { x: from.x + ux * s, y: from.y + uy * s }, p1 = { x: from.x + ux * (s + 3), y: from.y + uy * (s + 3) };
+    if (inCrater(p0.x, p0.y) || inCrater(p1.x, p1.y)) continue;
+    out.push(strip([p0, p1], 0.4, "paving"));
+  }
 }
 
 // ---------------------------------------------------------------- calles y avenida
 
+const inPlaza = (x: number, y: number): boolean => x >= PLAZA.x && x < PLAZA.x + PLAZA.w && y >= PLAZA.y && y < PLAZA.y + PLAZA.d;
+const inQuayWall = (x: number): boolean => x >= WEST_QUAY.x0 && x <= WEST_QUAY.x1;
+const inRingWall = (x: number, y: number): boolean => x >= EAST_RING.x0 && x <= EAST_RING.x1 && y >= BRIDGE.y0 && y <= BRIDGE.y1;
+/** Apoya cada poste en el suelo real de abajo: baldosa de la plaza, zócalo de manzana o asfalto. */
+const postZ = (x: number, y: number): number => (inPlaza(x, y) ? 0.05 : inBlock(x, y) ? PLINTH_H : 0);
+
 function streets(ground: Solid[], solids: Solid[], accents: Accent[]): void {
-  const westX = [...WEST_COLS.map((x) => x + BLOCK_W + STREET / 2)];            // centros de las calles N-S del oeste (39..189)
+  const westX = WEST_COLS.map((x) => x + BLOCK_W + STREET / 2);            // centros de las calles N-S del oeste (39..189)
   const eastX = [EAST_RING.x0 + STREET / 2, EAST_COLS[0] + BLOCK_W + STREET / 2]; // 273, 307
   for (const cx of [...westX, ...eastX]) {
     dashes(ground, { x: cx, y: CITY_EDGE.north }, { x: cx, y: AVENUE.y0 });
@@ -194,17 +208,31 @@ function streets(ground: Solid[], solids: Solid[], accents: Accent[]): void {
     ground.push(strip([{ x: x0, y: BOULEVARD.y0 - 0.3 }, { x: x1, y: BOULEVARD.y0 - 0.3 }], 0.4, "paving"));
     ground.push(strip([{ x: x0, y: BOULEVARD.y1 + 0.3 }, { x: x1, y: BOULEVARD.y1 + 0.3 }], 0.4, "paving"));
   }
-  for (const cx of [...westX, ...eastX]) for (let k = -2; k <= 2; k++) ground.push(strip([{ x: cx + k, y: AVENUE.y0 }, { x: cx + k, y: AVENUE.y1 }], 0.5, "paving"));
+  for (const cx of [...westX, ...eastX]) {
+    if (cx === EAST_RING.x0 + STREET / 2) continue; // la senda cebra bajo el tablero del puente no se pinta
+    for (let k = -2; k <= 2; k++) ground.push(strip([{ x: cx + k, y: AVENUE.y0 }, { x: cx + k, y: AVENUE.y1 }], 0.5, "paving"));
+  }
   for (const x of [...WEST_COLS, ...EAST_COLS]) {
-    solids.push(prism(x, BOULEVARD.y0, 0, BLOCK_W, BOULEVARD.y1 - BOULEVARD.y0, 0.3, "leafDark"));
+    const clipsRamp = x === EAST_COLS[0]; // el primer tramo este roza la rampa del puente (276..282)
+    solids.push(prism(clipsRamp ? x + 3 : x, BOULEVARD.y0, 0, clipsRamp ? BLOCK_W - 3 : BLOCK_W, BOULEVARD.y1 - BOULEVARD.y0, 0.3, "leafDark"));
     for (const dx of [4, 12, 20]) solids.push({ kind: "cone", at: v3(x + dx, BOULEVARD.y0 + 2, 0.3), r: 1.5, h: 4, mat: "leaf" });
   }
   // semáforos apagados en las esquinas de la avenida, faroles cada 12 u sobre la vereda norte
   for (const cx of [...westX, ...eastX]) for (const [x, y] of [[cx - 3.5, AVENUE.y0 - 1], [cx + 3, AVENUE.y1 + 0.5]] as const) {
-    solids.push(prism(x, y, PLINTH_H, 0.3, 0.3, 4, "steel"), prism(x - 0.1, y - 0.1, PLINTH_H + 4, 0.5, 0.5, 1.2, "officeDark"));
+    if (inQuayWall(x) || inRingWall(x, y)) continue; // un poste ahí caería dentro del muro del muelle o de la rampa del puente
+    const z = postZ(x, y);
+    solids.push(prism(x, y, z, 0.3, 0.3, 4, "steel"), prism(x - 0.1, y - 0.1, z + 4, 0.5, 0.5, 1.2, "officeDark"));
   }
-  for (let x = CITY_EDGE.west + 6; x < WEST_QUAY.x0 - 6; x += 12) lamp(solids, accents, x, AVENUE.y0 - 1.3, PLINTH_H);
-  for (let x = EAST_RING.x1 + 6; x < MALECON.x0 - 6; x += 12) lamp(solids, accents, x, AVENUE.y0 - 1.3, PLINTH_H);
+  for (let x = CITY_EDGE.west + 6; x < WEST_QUAY.x0 - 6; x += 12) {
+    const y = AVENUE.y0 - 1.3;
+    if (inQuayWall(x) || inRingWall(x, y)) continue;
+    lamp(solids, accents, x, y, postZ(x, y));
+  }
+  for (let x = EAST_RING.x1 + 6; x < MALECON.x0 - 6; x += 12) {
+    const y = AVENUE.y0 - 1.3;
+    if (inQuayWall(x) || inRingWall(x, y)) continue;
+    lamp(solids, accents, x, y, postZ(x, y));
+  }
 }
 
 // ---------------------------------------------------------------- puente, muelle oeste y malecón
@@ -216,6 +244,7 @@ function bridge(solids: Solid[], accents: Accent[]): void {
   solids.push({ kind: "ramp", at: v3(x0 - STREET, y0, 0), w: STREET, d, h: top, mat: "asphalt", dir: "w" });
   solids.push({ kind: "ramp", at: v3(x1, y0, 0), w: STREET, d, h: top, mat: "asphalt", dir: "e" });
   for (let x = x0 + 18; x < x1; x += 18) solids.push(prism(x - 1, y0, -1, 2, d, z + 1, "plaza")); // pilotes: 210, 228, 246, 264
+  solids.push(prism(WEST_QUAY.x0, y0, 0.6, WEST_QUAY.x1 - WEST_QUAY.x0, d, z - 0.6, "plaza")); // estribo (0.6, el tope del muelle): el tablero apoya, no flota
   solids.push(prism(x0, y0, top, x1 - x0, 0.3, 0.8, "officeDark"), prism(x0, y1 - 0.3, top, x1 - x0, 0.3, 0.8, "officeDark")); // barandas
   lamp(solids, accents, x0 + 30, y0 + 0.4, top);
   lamp(solids, accents, x1 - 30, y1 - 1, top);
@@ -244,20 +273,34 @@ function malecon(solids: Solid[], accents: Accent[]): void {
 
 function collapsed(solids: Solid[], rng: Rng): void {
   const c = COLLAPSED;
-  solids.push({ kind: "ramp", at: v3(c.x, c.y, -1.2), w: 12, d: c.d, h: 1.5, mat: "asphalt", dir: "w" }); // la mitad oeste se hunde en el estuario
+  // el labio bajo (oeste) tiene que llegar al agua: estuaryEast ronda 274.6 en esta fila, no 280
+  solids.push({ kind: "ramp", at: v3(c.x - 6, c.y, -1.2), w: 12, d: c.d, h: 1.5, mat: "asphalt", dir: "w" }); // la mitad oeste se hunde en el estuario
   solids.push(prism(c.x + 12, c.y, 0, 12, c.d, PLINTH_H, "paving"));
   solids.push(prism(c.x + 14, c.y + 4, PLINTH_H, 8, 10, rng.int(2, 3), "officeDark")); // ruina sin fachada
-  for (const [x, y, z, w, d] of [[c.x - 12, c.y + 6, -0.5, 3, 3], [c.x - 8, c.y + 12, -0.7, 4, 3], [c.x - 4, c.y + 2, -0.4, 3, 4]] as const) solids.push(prism(x, y, z, w, d, 1.5, "officeDark"));
+  for (const [x, y, z, w, d] of [[c.x - 12, c.y + 6, -0.5, 3, 3], [c.x - 8, c.y + 12, -0.7, 4, 3], [c.x - 10, c.y + 3, -0.4, 3, 4]] as const) solids.push(prism(x, y, z, w, d, 1.5, "officeDark"));
   solids.push(prism(MALECON.x0 - 8, 237.5, 0, 6, 3, 1, "officeDark")); // el cuarto, caído en la calle 236..242 frente al malecón (el agua frente al malecón es zona Blog)
 }
 
+/**
+ * Como `jungle`, pero descarta los conos que caerían en agua abierta del
+ * estuario (consume el rng en el mismo orden, así no desalinea la semilla).
+ */
+function jungleOnLand(out: Solid[], rng: Rng, rect: { x0: number; x1: number; y0: number; y1: number }, n: number, z = 0.4): void {
+  const tmp: Solid[] = [];
+  jungle(tmp, rng, rect, n, z);
+  for (const s of tmp) {
+    if (s.kind === "cone" && s.at.x > QUAY_X - s.r && s.at.x <= estuaryEast(s.at.y) + s.r) continue;
+    out.push(s);
+  }
+}
+
 function greenery(solids: Solid[], rng: Rng): void {
-  jungle(solids, rng, { x0: 3, x1: 340, y0: ZONE_SPLIT_Y + 1, y1: CITY_EDGE.north - 2 }, 30);           // cinturón de costura
+  jungleOnLand(solids, rng, { x0: 3, x1: 340, y0: ZONE_SPLIT_Y + 1, y1: CITY_EDGE.north - 2 }, 30);      // cinturón de costura, sin pisar el estuario
   jungle(solids, rng, { x0: 3, x1: CITY_EDGE.west - 3, y0: CITY_EDGE.north, y1: CITY_EDGE.south }, 12);  // borde oeste (ruling: x0 3, no 2, para no salir de la zona)
-  jungle(solids, rng, { x0: CITY_EDGE.west, x1: 330, y0: CITY_EDGE.south, y1: 267 }, 14);                 // borde sur (r ≤ 4: no sale del mundo)
+  jungleOnLand(solids, rng, { x0: CITY_EDGE.west, x1: 330, y0: CITY_EDGE.south, y1: 267 }, 14);           // borde sur, sin pisar el estuario
   for (let y = ROWS[0]; y < COLLAPSED.y; y += 8) {                                                        // ribera este del estuario
     const x0 = Math.ceil(estuaryEast(y + 6)) + 2, x1 = EAST_RING.x0 - 3;
-    if (x1 - x0 >= 2) jungle(solids, rng, { x0, x1, y0: y, y1: y + 6 }, rng.int(1, 2));
+    if (x1 - x0 >= 2) jungleOnLand(solids, rng, { x0, x1, y0: y, y1: y + 6 }, rng.int(1, 2));
   }
   for (const c of CRATERS) { // cuadrado inscripto (0.7·r): todo cono queda dentro del círculo
     const k = Math.floor(c.r * 0.7);
@@ -265,7 +308,13 @@ function greenery(solids: Solid[], rng: Rng): void {
   }
 }
 
+/** Rectángulos `w0×d0` y `w1×d1` con esquinas en (x0,y0)/(x1,y1) que se tocan, agrandando el primero `gap` unidades. */
+const rectsOverlap = (x0: number, y0: number, w0: number, d0: number, x1: number, y1: number, w1: number, d1: number, gap = 0): boolean =>
+  x0 - gap < x1 + w1 && x0 + w0 + gap > x1 && y0 - gap < y1 + d1 && y0 + d0 + gap > y1;
+
 function cars(solids: Solid[], rng: Rng): void {
+  const placed: { x: number; y: number }[] = [];
+  const fallen = { x: MALECON.x0 - 8, y: 237.5, w: 6, d: 3 }; // el cuarto bloque hundido del derrumbe, caído en la calle
   for (const b of blocks()) {
     if (b.kind === "plaza") continue;
     const n = rng.int(1, 3);
@@ -275,6 +324,9 @@ function cars(solids: Solid[], rng: Rng): void {
       if (y < CITY_EDGE.north || y + 1.5 > CITY_EDGE.south) continue;
       if (y >= AVENUE.y0 - 2 && y <= AVENUE.y1) continue;      // la avenida no tiene autos en el cordón
       if (inCrater(x + 1.5, y + 0.75) || CRATERS.some((c) => Math.hypot(x + 1.5 - c.x, y + 0.75 - c.y) <= c.r + 2)) continue;
+      if (rectsOverlap(x, y, 3, 1.5, fallen.x, fallen.y, fallen.w, fallen.d)) continue;
+      if (placed.some((p) => rectsOverlap(x, y, 3, 1.5, p.x, p.y, 3, 1.5, 1))) continue; // ningún auto pisa a otro, con 1 u de margen
+      placed.push({ x, y });
       solids.push(prism(x, y, 0, 3, 1.5, 1.2, rng.chance(0.6) ? "steel" : "rust"));
     }
   }

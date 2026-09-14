@@ -141,7 +141,7 @@ describe("city", () => {
     for (const st of stairs) expect(bounds(st).max.x).toBeLessThanOrEqual(ZONE_SPLIT_X);
   });
 
-  it("derrumbe: rampa al agua y bloques hundidos; el resto de la ciudad no tiene nada bajo z 0 salvo muros y pilotes", () => {
+  it("derrumbe: rampa al agua, bloques hundidos y el cuarto caído en la calle frente al malecón", () => {
     const s = scene();
     const sunk = s.solids.filter((x) => x.kind === "prism" && x.mat === "officeDark" && x.at.z < 0);
     expect(sunk.length).toBeGreaterThanOrEqual(3);
@@ -151,13 +151,18 @@ describe("city", () => {
     expect(s.solids.some((x) => x.kind === "ramp" && x.mat === "asphalt" && x.dir === "w" && x.at.y === 242)).toBe(true);
   });
 
-  it("autos pegados al cordón, en calles E-O, nunca sobre un cráter", () => {
+  it("autos: no caen en manzana ni cráter, y ninguno se superpone con otro", () => {
     const s = scene();
     const cars = s.solids.filter((x): x is Solid & { kind: "prism" } => x.kind === "prism" && (x.mat === "steel" || x.mat === "rust") && x.h === 1.2);
     expect(cars.length).toBeGreaterThanOrEqual(20);
     for (const c of cars) {
       expect(inBlock(c.at.x + 1.5, c.at.y + 0.75)).toBe(false);
       expect(inCrater(c.at.x + 1.5, c.at.y + 0.75)).toBe(false);
+    }
+    for (let i = 0; i < cars.length; i++) for (let j = i + 1; j < cars.length; j++) {
+      const a = cars[i]!, b = cars[j]!;
+      const overlap = a.at.x < b.at.x + b.w && a.at.x + a.w > b.at.x && a.at.y < b.at.y + b.d && a.at.y + a.d > b.at.y;
+      expect(overlap).toBe(false);
     }
   });
 
