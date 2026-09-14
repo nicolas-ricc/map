@@ -3,17 +3,17 @@ import type { Solid, Tri } from "../iso/solids";
 import { BOTTOM, CELL, DOCK, QUAY_X, WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y, distToHeadland, eastBank, inHeadland, inMouth, worldZoneAt, type WorldZone } from "../map/geo";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
+import { CITY_EDGE, EAST_RING, estuaryEast, inCrater } from "./city-grid";
 
 /**
  * Terreno de todo el mundo: una sola grilla facetada de CELL, clasificada
  * por punto. Cada zona aporta su clasificador; `terrainAt` despacha. Una
  * sola malla garantiza que los vértices en las costuras compartan altura.
  */
-export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "paving" | "sea" | "shore" | "headland" | "reef";
+export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "asphalt" | "sea" | "shore" | "headland" | "reef";
 
 export { CELL };
 const WATER_Z = -1;
-const JUNGLE_BELT = 12;   // solo del lado ciudad de ZONE_SPLIT_Y; la franja del astillero sale de y >= BOTTOM en shipyardTerrainAt
 const SHORE_W = 12;       // agua clara a esta distancia de la tierra
 const REEF_W = 6;
 const SHORE_WOBBLE = 5;   // amplitud del ondulado del borde exterior de la orilla
@@ -30,22 +30,16 @@ export function shipyardTerrainAt(x: number, y: number): Terrain {
 }
 
 /**
- * La ciudad hereda el canal del astillero y lo abre hacia el sur: en la costura
- * las riberas son exactamente las de la última fila de celdas del astillero.
- * Ruling: el estuario no sigue a `riverCenter` porque el meandro se mueve ~8
- * unidades entre y = 141 y y = 147, o sea más de una celda, y el borde del agua
- * quedaría en distinto lugar de cada lado de la costura: los vértices
- * compartidos tendrían altura plana de un lado y con jitter del otro.
+ * La ciudad: el terreno es la calle (asfalto plano); las manzanas son zócalos
+ * que pone city.ts. Selva en los bordes del diorama, en la ribera este del
+ * estuario (hasta la calle del anillo) y en los cráteres que rompen el asfalto.
  */
-const SEAM_CY = Math.floor(ZONE_SPLIT_Y / CELL) * CELL - CELL / 2; // 141: centro de la última fila de celdas del astillero
-const ESTUARY_FLARE = 0.35; // cuánto se abre la ribera este por unidad hacia el sur
-
-const estuaryEast = (y: number): number => eastBank(SEAM_CY) + Math.max(0, y - ZONE_SPLIT_Y) * ESTUARY_FLARE;
-
 export function cityTerrainAt(x: number, y: number): Terrain {
   if (x >= QUAY_X && x <= estuaryEast(y)) return "water";
-  if (y < ZONE_SPLIT_Y + JUNGLE_BELT) return "jungle";
-  return "paving";
+  if (y < CITY_EDGE.north || y >= CITY_EDGE.south || x < CITY_EDGE.west) return "jungle";
+  if (x > QUAY_X && x < EAST_RING.x0) return "jungle";
+  if (inCrater(x, y)) return "jungle";
+  return "asphalt";
 }
 
 export function seaTerrainAt(x: number, y: number): Terrain {
@@ -80,9 +74,9 @@ const headlandZ = (x: number): number => {
   return HEADLAND_BASE_Z + (HEADLAND_TOP_Z - HEADLAND_BASE_Z) * t;
 };
 
-const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth, paving: 0, sea: WATER_Z, shore: WATER_Z, headland: HEADLAND_TOP_Z, reef: 0.5 }; // headland: solo referencia; la altura real la da headlandZ(x)
-const JITTER: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0, paving: 0.15, sea: 0, shore: 0, headland: 1.5, reef: 0.3 };
-const MAT: Record<Exclude<Terrain, "dock">, Material> = { slab: "slab", water: "water", east: "sand", jungle: "leafDark", paving: "paving", sea: "waterDeep", shore: "water", headland: "rock", reef: "rock" };
+const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth, asphalt: 0, sea: WATER_Z, shore: WATER_Z, headland: HEADLAND_TOP_Z, reef: 0.5 }; // headland: solo referencia; la altura real la da headlandZ(x)
+const JITTER: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0, asphalt: 0.1, sea: 0, shore: 0, headland: 1.5, reef: 0.3 };
+const MAT: Record<Exclude<Terrain, "dock">, Material> = { slab: "slab", water: "water", east: "sand", jungle: "leafDark", asphalt: "asphalt", sea: "waterDeep", shore: "water", headland: "rock", reef: "rock" };
 const FLAT = new Set<Terrain>(["water", "sea", "shore", "dock"]);
 
 /** Grilla de CELL con alturas por vértice; cada celda son dos triángulos clasificados por su centro. `zones` filtra celdas por zona. */
@@ -114,7 +108,7 @@ export function buildTerrain(rng: Rng, zones?: readonly WorldZone[]): TerrainMes
   }
   const ground = (t: Exclude<Terrain, "dock">): Solid => ({ kind: "ground", mat: MAT[t], tris: tris[t] });
   return {
-    ground: [ground("slab"), ground("east"), ground("jungle"), ground("paving"), ground("headland"), ground("reef")],
+    ground: [ground("slab"), ground("east"), ground("jungle"), ground("asphalt"), ground("headland"), ground("reef")],
     river: ground("water"),
     sea: ground("sea"),
     shore: ground("shore"),

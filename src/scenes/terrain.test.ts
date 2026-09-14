@@ -28,10 +28,22 @@ describe("clasificación", () => {
     expect(seaTerrainAt(350, 10)).toBe("shore");           // frente a la bahía hay bajío
     expect(seaTerrainAt(370, 10)).toBe("sea");
   });
-  it("ciudad: cinturón de selva junto al astillero, río y pavimento", () => {
-    expect(terrainAt(50, ZONE_SPLIT_Y + 4)).toBe("jungle");
-    expect(terrainAt(50, 200)).toBe("paving");
-    expect(terrainAt(255, 200)).toBe("water");
+  it("ciudad: cinturón de selva, estuario, ribera este de selva, cráteres y asfalto", () => {
+    expect(terrainAt(50, ZONE_SPLIT_Y + 4)).toBe("jungle");   // cinturón
+    expect(terrainAt(5, 200)).toBe("jungle");                  // borde oeste
+    expect(terrainAt(100, 268)).toBe("jungle");                // borde sur
+    expect(terrainAt(255, 200)).toBe("water");                 // estuario
+    expect(terrainAt(268, 200)).toBe("jungle");                // ribera este, antes del anillo
+    expect(terrainAt(290, 200)).toBe("asphalt");               // ciudad del este
+    expect(terrainAt(60, 185)).toBe("jungle");                 // cráter
+    expect(terrainAt(50, 200)).toBe("asphalt");
+    expect(terrainAt(340, 200)).toBe("asphalt");               // bajo el malecón
+    expect(terrainAt(ZONE_SPLIT_X, 200)).toBe("shore");        // la costura este sigue siendo mar
+  });
+  it("en la zona cv solo hay asfalto, selva y agua", () => {
+    const seen = new Set<string>();
+    for (let y = ZONE_SPLIT_Y + 3; y < WORLD_H; y += CELL) for (let x = 3; x < ZONE_SPLIT_X; x += CELL) seen.add(terrainAt(x, y));
+    expect([...seen].sort()).toEqual(["asphalt", "jungle", "water"]);
   });
   it("el agua es continua en la costura y el estuario no llega al límite con Blog", () => {
     // la última fila de celdas del astillero (centro 141) y la primera de la ciudad (centro 147) mojan las mismas columnas
@@ -88,5 +100,12 @@ describe("buildTerrain", () => {
     expect([...a.keys()].filter((k) => b.has(k)).length).toBeGreaterThan(10);
     for (const [k, z] of a) if (b.has(k)) expect(b.get(k)).toBe(z);
     expect(allTris(p).every((t) => t.pts.every((v) => v.y <= ZONE_SPLIT_Y + CELL))).toBe(true);
+  });
+  it("el asfalto es casi plano y sale como su propio ground", () => {
+    const m = buildTerrain(createRng(7), ["cv"]);
+    const asphalt = m.ground.filter((g) => g.kind === "ground" && g.mat === "asphalt").flatMap(tris);
+    expect(asphalt.length).toBeGreaterThan(600);
+    expect(asphalt.every((t) => t.pts.every((p) => Math.abs(p.z) <= 0.1 || terrainAt(p.x, p.y) !== "asphalt"))).toBe(true);
+    expect(m.ground.some((g) => g.kind === "ground" && g.mat === "paving")).toBe(false);
   });
 });
