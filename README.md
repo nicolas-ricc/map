@@ -13,8 +13,12 @@ Contenido editable en `content/*.json`. Diseño en `docs/superpowers/specs/`, pl
 
 ## Laboratorio isométrico
 
-`npm run dev` y abrir `/map/lab/portfolio.html`: el astillero del Portfolio en
-2.5D isométrico (motor puro en `src/iso/`, escena en `src/scenes/shipyard.ts`).
-No entra en el build de producción. Para cambiar la escena, editar la lista de
-sólidos; para cambiar el look, `src/map/palette-iso.ts`. Spec en
-`docs/superpowers/specs/2026-09-13-portfolio-isometrico-design.md`.
+`npm run dev` y abrir `/map/lab/world.html`: el mundo entero en 2.5D isométrico
+(motor puro en `src/iso/`, terreno compartido en `src/scenes/terrain.ts`,
+escenas en `src/scenes/`). `/map/lab/portfolio.html` muestra solo el astillero.
+Teclas `0`..`3` encuadran mundo, Portfolio, Resume y Blog. Las teclas
+encuadran; no recortan: al enfocar una zona las vecinas asoman por el borde.
+No entra en el build de producción. Para cambiar una escena, editar su lista
+de sólidos; para el look, `src/map/palette-iso.ts`. Specs en
+`docs/superpowers/specs/`
+(`2026-09-13-portfolio-isometrico-design.md`, `2026-09-14-mundo-isometrico-design.md`).

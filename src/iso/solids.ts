@@ -1,5 +1,6 @@
 // src/iso/solids.ts
 import type { Material, Tone } from "../map/palette-iso";
+import { facadeFaces, isWall, type Facade } from "./facade";
 import { centroid, dot, polygonNormal, type Vec2, type Vec3, v3 } from "./geometry";
 import { shadeTone } from "./light";
 import { VIEW_DIR } from "./project";
@@ -7,13 +8,17 @@ import { VIEW_DIR } from "./project";
 export interface Tri { pts: [Vec3, Vec3, Vec3]; toneOffset?: number }
 
 export type Solid =
-  | { kind: "prism"; at: Vec3; w: number; d: number; h: number; mat: Material; roof?: "flat" | "gable" | "step" }
-  | { kind: "ramp"; at: Vec3; w: number; d: number; h: number; mat: Material; dir: "e" | "w" }
+  | { kind: "prism"; at: Vec3; w: number; d: number; h: number; mat: Material; roof?: "flat" | "gable" | "step"; facade?: Facade }
+  | { kind: "poly"; footprint: Vec2[]; z: number; h: number; mat: Material }
+  | { kind: "ramp"; at: Vec3; w: number; d: number; h: number; mat: Material; dir: RampDir }
   | { kind: "cylinder"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
   | { kind: "cone"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
   | { kind: "hull"; at: Vec3; len: number; beam: number; h: number; mat: Material }
   | { kind: "strip"; path: Vec2[]; width: number; z: number; mat: Material }
   | { kind: "ground"; tris: Tri[]; mat: Material };
+
+/** Hacia dónde baja la rampa: "e" tiene el borde alto al oeste, "s" lo tiene al norte. */
+export type RampDir = "e" | "w" | "n" | "s";
 
 export interface Face { pts: Vec3[]; normal: Vec3; mat: Material; tone: Tone; toneOffset: number }
 
@@ -86,18 +91,28 @@ function gable(at: Vec3, w: number, d: number, h: number, mat: Material): Face[]
   ];
 }
 
-function ramp(at: Vec3, w: number, d: number, h: number, dir: "e" | "w", mat: Material): Face[] {
+function ramp(at: Vec3, w: number, d: number, h: number, dir: RampDir, mat: Material): Face[] {
   const { x, y, z } = at;
-  const zw = dir === "e" ? z + h : z, ze = dir === "e" ? z : z + h; // altura del borde oeste / este
+  const hi = z + h;
+  // altura de cada esquina según hacia dónde baja
+  const corner = (west: boolean, north: boolean): number => {
+    switch (dir) {
+      case "e": return west ? hi : z;
+      case "w": return west ? z : hi;
+      case "s": return north ? hi : z;
+      case "n": return north ? z : hi;
+    }
+  };
+  const nw = corner(true, true), ne = corner(false, true), se = corner(false, false), sw = corner(true, false);
   const c = v3(x + w / 2, y + d / 2, z + h / 4);
   const f = (pts: Vec3[]) => face(pts, mat, c);
   return [
-    f([v3(x, y, z), v3(x + w, y, z), v3(x + w, y + d, z), v3(x, y + d, z)]),           // base
-    f([v3(x, y, zw), v3(x + w, y, ze), v3(x + w, y + d, ze), v3(x, y + d, zw)]),       // plano inclinado
-    f([v3(x, y, z), v3(x, y + d, z), v3(x, y + d, zw), v3(x, y, zw)]),                 // pared oeste
-    f([v3(x + w, y, z), v3(x + w, y + d, z), v3(x + w, y + d, ze), v3(x + w, y, ze)]), // pared este
-    f([v3(x, y, z), v3(x + w, y, z), v3(x + w, y, ze), v3(x, y, zw)]),                 // lado norte
-    f([v3(x, y + d, z), v3(x + w, y + d, z), v3(x + w, y + d, ze), v3(x, y + d, zw)]), // lado sur
+    f([v3(x, y, z), v3(x + w, y, z), v3(x + w, y + d, z), v3(x, y + d, z)]),             // base
+    f([v3(x, y, nw), v3(x + w, y, ne), v3(x + w, y + d, se), v3(x, y + d, sw)]),         // plano inclinado
+    f([v3(x, y, z), v3(x, y + d, z), v3(x, y + d, sw), v3(x, y, nw)]),                   // pared oeste
+    f([v3(x + w, y, z), v3(x + w, y + d, z), v3(x + w, y + d, se), v3(x + w, y, ne)]),   // pared este
+    f([v3(x, y, z), v3(x + w, y, z), v3(x + w, y, ne), v3(x, y, nw)]),                   // lado norte
+    f([v3(x, y + d, z), v3(x + w, y + d, z), v3(x + w, y + d, se), v3(x, y + d, sw)]),   // lado sur
   ];
 }
 
@@ -143,11 +158,13 @@ export function tessellateAll(s: Solid): Face[] {
   switch (s.kind) {
     case "prism": {
       if (s.roof === "gable") return gable(s.at, s.w, s.d, s.h, s.mat);
-      const box = extrude(rect(s.at.x, s.at.y, s.w, s.d), s.at.z, s.h, s.mat);
+      const raw = extrude(rect(s.at.x, s.at.y, s.w, s.d), s.at.z, s.h, s.mat);
+      const box = s.facade ? raw.flatMap((f) => (isWall(f) ? [f, ...facadeFaces(f, s.facade!)] : [f])) : raw;
       if (s.roof !== "step") return box;
       const ix = s.w * STEP_INSET, iy = s.d * STEP_INSET;
       return [...box, ...extrude(rect(s.at.x + ix, s.at.y + iy, s.w - 2 * ix, s.d - 2 * iy), s.at.z + s.h, s.h * STEP_RATIO, s.mat)];
     }
+    case "poly": return extrude(s.footprint, s.z, s.h, s.mat);
     case "ramp": return ramp(s.at, s.w, s.d, s.h, s.dir, s.mat);
     case "cylinder": return extrude(regular(s.at.x, s.at.y, s.r, s.sides ?? 8), s.at.z, s.h, s.mat);
     case "cone": return cone(s.at, s.r, s.h, s.sides ?? 6, s.mat);

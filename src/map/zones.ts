@@ -1,7 +1,7 @@
-import { MAP_H, MAP_W, splitX } from "./geo";
+import { MAP_H, MAP_W, pointInPolygon, splitX } from "./geo";
 import type { Accent } from "./palette";
 
-export { MAP_H, MAP_W };
+export { MAP_H, MAP_W, pointInPolygon };
 
 export type ZoneId = "portfolio" | "cv" | "blog";
 export const ZONE_IDS: readonly ZoneId[] = ["portfolio", "cv", "blog"];
@@ -70,18 +70,6 @@ export function zoneById(id: ZoneId): ZoneDef {
   const z = ZONES.find((z) => z.id === id);
   if (!z) throw new Error(`Zona desconocida: ${id}`);
   return z;
-}
-
-export function pointInPolygon(x: number, y: number, polygon: number[]): boolean {
-  let inside = false;
-  const n = polygon.length / 2;
-  for (let i = 0, j = n - 1; i < n; j = i++) {
-    const xi = polygon[i * 2]!, yi = polygon[i * 2 + 1]!;
-    const xj = polygon[j * 2]!, yj = polygon[j * 2 + 1]!;
-    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
 }
 
 /** Zona a la que pertenece un píxel del lienzo. Fuera del lienzo, la más cercana por landmark. */

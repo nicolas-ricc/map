@@ -1,8 +1,20 @@
 import type { Graphics } from "pixi.js";
+import { accentItem, type Accent } from "../iso/accent";
+import { v3 } from "../iso/geometry";
 import { project } from "../iso/project";
 import type { Layer, RenderItem } from "../iso/render-list";
-import { ISO_COLORS } from "../map/palette-iso";
-import type { Accent } from "../scenes/shipyard";
+import { WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y, type WorldZone } from "../map/geo";
+
+const FRAME_H = 30; // alto de referencia para que entren los landmarks
+
+/** Caja de una zona (o del mundo) proyectada, como un RenderItem para fitTransform. */
+export function zoneFrame(zone: WorldZone | "all"): RenderItem[] {
+  const box = { all: [0, 0, WORLD_W, WORLD_H], portfolio: [0, 0, ZONE_SPLIT_X, ZONE_SPLIT_Y], cv: [0, ZONE_SPLIT_Y, ZONE_SPLIT_X, WORLD_H], blog: [ZONE_SPLIT_X, 0, WORLD_W, WORLD_H] }[zone];
+  const [x0, y0, x1, y1] = box as [number, number, number, number];
+  const pts: number[] = [];
+  for (const [x, y, z] of [[x0, y0, FRAME_H], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0]] as const) { const p = project(v3(x, y, z)); pts.push(p.x, p.y); }
+  return [{ layer: "ground", pts, color: 0 }];
+}
 
 export interface Fit { x: number; y: number; scale: number }
 
@@ -19,11 +31,6 @@ export function fitTransform(items: RenderItem[], width: number, height: number,
   return { x: (width - w * scale) / 2 - minX * scale, y: (height - h * scale) / 2 - minY * scale, scale };
 }
 
-export function accentCircle(a: Accent): { x: number; y: number; r: number; color: number } {
-  const p = project(a.at);
-  return { x: p.x, y: p.y, r: a.r, color: ISO_COLORS[a.color] };
-}
-
 export function drawLayer(g: Graphics, items: RenderItem[], layer: Layer): void {
   g.clear();
   for (const it of items) if (it.layer === layer) g.poly(it.pts, true).fill(it.color);
@@ -32,8 +39,12 @@ export function drawLayer(g: Graphics, items: RenderItem[], layer: Layer): void 
 export function drawAccents(g: Graphics, accents: Accent[]): void {
   g.clear();
   for (const a of accents) {
-    const c = accentCircle(a);
-    g.circle(c.x, c.y, c.r * 2.2).fill({ color: c.color, alpha: 0.18 }); // halo
-    g.circle(c.x, c.y, c.r).fill(c.color);
+    const it = accentItem(a);
+    if (it.kind === "dot") {
+      g.circle(it.x, it.y, it.r * 2.2).fill({ color: it.color, alpha: 0.18 }); // halo
+      g.circle(it.x, it.y, it.r).fill(it.color);
+    } else {
+      g.poly(it.pts, true).fill({ color: it.color, alpha: it.alpha });
+    }
   }
 }

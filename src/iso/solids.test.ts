@@ -51,6 +51,29 @@ describe("tessellate", () => {
     expect(east.every((p) => p.z === 0)).toBe(true);
   });
 
+  it("poly: prisma sobre una huella de 5 vértices, techo + 5 lados, solo los visibles", () => {
+    const footprint = [{ x: 0, y: 0 }, { x: 6, y: 0 }, { x: 8, y: 3 }, { x: 4, y: 6 }, { x: 0, y: 4 }];
+    const s: Solid = { kind: "poly", footprint, z: 1, h: 3, mat: "rock" };
+    expect(tessellateAll(s)).toHaveLength(7);
+    const vis = tessellate(s);
+    const top = vis.find((f) => f.tone === "top")!;
+    expect(top.pts).toHaveLength(5);
+    expect(top.pts.every((p) => p.z === 4)).toBe(true);
+    expect(vis.length).toBeGreaterThanOrEqual(3);
+    expect(vis.length).toBeLessThanOrEqual(5);
+    expect(bounds(s)).toEqual({ min: { x: 0, y: 0, z: 1 }, max: { x: 8, y: 6, z: 4 } });
+  });
+
+  it("rampa hacia el sur: alto al norte, bajo al sur; hacia el norte, al revés", () => {
+    const top = (dir: "n" | "s") => tessellate({ kind: "ramp", at: v3(0, 0, 0), w: 4, d: 10, h: 2, mat: "concrete", dir }).find((f) => f.normal.z > 0.5)!;
+    const south = top("s");
+    expect(south.pts.filter((p) => p.y === 0).every((p) => p.z === 2)).toBe(true);
+    expect(south.pts.filter((p) => p.y === 10).every((p) => p.z === 0)).toBe(true);
+    const north = top("n");
+    expect(north.pts.filter((p) => p.y === 0).every((p) => p.z === 0)).toBe(true);
+    expect(north.pts.filter((p) => p.y === 10).every((p) => p.z === 2)).toBe(true);
+  });
+
   it("cilindro de 8 lados: techo octogonal y solo los lados que miran a la cámara", () => {
     const vis = tessellate({ kind: "cylinder", at: v3(0, 0, 0), r: 2, h: 5, mat: "steel" });
     const top = vis.find((f) => f.tone === "top")!;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { v3 } from "./geometry";
-import { SHADOW_DIR, SHADOW_PER_UNIT, TO_SUN, shadeTone, shadowPoint, shadowPolygon } from "./light";
+import { SHADOW_DIR, SHADOW_MAX_H, SHADOW_PER_UNIT, TO_SUN, shadeTone, shadowPoint, shadowPolygon } from "./light";
 import type { Solid } from "./solids";
 
 describe("light", () => {
@@ -34,6 +34,12 @@ describe("light", () => {
 
   it("bajo el suelo no hay sombra: el punto queda donde está", () => {
     expect(shadowPoint(v3(3, 4, -2))).toEqual({ x: 3, y: 4 });
+  });
+
+  it("por encima de SHADOW_MAX_H la sombra deja de crecer", () => {
+    expect(SHADOW_MAX_H).toBe(18);
+    expect(shadowPoint(v3(0, 0, 30))).toEqual(shadowPoint(v3(0, 0, 18)));
+    expect(shadowPoint(v3(0, 0, 17)).x).toBeLessThan(shadowPoint(v3(0, 0, 18)).x);
   });
 });
 

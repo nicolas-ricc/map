@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ISO_COLORS, ISO_TONES, TONE_LADDER, allIsoColors, stepTone, toneColor, type Material } from "./palette-iso";
+import { ACCENT_COLORS, ISO_COLORS, ISO_TONES, TONE_LADDER, allIsoColors, stepTone, toneColor, type Material } from "./palette-iso";
 
 const lum = (c: number): number => ((c >> 16) & 255) * 0.3 + ((c >> 8) & 255) * 0.59 + (c & 255) * 0.11;
 
@@ -37,5 +37,22 @@ describe("paleta isométrica", () => {
     expect(all.has(ISO_TONES.rust.shade)).toBe(true);
     expect(all.has(ISO_COLORS.shadow)).toBe(true);
     expect(all.has(ISO_COLORS.cyan)).toBe(true);
+  });
+
+  it("materiales exclusivos de ciudad y costa", () => {
+    for (const m of ["office", "officeDark", "glass", "asphalt", "paving", "plaza", "whitewash", "foam"] as const) {
+      expect(Object.keys(ISO_TONES[m]).sort()).toEqual(["down", "lit", "shade", "top", "up"]);
+    }
+  });
+
+  it("tríadas de acento por zona: cian, ámbar y magenta, todas en el atlas", () => {
+    expect(ACCENT_COLORS).toEqual(["cyan", "cyanMid", "cyanBleed", "amber", "amberMid", "amberBleed", "magenta", "magentaMid", "magentaBleed"]);
+    const all = allIsoColors();
+    for (const c of ACCENT_COLORS) expect(all.has(ISO_COLORS[c])).toBe(true);
+    // el núcleo es más claro que el medio y el medio que el sangrado
+    for (const base of ["cyan", "amber", "magenta"] as const) {
+      expect(lum(ISO_COLORS[base])).toBeGreaterThan(lum(ISO_COLORS[`${base}Mid`]));
+      expect(lum(ISO_COLORS[`${base}Mid`])).toBeGreaterThan(lum(ISO_COLORS[`${base}Bleed`]));
+    }
   });
 });
