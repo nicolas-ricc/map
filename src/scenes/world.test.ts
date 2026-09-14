@@ -15,7 +15,7 @@ describe("world", () => {
   it("con todas las zonas trae el astillero y el terreno completo", () => {
     const w = world(7);
     expect(w.shipyard).not.toBeNull();
-    expect(w.solids.length).toBeGreaterThan(250);
+    expect(w.solids.length).toBeGreaterThan(550);
     expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris.length).toBeGreaterThan(600);
     for (const s of w.solids) {
       const b = bounds(s);
@@ -27,8 +27,29 @@ describe("world", () => {
   it("filtrar por zona deja fuera lo demás", () => {
     const w = world(7, { zones: ["cv"] });
     expect(w.shipyard).toBeNull();
-    expect(w.solids).toEqual([]);
+    expect(w.city).not.toBeNull();
+    expect(w.solids.length).toBeGreaterThan(250);
     expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris).toEqual([]);
+    const b = world(7, { zones: ["blog"] });
+    expect(b.city).toBeNull();
+    expect(b.solids).toEqual([]);
+  });
+
+  it("el mundo entero trae astillero y ciudad, y el landmark de Resume cae en la torre", () => {
+    const w = world(7);
+    expect(w.city).not.toBeNull();
+    expect(w.solids.length).toBeGreaterThan(550);
+    const tower = w.solids.find((s) => s.kind === "prism" && s.h === 30)!;
+    const b = bounds(tower);
+    expect(LANDMARKS.cv.x).toBeGreaterThan(b.min.x); expect(LANDMARKS.cv.x).toBeLessThan(b.max.x);
+    expect(LANDMARKS.cv.y).toBeGreaterThan(b.min.y); expect(LANDMARKS.cv.y).toBeLessThan(b.max.y);
+  });
+
+  it("la ciudad y el astillero no comparten materiales de construcción", () => {
+    const w = world(7);
+    const mats = (zone: "portfolio" | "cv") => new Set(w.solids.filter((s) => worldZoneAt(bounds(s).min.x, Math.max(bounds(s).min.y, 0)) === zone && s.kind !== "cone").map((s) => s.mat));
+    const shared = [...mats("portfolio")].filter((m) => mats("cv").has(m));
+    expect(shared.sort()).toEqual(["rust", "steel"]);
   });
 
   it("los landmarks caen en su zona", () => {

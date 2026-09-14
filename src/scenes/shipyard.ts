@@ -1,8 +1,10 @@
 import type { Accent } from "../iso/accent";
 import { v3, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid } from "../iso/solids";
-import { MOUTH_Y, RIVER_HALF, riverCenter } from "../map/geo";
+import { BOTTOM, DOCK, MOUTH_Y, QUAY_W, QUAY_X, eastBank } from "../map/geo";
 import type { Rng } from "../map/seed";
+import { jungle as flora } from "./flora";
+
 
 /**
  * Portfolio: astillero en 2.5D. Mismo plano que terrain-portfolio.ts: línea de
@@ -22,11 +24,6 @@ export interface Scene {
 }
 
 export const AREA_W = 344, AREA_H = 146;
-// Ruling del controller: 198 (no 200) porque es múltiplo de CELL = 6; con 200
-// la celda 198..204 tiene centro 201 (agua) pero vértices en x=198, rompiendo
-// la propiedad "todo el agua tiene x >= QUAY_X".
-export const QUAY_X = 198, QUAY_W = 4;
-export const BOTTOM = 142;
 
 const STREET_X = 100, STREET_W = 8;
 export const STREET_EDGE = STREET_X + STREET_W; // x donde empiezan los faroles
@@ -36,10 +33,7 @@ const HALL_X = 8, HALL_W = 90, HALL_H = 10;
 const SLIP_X = 110;
 const RAIL_Y = [131, 134] as const; // vías del oeste
 const GANTRY_X = 150, GANTRY_H = 24;
-export const DOCK = { x: 120, y: 6, w: 72, d: 24, depth: 6 } as const; // alineado a CELL
 const WATER_Z = -1;
-
-export const eastBank = (y: number): number => riverCenter(y) + RIVER_HALF;
 
 // ---------------------------------------------------------------- piezas
 
@@ -216,12 +210,7 @@ function fittingOut(out: Solid[], rng: Rng): void {
 // ---------------------------------------------------------------- selva y faroles
 
 function jungle(out: Solid[], rng: Rng): void {
-  const cluster = (x0: number, x1: number, y0: number, y1: number, n: number) => {
-    for (let i = 0; i < n; i++) {
-      const mat = rng.chance(0.6) ? "leaf" : "leafDark";
-      out.push({ kind: "cone", at: v3(rng.int(x0, x1), rng.int(y0, y1), 0.4), r: rng.int(2, 4), h: rng.int(5, 9), mat });
-    }
-  };
+  const cluster = (x0: number, x1: number, y0: number, y1: number, n: number) => flora(out, rng, { x0, x1, y0, y1 }, n);
   cluster(3, 39, 102, 125, 10);   // SO, al norte de las vías (r ≤ 4: nunca las pisa)
   cluster(3, 39, 139, 143, 4);    // SO, al sur de las vías
   cluster(332, 340, 26, 94, 6);   // borde este, entre la bahía y la punta

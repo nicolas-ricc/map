@@ -10,6 +10,51 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-14-resume-ciudad-design.md` (y `2026-09-14-mundo-isometrico-design.md` §4 "Rulings de la parte 1").
 
+## Estado: implementado (2026-09-14)
+
+Las ocho tasks están hechas y hay una ronda de pulido de código encima
+(commits hasta `3e8f1cb`, sin PR todavía — la sesión que cierre esta rama
+decide cómo integrarla; ver `superpowers:finishing-a-development-branch`).
+La spec de Resume (`2026-09-14-resume-ciudad-design.md`) tiene la tabla
+completa de desvíos de la implementación; acá solo el resumen.
+
+**Lo que se hizo distinto del plan** (deviations decididas al planificar,
+en "Desvíos respecto de la spec" arriba, más rulings del controller durante
+las Tasks 4..7):
+
+- Columnas este en x 280/310 (no 276/306), malecón en 334..344, cráter este
+  en (307, 224), anillo este en 270..276 y borde sur en y 264, todos para
+  que los límites de terreno queden alineados a `CELL = 6` y para que
+  ninguna manzana quede a menos de una calle del agua.
+- La plaza y las manzanas devoradas son `ground` a nivel de calle, no un
+  prisma; la cornisa usa el material contrario en vez de `toneOffset`, y con
+  techo `step` se apoya sobre la huella del escalón superior, no la base.
+- Los cuatro derrames de luz de la plaza son dos polígonos `amberBleed`
+  planos (no cuatro `dot`), solo en la franja este que la cámara ve libre.
+- Los papeles derivan al NNE (no al ENE de la spec original): con la
+  proyección del motor, ENE se veía cayendo hacia abajo a la derecha.
+- Selva, autos y postes evitan el estuario, las superposiciones entre sí y
+  el muro del muelle oeste / las rampas del puente respectivamente.
+- El boulevard este arranca en x 283 y hay un estribo bajo el tablero del
+  puente sobre el muelle oeste; la escalera del malecón se abre hacia
+  adentro para no pisar la zona Blog.
+- El derrumbe reparte agua, plataforma y bloques hundidos en rangos de x
+  concretos (274..286 la rampa, 286..304 la plataforma) y el cuarto bloque
+  cae en la calle frente al malecón, no en el agua.
+- Presupuesto: primer dibujo ≈ 50 ms, peor redibujo 3–5 ms con un pico de
+  14 ms — por encima de los ≈ 3 ms que mencionaba el plan; aceptado.
+
+**Lo que queda para el plan 3 (Blog):**
+
+- El mar sigue estático (sin onda ni mareas): el malecón ya deja la costura
+  con Resume lista, y el sendero del faro usa `rock` (ruling de la spec de
+  Resume: `paving` queda exclusivo de la ciudad).
+- Los barcos que salen de la desembocadura (`MOUTH`) no existen todavía;
+  tampoco el faro, la punta ni la casa del farero.
+- El helper `bootWorldPage(zones?, frame?)` de `src/lab/page.ts` ya está
+  listo para armar `lab/blog.html` en una sola llamada, como hace
+  `lab/resume.ts` para Resume.
+
 ## Global Constraints
 
 - `src/iso/` y `src/scenes/` **no importan `pixi.js`** (`src/iso/pixi-free.test.ts` lo verifica). Solo `src/lab/runtime.ts` y `src/lab/draw.ts` tocan Pixi.

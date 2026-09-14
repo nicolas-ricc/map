@@ -15,10 +15,12 @@ Contenido editable en `content/*.json`. Diseño en `docs/superpowers/specs/`, pl
 
 `npm run dev` y abrir `/map/lab/world.html`: el mundo entero en 2.5D isométrico
 (motor puro en `src/iso/`, terreno compartido en `src/scenes/terrain.ts`,
-escenas en `src/scenes/`). `/map/lab/portfolio.html` muestra solo el astillero.
-Teclas `0`..`3` encuadran mundo, Portfolio, Resume y Blog. Las teclas
-encuadran; no recortan: al enfocar una zona las vecinas asoman por el borde.
-No entra en el build de producción. Para cambiar una escena, editar su lista
-de sólidos; para el look, `src/map/palette-iso.ts`. Specs en
-`docs/superpowers/specs/`
-(`2026-09-13-portfolio-isometrico-design.md`, `2026-09-14-mundo-isometrico-design.md`).
+escenas en `src/scenes/`). `/map/lab/portfolio.html` muestra solo el astillero;
+`/map/lab/resume.html` muestra la ciudad de oficinas más el astillero,
+encuadrados en Resume. Teclas `0`..`3` encuadran mundo, Portfolio, Resume y
+Blog. Las teclas encuadran; no recortan: al enfocar una zona las vecinas
+asoman por el borde. No entra en el build de producción. Para cambiar una
+escena, editar su lista de sólidos; para el look, `src/map/palette-iso.ts`.
+Specs en `docs/superpowers/specs/`
+(`2026-09-13-portfolio-isometrico-design.md`, `2026-09-14-mundo-isometrico-design.md`,
+`2026-09-14-resume-ciudad-design.md`).
