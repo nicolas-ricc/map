@@ -1,10 +1,10 @@
 import type { Accent } from "../iso/accent";
 import { facadeAccents, isWall, windowPatches, type Facade } from "../iso/facade";
-import { centroid, v3, type Vec2, type Vec3 } from "../iso/geometry";
+import { centroid, v3, type Vec3 } from "../iso/geometry";
 import { STEP_INSET, STEP_RATIO, tessellate, type Solid, type Tri } from "../iso/solids";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { BLOCK_D, BLOCK_W, PLAZA, SIDEWALK, TOWER, blocks, type Block, type Rect } from "./city-grid";
+import { PLAZA, SIDEWALK, TOWER, blocks, type Block, type Rect } from "./city-grid";
 import { jungle } from "./flora";
 
 /**
@@ -61,9 +61,9 @@ function lamp(solids: Solid[], accents: Accent[], x: number, y: number, z: numbe
 /**
  * Prisma con fachada, cornisa de material contrario y un detalle de techo.
  * `z` es la base (el zócalo). Ruling del controller: con techo escalonado la
- * cornice se apoya sobre la huella del segundo nivel (retranqueada), no sobre
- * la base completa, porque una losa de ancho completo quedaría flotando
- * sobre el retranqueo.
+ * cornice y el detalle de techo se apoyan sobre la huella del segundo nivel
+ * (retranqueada), no sobre la base completa, porque un elemento de ancho
+ * completo quedaría flotando sobre el retranqueo.
  */
 function building(out: Solid[], rng: Rng, x: number, y: number, z: number, w: number, d: number, h: number, mat: Material, roof?: "step"): void {
   const facade: Facade = { floors: Math.max(1, Math.round(h / FLOOR_H)), cols: rng.int(2, 4), base: rng.chance(0.5) ? "glass" : "portico" };
@@ -73,7 +73,7 @@ function building(out: Solid[], rng: Rng, x: number, y: number, z: number, w: nu
     const ix = w * STEP_INSET, iy = d * STEP_INSET;
     const top = z + h + h * STEP_RATIO;
     out.push(prism(x + ix - 0.5, y + iy - 0.5, top, w - 2 * ix + 1, d - 2 * iy + 1, 0.4, cornice));
-    roofDetail(out, rng, x, y, w, d, top + 0.4);
+    roofDetail(out, rng, x + ix, y + iy, w - 2 * ix, d - 2 * iy, top + 0.4);
   } else {
     const top = z + h;
     out.push(prism(x - 0.5, y - 0.5, top, w + 1, d + 1, 0.4, cornice));
@@ -110,7 +110,7 @@ function block(solids: Solid[], ground: Solid[], rng: Rng, b: Block, maxH: numbe
     ground.push(tiles(rng, b, 0.05, "leafDark"));
     solids.push(prism(b.x, b.y, 0, 10, 8, PLINTH_H, "paving"), prism(b.x + 14, b.y + 10, 0, 10, 8, PLINTH_H, "paving"));
     if (rng.chance(0.5)) solids.push(prism(b.x, b.y + 12, 0, 8, 6, PLINTH_H, "paving"));
-    solids.push(prism(b.x + 3, b.y + 9, 0.05, 5, 4, rng.int(2, 3), "officeDark")); // ruina
+    solids.push(prism(b.x + 12, b.y + 2, 0.05, 5, 4, rng.int(2, 3), "officeDark")); // ruina, sin pisar ninguna de las tres losas
     jungle(solids, rng, { x0: b.x + 2, x1: b.x + b.w - 2, y0: b.y + 2, y1: b.y + b.d - 2 }, rng.int(6, 9), 0.05);
     return;
   }
@@ -157,7 +157,7 @@ function plazaAndTower(solids: Solid[], ground: Solid[], accents: Accent[], rng:
   const east = walls.find((f) => f.normal.x > 0.5)!;
   const paperWindow = centroid(windowPatches(east, facade, facade.litFloor!)[facade.cols - 1]!);
   // derrame de luz en la plaza, bancos y faroles
-  for (const [x, y] of [[TOWER.x - 3, TOWER.y + TOWER.d + 3], [TOWER.x + TOWER.w + 3, TOWER.y + TOWER.d + 3], [TOWER.x + TOWER.w + 3, TOWER.y - 3], [TOWER.x - 3, TOWER.y - 3]] as const) accents.push({ kind: "dot", at: v3(x, y, 0.1), r: 3, color: "amberBleed" });
+  for (const [x, y] of [[TOWER.x - 2.5, TOWER.y - 1.5], [TOWER.x + TOWER.w + 2.5, TOWER.y - 1.5], [TOWER.x + TOWER.w + 2.5, TOWER.y + TOWER.d + 1.5], [TOWER.x - 2.5, TOWER.y + TOWER.d + 1.5]] as const) accents.push({ kind: "dot", at: v3(x, y, 0.1), r: 3, color: "amberBleed" });
   for (const [x, y] of [[PLAZA.x + 4, PLAZA.y + 3], [PLAZA.x + PLAZA.w - 6, PLAZA.y + 3], [PLAZA.x + 4, PLAZA.y + PLAZA.d - 3.6], [PLAZA.x + PLAZA.w - 6, PLAZA.y + PLAZA.d - 3.6]] as const) solids.push(prism(x, y, 0.05, 2, 0.6, 0.5, "paving"));
   lamp(solids, accents, PLAZA.x + 2, PLAZA.y + PLAZA.d / 2, 0.05);
   lamp(solids, accents, PLAZA.x + PLAZA.w - 2.6, PLAZA.y + PLAZA.d / 2, 0.05);
