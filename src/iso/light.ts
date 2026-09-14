@@ -28,9 +28,12 @@ export function shadeTone(n: Vec3): Tone {
   return dot(n, TO_SUN) > 0 ? "lit" : "shade";
 }
 
+/** Altura máxima que proyecta sombra: una torre de 30 sombrea como una de 18 y no cruza tres manzanas. */
+export const SHADOW_MAX_H = 18;
+
 /** Dónde toca el suelo (z = 0) el rayo que pasa por p. */
 export function shadowPoint(p: Vec3): Vec2 {
-  const len = Math.max(0, p.z) * SHADOW_PER_UNIT;
+  const len = Math.min(Math.max(0, p.z), SHADOW_MAX_H) * SHADOW_PER_UNIT;
   return { x: p.x + SHADOW_DIR.x * len, y: p.y + SHADOW_DIR.y * len };
 }
 
