@@ -4,6 +4,10 @@
  * sol; shade = top×0.45 corrido a azul violáceo; down = top×0.88 frío, la
  * vertiente a contraluz; up = top×1.12 cálido, el destello) y pegados como
  * literales para que el guard de colores los vea. No calcular colores en runtime.
+ * Los materiales de ciudad y costa (`office` en adelante) usan otra regla por
+ * canal RGB: `lit = top × (0.82, 0.74, 0.62)`, `shade = top × (0.40, 0.42, 0.60)`,
+ * `up = top × (1.16, 1.12, 1.02)`, `down = top × (0.86, 0.88, 0.94)`, generados
+ * con un script y pegados también como literales.
  */
 export const ISO_TONES = {
   slab:      { top: 0x9a7f62, lit: 0x81613e, shade: 0x3d3942, up: 0xb89268, down: 0x82705e },
@@ -20,6 +24,16 @@ export const ISO_TONES = {
   sand:      { top: 0xa88f6a, lit: 0x8c6d45, shade: 0x444046, up: 0xc8a471, down: 0x8e7e65 },
   hull:      { top: 0x6e3323, lit: 0x60270f, shade: 0x2a1726, up: 0x873d21, down: 0x5b2d27 },
   deck:      { top: 0x9c7f5a, lit: 0x836138, shade: 0x3e393f, up: 0xbb925f, down: 0x837057 },
+  // Resume: ciudad de oficinas (gris violeta frío contra el ocre cálido del astillero)
+  office:    { top: 0x8a8296, lit: 0x71605d, shade: 0x37375a, up: 0xa09299, down: 0x77728d },
+  officeDark:{ top: 0x5e586c, lit: 0x4d4143, shade: 0x262541, up: 0x6d636e, down: 0x514d66 },
+  glass:     { top: 0x2e3a4e, lit: 0x262b30, shade: 0x12182f, up: 0x354150, down: 0x283349 },
+  asphalt:   { top: 0x45434d, lit: 0x393230, shade: 0x1c1c2e, up: 0x504b4f, down: 0x3b3b48 },
+  paving:    { top: 0x8f8a84, lit: 0x756652, shade: 0x393a4f, up: 0xa69b87, down: 0x7b797c },
+  plaza:     { top: 0x7c767e, lit: 0x66574e, shade: 0x32324c, up: 0x908481, down: 0x6b6876 },
+  // Blog: faro y espuma
+  whitewash: { top: 0xd6cfbf, lit: 0xaf9976, shade: 0x565773, up: 0xf8e8c3, down: 0xb8b6b4 },
+  foam:      { top: 0xc4d3d6, lit: 0xa19c85, shade: 0x4e5980, up: 0xe3ecda, down: 0xa9bac9 },
 } as const;
 
 export const ISO_COLORS = {
@@ -28,11 +42,18 @@ export const ISO_COLORS = {
   cyan: 0x7cf5ff,
   cyanMid: 0x27b3c9,
   cyanBleed: 0x134a52,
+  amber: 0xffc457,
+  amberMid: 0xd08a1e,
+  amberBleed: 0x5a3d14,
+  magenta: 0xff5ee0,
+  magentaMid: 0xc42a9d,
+  magentaBleed: 0x54173f,
 } as const;
 
 export type Material = keyof typeof ISO_TONES;
 export type Tone = "shade" | "lit" | "down" | "top" | "up";
-export type AccentColor = "cyan" | "cyanMid" | "cyanBleed";
+export type AccentColor = Exclude<keyof typeof ISO_COLORS, "shadow" | "sky">;
+export const ACCENT_COLORS: readonly AccentColor[] = ["cyan", "cyanMid", "cyanBleed", "amber", "amberMid", "amberBleed", "magenta", "magentaMid", "magentaBleed"];
 
 /** De oscuro a claro. `stepTone` se mueve por acá. */
 export const TONE_LADDER: readonly Tone[] = ["shade", "lit", "down", "top", "up"];
