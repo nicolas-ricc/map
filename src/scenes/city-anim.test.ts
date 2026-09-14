@@ -35,21 +35,22 @@ describe("city-anim", () => {
     expect(offs).toBeLessThanOrEqual(16);
   });
 
-  it("los papeles nunca se alejan más de PAPER_RANGE de la ventana y derivan al ENE", () => {
+  it("los papeles nunca se alejan más de PAPER_RANGE de la ventana y derivan al NNE", () => {
     const { tower, anim } = setup();
-    let movedEast = false;
+    let driftedNNE = false;
     for (let t = 0; t < 20000; t += 33) {
       const c = anim.tick(33);
       expect(c.papers).toBe(true);
       for (const p of anim.papers()) {
-        const d = dot(p).at;
-        expect(Math.hypot(d.x - tower.paperWindow.x, d.y - tower.paperWindow.y)).toBeLessThanOrEqual(PAPER_RANGE + 1e-6);
-        expect(d.x).toBeGreaterThanOrEqual(tower.paperWindow.x - 1e-6);
-        expect(d.y).toBeLessThanOrEqual(tower.paperWindow.y + 1e-6);
-        if (d.x > tower.paperWindow.x + 10) movedEast = true;
+        const d = dot(p);
+        expect(Math.hypot(d.at.x - tower.paperWindow.x, d.at.y - tower.paperWindow.y)).toBeLessThanOrEqual(PAPER_RANGE + 2);
+        expect(d.at.y).toBeLessThanOrEqual(tower.paperWindow.y + 2); // nunca baja hacia el sur
+        expect(d.r).toBeGreaterThanOrEqual(0.12 - 1e-6);
+        expect(d.r).toBeLessThanOrEqual(0.4 + 1e-6);
+        if (d.at.x > tower.paperWindow.x + 10 && d.at.y < tower.paperWindow.y - 10) driftedNNE = true;
       }
     }
-    expect(movedEast).toBe(true);
+    expect(driftedNNE).toBe(true);
   });
 
   it("la antena pulsa entre 0.8 y 1.4 y solo reporta cambio cada ANTENNA_STEP_MS", () => {

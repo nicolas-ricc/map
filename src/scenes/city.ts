@@ -134,6 +134,12 @@ function block(solids: Solid[], ground: Solid[], rng: Rng, b: Block, maxH: numbe
 /** Ruling: frente a la torre (fila sur, x 96..162) nada supera 10 para que sus ventanas encendidas no floten sobre otro edificio. */
 const maxHeightFor = (b: Block): number => (b.row === 3 && b.x >= 96 && b.x + b.w <= 162 ? 10 : MAX_BUILDING_H);
 
+/** Charco de luz: octógono plano a ras del piso, que proyectado se ve como una elipse achatada. */
+function puddle(x: number, y: number, r = 2.5): Accent {
+  const pts = Array.from({ length: 8 }, (_, i) => { const a = ((i + 0.5) / 8) * Math.PI * 2; return v3(x + r * Math.cos(a), y + r * Math.sin(a), 0.12); });
+  return { kind: "poly", pts, color: "amberBleed", alpha: 0.55 };
+}
+
 // ---------------------------------------------------------------- plaza y torre
 
 function plazaAndTower(solids: Solid[], ground: Solid[], accents: Accent[], rng: Rng): CityScene["tower"] {
@@ -157,8 +163,10 @@ function plazaAndTower(solids: Solid[], ground: Solid[], accents: Accent[], rng:
   const litWindows = facadeAccents(walls, facade, "amber");
   const east = walls.find((f) => f.normal.x > 0.5)!;
   const paperWindow = centroid(windowPatches(east, facade, facade.litFloor!)[facade.cols - 1]!);
-  // derrame de luz en la plaza, bancos y faroles
-  for (const [x, y] of [[TOWER.x - 2.5, TOWER.y - 1.5], [TOWER.x + TOWER.w + 2.5, TOWER.y - 1.5], [TOWER.x + TOWER.w + 2.5, TOWER.y + TOWER.d + 1.5], [TOWER.x - 2.5, TOWER.y + TOWER.d + 1.5]] as const) accents.push({ kind: "dot", at: v3(x, y, 0.1), r: 3, color: "amberBleed" });
+  // derrame de luz: charcos planos sobre las baldosas, solo en la franja este de
+  // la plaza (entre la pared este de la torre y el cordón), que es la parte que
+  // la cámara ve libre de paredes, techos y árboles.
+  for (const [x, y] of [[TOWER.x + TOWER.w + 8, TOWER.y + 1.5], [TOWER.x + TOWER.w + 8, TOWER.y + 8]] as const) accents.push(puddle(x, y));
   for (const [x, y] of [[PLAZA.x + 4, PLAZA.y + 3], [PLAZA.x + PLAZA.w - 6, PLAZA.y + 3], [PLAZA.x + 4, PLAZA.y + PLAZA.d - 3.6], [PLAZA.x + PLAZA.w - 6, PLAZA.y + PLAZA.d - 3.6]] as const) solids.push(prism(x, y, 0.05, 2, 0.6, 0.5, "paving"));
   lamp(solids, accents, PLAZA.x + 2, PLAZA.y + PLAZA.d / 2, 0.05);
   lamp(solids, accents, PLAZA.x + PLAZA.w - 2.6, PLAZA.y + PLAZA.d / 2, 0.05);
