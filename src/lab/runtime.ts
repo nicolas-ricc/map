@@ -12,7 +12,7 @@ const KEY_ZONE: Record<string, WorldZone | "all"> = { "0": "all", "1": "portfoli
 
 /**
  * Arma las capas de una escena del mundo y corre sus animadores. Orden, de
- * abajo hacia arriba: suelo, agua (río, mar, orilla y capas de agua animadas),
+ * abajo hacia arriba: agua (río, mar, orilla y capas animadas), suelo,
  * sombras y sólidos estáticos, un par sombra/sólido por capa animada, acentos
  * estáticos y una Graphics por capa de acentos animada.
  */
@@ -30,7 +30,7 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
   gShadow.alpha = SHADOW_ALPHA;
   gAccents.blendMode = "add";
   const waterSlot = new Container(), solidSlot = new Container(), accentSlot = new Container();
-  world.addChild(gGround, waterSlot, gShadow, gSolid, solidSlot, gAccents, accentSlot);
+  world.addChild(waterSlot, gGround, gShadow, gSolid, solidSlot, gAccents, accentSlot);
 
   const { terrain } = scene;
   const staticItems = buildRenderList([...terrain.ground, ...scene.ground, ...scene.solids]);

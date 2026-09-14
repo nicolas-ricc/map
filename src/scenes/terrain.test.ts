@@ -25,7 +25,8 @@ describe("clasificación", () => {
     expect(seaTerrainAt(404, 118)).toBe("reef");
     expect(seaTerrainAt(350, 60)).toBe("shore");           // pegado a la costa del astillero
     expect(seaTerrainAt(500, 200)).toBe("sea");
-    expect(seaTerrainAt(350, 10)).toBe("sea");             // la bahía abre directo al mar
+    expect(seaTerrainAt(350, 10)).toBe("shore");           // frente a la bahía hay bajío
+    expect(seaTerrainAt(370, 10)).toBe("sea");
   });
   it("ciudad: cinturón de selva junto al astillero, río y pavimento", () => {
     expect(terrainAt(50, ZONE_SPLIT_Y + 4)).toBe("jungle");

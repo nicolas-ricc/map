@@ -17,6 +17,9 @@ const WATER_Z = -1;
 const JUNGLE_BELT = 12;   // a cada lado de ZONE_SPLIT_Y
 const SHORE_W = 12;       // agua clara a esta distancia de la tierra
 const REEF_W = 6;
+const SHORE_WOBBLE = 5;   // amplitud del ondulado del borde exterior de la orilla
+/** Ancho de la orilla frente a la costa este, ondulado y determinístico (sin rng: la clasificación es pura). */
+const shoreWidth = (y: number): number => SHORE_W + SHORE_WOBBLE * Math.sin(y / 11) + 2 * Math.sin(y / 4.3);
 
 export interface TerrainMesh { ground: Solid[]; river: Solid; sea: Solid; shore: Solid }
 
@@ -51,8 +54,10 @@ export function seaTerrainAt(x: number, y: number): Terrain {
   const d = distToHeadland(x, y);
   if (d < REEF_W) return "reef";
   if (d < SHORE_W) return "shore";
-  // costa del astillero y de la ciudad: agua clara pegada a la tierra, salvo frente a la bahía
-  if (x < ZONE_SPLIT_X + SHORE_W && y >= 24) return "shore";
+  // costa del astillero y de la ciudad: agua clara pegada a la tierra. Sigue frente a la bahía
+  // (la desembocadura es un bajío) y su borde exterior ondula para que la costa recta del
+  // límite de zona no se lea como una raya.
+  if (x < ZONE_SPLIT_X + shoreWidth(y)) return "shore";
   return "sea";
 }
 

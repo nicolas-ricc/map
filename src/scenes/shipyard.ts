@@ -226,7 +226,7 @@ function jungle(out: Solid[], rng: Rng): void {
   cluster(3, 39, 139, 143, 4);    // SO, al sur de las vías
   cluster(332, 340, 26, 94, 6);   // borde este, entre la bahía y la punta
   cluster(332, 340, 136, 143, 2); // al sur de la punta
-  cluster(301, 340, 127, 143, 6); // al sur de los galpones (ruling: 301, no 300: el test exige at.x > 300)
+  cluster(301, 328, 127, 143, 6); // al sur de los galpones, sin pisar la base de la punta (x ≥ 330)
 }
 
 function lamps(out: Solid[], accents: Accent[]): void {
