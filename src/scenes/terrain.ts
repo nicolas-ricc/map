@@ -1,9 +1,8 @@
 import { v3 } from "../iso/geometry";
 import type { Solid, Tri } from "../iso/solids";
-import { WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y, distToHeadland, inHeadland, inMouth, worldZoneAt, type WorldZone } from "../map/geo";
+import { BOTTOM, CELL, DOCK, QUAY_X, WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y, distToHeadland, eastBank, inHeadland, inMouth, worldZoneAt, type WorldZone } from "../map/geo";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { BOTTOM, DOCK, QUAY_X, eastBank } from "./shipyard";
 
 /**
  * Terreno de todo el mundo: una sola grilla facetada de CELL, clasificada
@@ -12,7 +11,7 @@ import { BOTTOM, DOCK, QUAY_X, eastBank } from "./shipyard";
  */
 export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "paving" | "sea" | "shore" | "headland" | "reef";
 
-export const CELL = 6;
+export { CELL };
 const WATER_Z = -1;
 const JUNGLE_BELT = 12;   // solo del lado ciudad de ZONE_SPLIT_Y; la franja del astillero sale de y >= BOTTOM en shipyardTerrainAt
 const SHORE_W = 12;       // agua clara a esta distancia de la tierra

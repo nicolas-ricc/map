@@ -94,3 +94,15 @@ export function pointInPolygon(x: number, y: number, polygon: number[]): boolean
   }
   return inside;
 }
+
+// ---------------------------------------------------------------- astillero (lo comparte el terreno)
+
+/** Lado de la grilla de terreno. Vive acá para que city-grid.ts y terrain.ts lo compartan sin importarse. */
+export const CELL = 6;
+// Ruling del controller: 198 (no 200) porque es múltiplo de CELL = 6; con 200
+// la celda 198..204 tiene centro 201 (agua) pero vértices en x=198, rompiendo
+// la propiedad "todo el agua tiene x >= QUAY_X".
+export const QUAY_X = 198, QUAY_W = 4;
+export const BOTTOM = 142;
+export const DOCK = { x: 120, y: 6, w: 72, d: 24, depth: 6 } as const; // alineado a CELL
+export const eastBank = (y: number): number => riverCenter(y) + RIVER_HALF;
