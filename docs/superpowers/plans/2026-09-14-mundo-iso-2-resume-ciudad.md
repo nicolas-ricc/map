@@ -206,7 +206,7 @@ git commit -m "refactor(scenes): constantes del astillero en geo.ts y selva comp
   - `BRIDGE = { x0: 192, x1: 276, y0: 207, y1: 217, z: 1.2, deckH: 0.6 }`, `MALECON = { x0: 334, x1: 344, y0: 158, y1: 266, z: 0.6 }`
   - `COLLAPSED: Rect = { x: 280, y: 242, w: 24, d: 18 }`
   - `CRATERS: readonly { x: number; y: number; r: number }[] = [{ x: 60, y: 185, r: 5 }, { x: 150, y: 239, r: 6 }, { x: 307, y: 224, r: 5 }]`
-  - `ESTUARY_FLARE = 0.35`, `estuaryEast(y: number): number`
+  - `ESTUARY_FLARE = 0.35`, `estuaryEast(y: number): number`, `estuaryReaches(x: number): number` (la inversa: a qué y el estuario llega a x)
   - `type BlockKind = "block" | "plaza" | "collapsed"`, `interface Block extends Rect { bank: "west" | "east"; row: number; kind: BlockKind }`
   - `blocks(): Block[]`, `inCrater(x: number, y: number): boolean`, `inBlock(x: number, y: number): boolean`
 
@@ -217,7 +217,7 @@ git commit -m "refactor(scenes): constantes del astillero en geo.ts y selva comp
 ```ts
 import { describe, expect, it } from "vitest";
 import { QUAY_X, ZONE_SPLIT_X, ZONE_SPLIT_Y } from "../map/geo";
-import { AVENUE, BLOCK_D, BLOCK_W, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_RING, MALECON, PLAZA, ROWS, STREET, TOWER, WEST_QUAY, blocks, estuaryEast, inBlock, inCrater } from "./city-grid";
+import { AVENUE, BLOCK_D, BLOCK_W, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_RING, MALECON, PLAZA, ROWS, STREET, TOWER, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inBlock, inCrater } from "./city-grid";
 
 const overlaps = (a: { x: number; y: number; w: number; d: number }, b: { x: number; y: number; w: number; d: number }) =>
   a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.d && b.y < a.y + a.d;
@@ -287,6 +287,8 @@ describe("city-grid", () => {
     expect(estuaryEast(ZONE_SPLIT_Y)).toBeLessThan(QUAY_X + 60);
     expect(estuaryEast(260) - estuaryEast(ZONE_SPLIT_Y)).toBeCloseTo((260 - ZONE_SPLIT_Y) * 0.35, 6);
     expect(estuaryEast(270)).toBeLessThan(ZONE_SPLIT_X - 40);
+    expect(estuaryReaches(estuaryEast(240))).toBeCloseTo(240, 6);            // inversa
+    expect(estuaryReaches(EAST_RING.x0 + STREET / 2)).toBeGreaterThan(AVENUE.y1); // el eje del anillo pisa agua recién al sur de la avenida
     expect(BLOCK_W).toBe(24);
   });
 });
@@ -338,6 +340,8 @@ export const CRATERS: readonly { x: number; y: number; r: number }[] = [{ x: 60,
 const SEAM_CY = Math.floor(ZONE_SPLIT_Y / CELL) * CELL - CELL / 2;
 export const ESTUARY_FLARE = 0.35; // cuánto se abre la ribera este por unidad hacia el sur
 export const estuaryEast = (y: number): number => eastBank(SEAM_CY) + Math.max(0, y - ZONE_SPLIT_Y) * ESTUARY_FLARE;
+/** Inversa de estuaryEast al sur de la costura: a qué y la ribera este llega a x (menor que ZONE_SPLIT_Y si nunca lo alcanza al norte). */
+export const estuaryReaches = (x: number): number => ZONE_SPLIT_Y + (x - eastBank(SEAM_CY)) / ESTUARY_FLARE;
 
 export type BlockKind = "block" | "plaza" | "collapsed";
 export interface Block extends Rect { bank: "west" | "east"; row: number; kind: BlockKind }
@@ -799,12 +803,12 @@ git commit -m "feat(scenes): ciudad de Resume, primera tanda: zócalos, manzanas
 - Modify: `src/scenes/city.test.ts`
 
 **Interfaces:**
-- Consumes: `AVENUE`, `BOULEVARD`, `BRIDGE`, `CITY_EDGE`, `COLLAPSED`, `CRATERS`, `EAST_COLS`, `EAST_RING`, `MALECON`, `ROWS`, `STREET`, `WEST_COLS`, `WEST_QUAY`, `estuaryEast`, `inCrater` de `city-grid.ts`; `QUAY_X`, `ZONE_SPLIT_Y` de `geo.ts`.
+- Consumes: `AVENUE`, `BOULEVARD`, `BRIDGE`, `CITY_EDGE`, `COLLAPSED`, `CRATERS`, `EAST_COLS`, `EAST_RING`, `MALECON`, `ROWS`, `STREET`, `WEST_COLS`, `WEST_QUAY`, `estuaryEast`, `estuaryReaches`, `inCrater` de `city-grid.ts`; `QUAY_X`, `ZONE_SPLIT_Y` de `geo.ts`.
 - Produces: `CityScene` sin cambios de forma; `ground` suma los `strip` de carriles y sendas.
 
 - [ ] **Step 1: Agregar tests**
 
-En `src/scenes/city.test.ts` volver el umbral de acentos a `> 6`, agregar `MALECON` al import de `./city-grid` y agregar dentro del `describe("city")`:
+En `src/scenes/city.test.ts` volver el umbral de acentos a `> 6`, agregar `MALECON` y `estuaryEast` al import de `./city-grid`, `QUAY_X` al de `../map/geo`, y agregar dentro del `describe("city")`:
 
 ```ts
   it("avenida: boulevard, carriles, sendas y semáforos; faroles solo en avenida, puente, plaza y malecón", () => {
@@ -812,6 +816,8 @@ En `src/scenes/city.test.ts` volver el umbral de acentos a `> 6`, agregar `MALEC
     const strips = s.ground.filter((g) => g.kind === "strip");
     expect(strips.length).toBeGreaterThan(60);
     expect(strips.every((g) => g.kind === "strip" && g.mat === "paving" && g.z > 0 && g.z < 0.1)).toBe(true);
+    // ninguna raya pisa el estuario (el suelo se dibuja encima del agua): el anillo este se corta donde entra el agua
+    for (const g of strips) if (g.kind === "strip") for (const p of g.path) expect(p.x <= QUAY_X || p.x > estuaryEast(p.y)).toBe(true);
     const boulevard = s.solids.filter((x) => x.kind === "prism" && x.mat === "leafDark");
     expect(boulevard.length).toBeGreaterThanOrEqual(8);
     expect(boulevard.every((x) => bounds(x).min.y >= 210 && bounds(x).max.y <= 214)).toBe(true);
@@ -892,7 +898,7 @@ Expected: FAIL en los seis tests nuevos.
 Ampliar el import de `city-grid`:
 
 ```ts
-import { AVENUE, BLOCK_D, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_COLS, EAST_RING, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, WEST_COLS, WEST_QUAY, blocks, estuaryEast, inCrater, type Block, type Rect } from "./city-grid";
+import { AVENUE, BLOCK_D, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_COLS, EAST_RING, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, WEST_COLS, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inCrater, type Block, type Rect } from "./city-grid";
 import { QUAY_X, ZONE_SPLIT_Y } from "../map/geo";
 ```
 
@@ -914,12 +920,14 @@ function streets(ground: Solid[], solids: Solid[], accents: Accent[]): void {
   const eastX = [EAST_RING.x0 + STREET / 2, EAST_COLS[0] + BLOCK_W + STREET / 2]; // 273, 307
   for (const cx of [...westX, ...eastX]) {
     dashes(ground, { x: cx, y: CITY_EDGE.north }, { x: cx, y: AVENUE.y0 });
-    dashes(ground, { x: cx, y: AVENUE.y1 }, { x: cx, y: CITY_EDGE.south });
+    // al sur de la avenida el anillo este se corta donde entra el estuario: el suelo se dibuja encima del agua
+    const yEnd = cx > QUAY_X ? Math.min(CITY_EDGE.south, estuaryReaches(cx) - 1) : CITY_EDGE.south;
+    if (yEnd > AVENUE.y1 + 3) dashes(ground, { x: cx, y: AVENUE.y1 }, { x: cx, y: yEnd });
   }
   const rowsY = [CITY_EDGE.north + STREET / 2, ...ROWS.slice(1).map((y) => y - STREET / 2), CITY_EDGE.south - 2].filter((y) => y < AVENUE.y0 || y > AVENUE.y1); // 161, 185, 239, 262 (la calle sur es de 4)
   for (const cy of rowsY) {
     dashes(ground, { x: CITY_EDGE.west, y: cy }, { x: WEST_QUAY.x0, y: cy });
-    dashes(ground, { x: EAST_RING.x0, y: cy }, { x: MALECON.x0, y: cy });
+    dashes(ground, { x: Math.max(EAST_RING.x0, Math.ceil(estuaryEast(cy)) + 1), y: cy }, { x: MALECON.x0, y: cy }); // arranca en tierra
   }
   // avenida: doble línea continua a cada lado del boulevard, sendas en cada cruce, boulevard por tramo de manzana
   for (const [x0, x1] of [[CITY_EDGE.west, WEST_QUAY.x0], [EAST_RING.x1, MALECON.x0]] as const) {
