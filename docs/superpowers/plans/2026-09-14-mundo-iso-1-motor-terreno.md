@@ -10,6 +10,52 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-14-mundo-isometrico-design.md`
 
+## Estado: implementado (2026-09-14, PR #2)
+
+Las once tasks están hechas, revisadas y mergeadas en `main` vía
+https://github.com/nicolas-ricc/map/pull/2 (merge `8118443`). No queda nada
+de este plan por ejecutar; una sesión nueva debe empezar por el plan 2
+(Resume) o el 3 (Blog). Antes de escribirlos, leer "Rulings de la parte 1" al
+final de la sección 4 de la spec: hay cinco decisiones que corrigen el texto
+original.
+
+**Lo que se hizo distinto del plan:**
+
+- Task 7: `cityTerrainAt` no usa el río angosto `riverCenter ± RIVER_HALF`
+  (fallaba sus propios tests y rompía la continuidad del agua en y = 146).
+  Es un estuario que hereda el ancho del canal del astillero en la costura y
+  se abre hacia el sur (`ESTUARY_FLARE` en `src/scenes/terrain.ts`).
+- Task 10b (no estaba en el plan; commit `2b7fd1c`): el agua se dibuja
+  **debajo** del suelo en `src/lab/runtime.ts` (el plan la ponía encima y el
+  mar tapaba la punta); la orilla sigue frente a la bahía con borde ondulado
+  (`shoreWidth`); la selva del sur de los galpones no pisa la punta.
+- Task 10c (no estaba en el plan; commit `18d4c4a`): la punta nace a z ≈ 1
+  junto al muelle y sube hasta z ≈ 7 desde x ≈ 355 (`headlandZ`), porque el
+  suelo no se ordena en profundidad con los sólidos y a z 6 los galpones
+  quedaban incrustados en la roca.
+- Cierre (commits `4390e26`, `fd36260`): tests de invariantes de costura,
+  estuario y `QUAY_X` que la revisión final pidió.
+- Polígonos estáticos del mundo: 5.346 (el plan estimaba ≈ 12.000); primer
+  dibujo ≈ 30–60 ms.
+
+**Pendiente, a propósito, para los planes siguientes:**
+
+- Plan 2 (Resume): mover `DOCK`, `QUAY_X`, `BOTTOM` y `eastBank` de
+  `shipyard.ts` a `geo.ts` para que `terrain.ts` deje de importar una escena.
+  Contar con el estuario (agua hasta x ≈ 284 en el borde sur). La costura
+  Resume/Blog en x = 344 es hoy una diagonal recta de pavimento contra mar:
+  ahí va el malecón.
+- Plan 3 (Blog): el mar es estático (solo el río ondula); la bahía se
+  encuentra con el mar a través de la orilla, sin animación.
+- Menores diferidos por las revisiones: las sombras se proyectan a z = 0 y
+  cruzan planas la roca alta de la punta; `opts.reducedMotion` no se usa
+  dentro de `bootLab`; `portfolio.ts` y `world.ts` son casi iguales (un
+  helper cuando haya tercera página); `zoneFrame` encuadra pero no recorta.
+
+**Cómo verificar el estado:** `npm test` (239 tests), `npm run typecheck`,
+`npm run build && ls dist | grep -c lab` → `0`; `npm run dev` y abrir
+`/map/lab/world.html` (teclas 0..3).
+
 ## Global Constraints
 
 - Motor **PixiJS 8**; nada de Three.js ni dependencias nuevas. `src/iso/` y `src/scenes/` **no importan `pixi.js`** (`pixi-free.test.ts` lo verifica).
@@ -59,7 +105,7 @@ Ruling sobre la rampa: la spec dice "`ramp` `dir: "n"` tiene el borde alto al no
 **Interfaces:**
 - Produces: `ISO_TONES` con 22 materiales; `ISO_COLORS` con `amber`, `amberMid`, `amberBleed`, `magenta`, `magentaMid`, `magentaBleed`; `type AccentColor` ampliado; `ACCENT_COLORS: readonly AccentColor[]`.
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 Agregar al final de `describe("paleta isométrica", ...)` en `src/map/palette-iso.test.ts`:
 
@@ -84,12 +130,12 @@ Agregar al final de `describe("paleta isométrica", ...)` en `src/map/palette-is
 
 Y en el import: `import { ACCENT_COLORS, ISO_COLORS, ISO_TONES, TONE_LADDER, allIsoColors, stepTone, toneColor, type Material } from "./palette-iso";`
 
-- [ ] **Step 2: Correr el test para verificar que falla**
+- [x] **Step 2: Correr el test para verificar que falla**
 
 Run: `npx vitest run src/map/palette-iso.test.ts`
 Expected: FAIL (`ISO_TONES.office` undefined; `ACCENT_COLORS` no exportado).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 En `src/map/palette-iso.ts`, agregar dentro de `ISO_TONES` (después de `deck`):
 
@@ -129,12 +175,12 @@ export const ACCENT_COLORS: readonly AccentColor[] = ["cyan", "cyanMid", "cyanBl
 
 Actualizar el comentario de cabecera: la regla de tonos de los nuevos materiales es `lit = top × (0.82, 0.74, 0.62)`, `shade = top × (0.40, 0.42, 0.60)`, `up = top × (1.16, 1.12, 1.02)`, `down = top × (0.86, 0.88, 0.94)` por canal RGB, generados con un script y pegados como literales.
 
-- [ ] **Step 4: Correr los tests**
+- [x] **Step 4: Correr los tests**
 
 Run: `npx vitest run src/map && npm run typecheck`
 Expected: PASS (los tests de escalera y sombra fría cubren también los materiales nuevos).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/map/palette-iso.ts src/map/palette-iso.test.ts
@@ -152,7 +198,7 @@ git commit -m "feat(palette): materiales de ciudad y costa, tríadas ámbar y ma
 **Interfaces:**
 - Produces: `Solid` suma `{ kind: "poly"; footprint: Vec2[]; z: number; h: number; mat: Material }`; `ramp.dir: "e" | "w" | "n" | "s"`.
 
-- [ ] **Step 1: Escribir los tests que fallan**
+- [x] **Step 1: Escribir los tests que fallan**
 
 Agregar dentro de `describe("tessellate", ...)` en `src/iso/solids.test.ts`:
 
@@ -181,12 +227,12 @@ Agregar dentro de `describe("tessellate", ...)` en `src/iso/solids.test.ts`:
   });
 ```
 
-- [ ] **Step 2: Correr para verificar que fallan**
+- [x] **Step 2: Correr para verificar que fallan**
 
 Run: `npx vitest run src/iso/solids.test.ts`
 Expected: FAIL (error de tipos en `kind: "poly"` y `dir: "s"`; `tessellateAll` no cubre `poly`).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 En `src/iso/solids.ts`:
 
@@ -240,12 +286,12 @@ En `tessellateAll`, agregar el caso:
     case "poly": return extrude(s.footprint, s.z, s.h, s.mat);
 ```
 
-- [ ] **Step 4: Correr los tests**
+- [x] **Step 4: Correr los tests**
 
 Run: `npx vitest run src/iso && npm run typecheck`
 Expected: PASS, incluido el test existente de rampa hacia el este.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/iso/solids.ts src/iso/solids.test.ts
@@ -273,7 +319,7 @@ git commit -m "feat(iso): sólido poly de huella libre y rampa en cuatro direcci
   ```
 - `drawAccents(g: Graphics, accents: Accent[]): void` en `draw.ts` dibuja ambos.
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 ```ts
 // src/iso/accent.test.ts
@@ -297,12 +343,12 @@ describe("accentItem", () => {
 });
 ```
 
-- [ ] **Step 2: Correr para verificar que falla**
+- [x] **Step 2: Correr para verificar que falla**
 
 Run: `npx vitest run src/iso/accent.test.ts`
 Expected: FAIL (módulo inexistente).
 
-- [ ] **Step 3: Implementar el módulo**
+- [x] **Step 3: Implementar el módulo**
 
 ```ts
 // src/iso/accent.ts
@@ -328,7 +374,7 @@ export function accentItem(a: Accent): AccentItem {
 }
 ```
 
-- [ ] **Step 4: Migrar la escena y el dibujo**
+- [x] **Step 4: Migrar la escena y el dibujo**
 
 En `src/scenes/shipyard.ts`:
 - Borrar `export interface Accent { at: Vec3; r: number; color: AccentColor }` y el import de `AccentColor`; agregar `import type { Accent } from "../iso/accent";`. En `shipyard-anim.ts`, cambiar el import de `Accent` para que venga de `../iso/accent` en vez de `./shipyard`.
@@ -365,12 +411,12 @@ export function drawAccents(g: Graphics, accents: Accent[]): void {
 
 Quitar de `draw.ts` los imports que quedaron sin uso (`project`, `ISO_COLORS`, `Accent` de shipyard). En `src/lab/draw.test.ts` borrar el `describe("accentCircle", ...)` y su import.
 
-- [ ] **Step 5: Correr todo**
+- [x] **Step 5: Correr todo**
 
 Run: `npm test && npm run typecheck`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/iso/accent.ts src/iso/accent.test.ts src/scenes src/lab/draw.ts src/lab/draw.test.ts
@@ -397,7 +443,7 @@ git commit -m "feat(iso): acentos como puntos o polígonos en el motor, con las 
   ```
 - `prism` acepta `facade?: Facade` (no aplica a `roof: "gable"`).
 
-- [ ] **Step 1: Escribir los tests que fallan**
+- [x] **Step 1: Escribir los tests que fallan**
 
 ```ts
 // src/iso/facade.test.ts
@@ -481,12 +527,12 @@ describe("fachada", () => {
 });
 ```
 
-- [ ] **Step 2: Correr para verificar que fallan**
+- [x] **Step 2: Correr para verificar que fallan**
 
 Run: `npx vitest run src/iso/facade.test.ts`
 Expected: FAIL (módulo inexistente; `facade` no existe en `prism`).
 
-- [ ] **Step 3: Implementar `facade.ts`**
+- [x] **Step 3: Implementar `facade.ts`**
 
 ```ts
 // src/iso/facade.ts
@@ -553,7 +599,7 @@ export function facadeAccents(walls: Face[], f: Facade, color: AccentColor): Acc
 }
 ```
 
-- [ ] **Step 4: Enganchar en `solids.ts`**
+- [x] **Step 4: Enganchar en `solids.ts`**
 
 Agregar `import { facadeFaces, isWall, type Facade } from "./facade";` y en el tipo `prism`: `facade?: Facade`. Reemplazar el caso `prism` de `tessellateAll`:
 
@@ -570,12 +616,12 @@ Agregar `import { facadeFaces, isWall, type Facade } from "./facade";` y en el t
 
 (`facade.ts` importa solo tipos de `solids.ts`, así que el ciclo es de tipos y no de valores.)
 
-- [ ] **Step 5: Correr los tests**
+- [x] **Step 5: Correr los tests**
 
 Run: `npx vitest run src/iso && npm run typecheck`
 Expected: PASS. Los tests previos de prisma siguen pasando porque sin `facade` no cambia nada.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/iso/facade.ts src/iso/facade.test.ts src/iso/solids.ts
@@ -593,7 +639,7 @@ git commit -m "feat(iso): fachadas procedurales con ventanas, losas, planta baja
 **Interfaces:**
 - Produces: `SHADOW_MAX_H = 18`; `shadowPoint` usa `min(max(z, 0), SHADOW_MAX_H)`.
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 En `describe("light", ...)`:
 
@@ -607,12 +653,12 @@ En `describe("light", ...)`:
 
 Import: `import { SHADOW_DIR, SHADOW_MAX_H, SHADOW_PER_UNIT, TO_SUN, shadeTone, shadowPoint, shadowPolygon } from "./light";`
 
-- [ ] **Step 2: Correr para verificar que falla**
+- [x] **Step 2: Correr para verificar que falla**
 
 Run: `npx vitest run src/iso/light.test.ts`
 Expected: FAIL (`SHADOW_MAX_H` no exportado).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 En `src/iso/light.ts`:
 
@@ -627,12 +673,12 @@ export function shadowPoint(p: Vec3): Vec2 {
 }
 ```
 
-- [ ] **Step 4: Correr los tests**
+- [x] **Step 4: Correr los tests**
 
 Run: `npm test`
 Expected: PASS (el astillero tiene chimeneas de 25 y grúa de 24: su sombra se acorta, ningún test depende de la longitud exacta).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/iso/light.ts src/iso/light.test.ts
@@ -661,7 +707,7 @@ git commit -m "feat(iso): tope de altura para las sombras"
   export function pointInPolygon(x: number, y: number, polygon: number[]): boolean; // mudado de zones.ts
   ```
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 ```ts
 // src/map/geo.test.ts
@@ -710,12 +756,12 @@ describe("mundo", () => {
 });
 ```
 
-- [ ] **Step 2: Correr para verificar que falla**
+- [x] **Step 2: Correr para verificar que falla**
 
 Run: `npx vitest run src/map/geo.test.ts`
 Expected: FAIL (exports inexistentes).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Agregar a `src/map/geo.ts`:
 
@@ -790,12 +836,12 @@ export function pointInPolygon(x: number, y: number, polygon: number[]): boolean
 
 En `src/map/zones.ts`: borrar la función `pointInPolygon` local, cambiar el import a `import { MAP_H, MAP_W, pointInPolygon, splitX } from "./geo";` y agregar `export { pointInPolygon };` (terrain.ts del mapa viejo la importa de `zones`).
 
-- [ ] **Step 4: Correr los tests**
+- [x] **Step 4: Correr los tests**
 
 Run: `npm test && npm run typecheck`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/map/geo.ts src/map/geo.test.ts src/map/zones.ts
@@ -825,7 +871,7 @@ git commit -m "feat(geo): mundo de 560x270, zonas, desembocadura al NE y punta d
 - `shipyard.ts` exporta además `DOCK`, `eastBank`; `Scene` pierde `water`; `shipyard(rng)` ya no llama a `buildTerrain`.
 - `createShipyardAnim(scene, water: Solid[], rng, opts)`: el agua que ondula viene del terreno (`[mesh.river]`).
 
-- [ ] **Step 1: Escribir los tests del terreno**
+- [x] **Step 1: Escribir los tests del terreno**
 
 ```ts
 // src/scenes/terrain.test.ts
@@ -905,12 +951,12 @@ describe("buildTerrain", () => {
 });
 ```
 
-- [ ] **Step 2: Correr para verificar que falla**
+- [x] **Step 2: Correr para verificar que falla**
 
 Run: `npx vitest run src/scenes/terrain.test.ts`
 Expected: FAIL (módulo inexistente).
 
-- [ ] **Step 3: Implementar `terrain.ts`**
+- [x] **Step 3: Implementar `terrain.ts`**
 
 ```ts
 // src/scenes/terrain.ts
@@ -1008,7 +1054,7 @@ export function buildTerrain(rng: Rng, zones?: readonly WorldZone[]): TerrainMes
 }
 ```
 
-- [ ] **Step 4: Sacar el terreno del astillero y abrir la desembocadura**
+- [x] **Step 4: Sacar el terreno del astillero y abrir la desembocadura**
 
 En `src/scenes/shipyard.ts`:
 
@@ -1074,16 +1120,16 @@ En `src/lab/portfolio.ts` (arreglo mínimo para que compile hasta la Task 9):
 
 con `import { buildTerrain } from "../scenes/terrain";`.
 
-- [ ] **Step 5: Correr todo**
+- [x] **Step 5: Correr todo**
 
 Run: `npm test && npm run typecheck`
 Expected: PASS. Si `terrain.test` "mar: la bahía abre directo al mar" falla, verificar que `seaTerrainAt` excluya `y < 24` de la orilla de la costa.
 
-- [ ] **Step 6: Verificación visual**
+- [x] **Step 6: Verificación visual**
 
 Run: `npx vite --port 5199 --strictPort` (en background) y `agent-browser open http://127.0.0.1:5199/map/lab/portfolio.html --viewport 1600x900`, luego `agent-browser screenshot <scratchpad>/t7.png`. Mirar la captura: el río abre en una bahía en la esquina NE, el tanque y la chatarra quedan al sur de los galpones, la base de la punta aparece como roca alta pegada al muelle de alistamiento (x 330..344).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/scenes src/lab/portfolio.ts
@@ -1112,7 +1158,7 @@ git commit -m "refactor(scenes): terreno compartido del mundo con desembocadura 
   export function shipyardAnimator(scene: Scene, water: Solid[], rng: Rng, opts: { reducedMotion: boolean }): Animator;
   ```
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 ```ts
 // src/scenes/shipyard-animator.test.ts
@@ -1155,12 +1201,12 @@ describe("shipyardAnimator", () => {
 });
 ```
 
-- [ ] **Step 2: Correr para verificar que falla**
+- [x] **Step 2: Correr para verificar que falla**
 
 Run: `npx vitest run src/scenes/shipyard-animator.test.ts`
 Expected: FAIL (módulos inexistentes).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 ```ts
 // src/scenes/animator.ts
@@ -1216,12 +1262,12 @@ export function shipyardAnimator(scene: Scene, water: Solid[], rng: Rng, opts: {
 }
 ```
 
-- [ ] **Step 4: Correr los tests**
+- [x] **Step 4: Correr los tests**
 
 Run: `npm test && npm run typecheck`
 Expected: PASS (incluido `pixi-free.test`: ninguno de los dos módulos importa Pixi).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/scenes/animator.ts src/scenes/shipyard-animator.ts src/scenes/shipyard-animator.test.ts
@@ -1251,7 +1297,7 @@ git commit -m "feat(scenes): contrato Animator puro y adaptador del astillero"
   export function world(seed: number, opts?: { zones?: readonly WorldZone[] }): WorldScene;
   ```
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 ```ts
 // src/scenes/world.test.ts
@@ -1300,12 +1346,12 @@ describe("world", () => {
 });
 ```
 
-- [ ] **Step 2: Correr para verificar que falla**
+- [x] **Step 2: Correr para verificar que falla**
 
 Run: `npx vitest run src/scenes/world.test.ts`
 Expected: FAIL (módulo inexistente).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 ```ts
 // src/scenes/world.ts
@@ -1360,12 +1406,12 @@ export function world(seed: number, opts: { zones?: readonly WorldZone[] } = {})
 }
 ```
 
-- [ ] **Step 4: Correr los tests**
+- [x] **Step 4: Correr los tests**
 
 Run: `npm test && npm run typecheck`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/scenes/world.ts src/scenes/world.test.ts
@@ -1391,7 +1437,7 @@ git commit -m "feat(scenes): escena del mundo con terreno compartido y seed por 
   ```
 - Teclas en toda página de lab: `0` mundo, `1` Portfolio, `2` Resume, `3` Blog.
 
-- [ ] **Step 1: Escribir el test de `zoneFrame` y de exclusión**
+- [x] **Step 1: Escribir el test de `zoneFrame` y de exclusión**
 
 Agregar a `src/lab/draw.test.ts`:
 
@@ -1445,12 +1491,12 @@ describe("laboratorio fuera de producción", () => {
 });
 ```
 
-- [ ] **Step 2: Correr para verificar que fallan**
+- [x] **Step 2: Correr para verificar que fallan**
 
 Run: `npx vitest run src/lab`
 Expected: FAIL (`zoneFrame` no existe; `lab/world.html` no existe).
 
-- [ ] **Step 3: `zoneFrame` en `draw.ts`**
+- [x] **Step 3: `zoneFrame` en `draw.ts`**
 
 ```ts
 import { WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y, type WorldZone } from "../map/geo";
@@ -1471,7 +1517,7 @@ export function zoneFrame(zone: WorldZone | "all"): RenderItem[] {
 
 (`color: 0` no es un literal de seis dígitos: el guard no lo detecta, y `fitTransform` no lo usa.)
 
-- [ ] **Step 4: Runtime común**
+- [x] **Step 4: Runtime común**
 
 ```ts
 // src/lab/runtime.ts
@@ -1567,7 +1613,7 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
 }
 ```
 
-- [ ] **Step 5: Entradas**
+- [x] **Step 5: Entradas**
 
 `src/lab/portfolio.ts` completo:
 
@@ -1624,14 +1670,14 @@ void bootLab(host, scene, animators, { reducedMotion, log: import.meta.env.DEV }
 </html>
 ```
 
-- [ ] **Step 6: Correr todo y mirar**
+- [x] **Step 6: Correr todo y mirar**
 
 Run: `npm test && npm run typecheck`
 Expected: PASS.
 
 Run (server en background): `npx vite --port 5199 --strictPort`, luego `agent-browser open http://127.0.0.1:5199/map/lab/world.html --viewport 1600x900` y `agent-browser screenshot <scratchpad>/t10-world.png`; después `agent-browser open http://127.0.0.1:5199/map/lab/portfolio.html --viewport 1600x900` y otra captura. Mirar: en el mundo se ve el astillero arriba a la izquierda, el cinturón de selva y el pavimento liso de la ciudad abajo, la bahía que abre al mar, la punta de roca con su arrecife y el mar en dos tonos hasta x = 560. La consola muestra `[lab] primer dibujo: N ms` con N < 150 y polígonos ≈ 12.000. Apretar `1` encuadra el astillero como lo hacía `portfolio.html`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lab lab/world.html
@@ -1645,7 +1691,7 @@ git commit -m "feat(lab): runtime común con Animator, página del mundo y encua
 **Files:**
 - Modify: `README.md`, `docs/superpowers/specs/2026-09-14-mundo-isometrico-design.md`, `docs/superpowers/specs/2026-09-13-portfolio-isometrico-design.md`
 
-- [ ] **Step 1: README**
+- [x] **Step 1: README**
 
 Reemplazar la sección "Laboratorio isométrico" por:
 
@@ -1661,18 +1707,18 @@ look, `src/map/palette-iso.ts`. Specs en `docs/superpowers/specs/`
 (`2026-09-13-portfolio-isometrico-design.md`, `2026-09-14-mundo-isometrico-design.md`).
 ```
 
-- [ ] **Step 2: Estado de las specs**
+- [x] **Step 2: Estado de las specs**
 
 En `2026-09-14-mundo-isometrico-design.md`, cambiar `**Estado:** aprobado en conversación, pendiente de plan de implementación` por `**Estado:** parte 1 (motor, terreno, runtime) implementada; Resume y Blog pendientes (planes 2 y 3)`. Agregar al final de la sección 3 (Motor) la nota de ruling: "`ramp.dir` es hacia dónde baja la rampa (convención existente): `dir: "n"` tiene el borde alto al sur."
 
 En `2026-09-13-portfolio-isometrico-design.md`, en la tabla de decisiones, fila "Alcance", agregar: "Desde la parte 1 del mundo, el terreno lo genera `src/scenes/terrain.ts` y el río desemboca en una bahía al NE."
 
-- [ ] **Step 3: Verificación final**
+- [x] **Step 3: Verificación final**
 
 Run: `npm test && npm run typecheck && npm run build && ls dist | grep -c lab`
 Expected: tests y typecheck verdes; el `grep -c` imprime `0`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md docs/superpowers/specs
