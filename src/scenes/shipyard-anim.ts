@@ -1,6 +1,7 @@
+import type { Accent } from "../iso/accent";
 import { v3, type Vec3 } from "../iso/geometry";
 import type { Rng } from "../map/seed";
-import type { Accent, Scene } from "./shipyard";
+import type { Scene } from "./shipyard";
 
 export interface AnimChanges { trolley: boolean; water: boolean; sparks: boolean }
 export interface ShipyardAnim {
@@ -44,7 +45,7 @@ export function createShipyardAnim(scene: Scene, rng: Rng, opts: { reducedMotion
   let spot: Vec3 | null = null;
   let live: Accent[] = [];
 
-  const trolleyLamp = (): Accent => ({ at: v3(scene.trolley.at.x + 2.5, scene.trolley.at.y + 2, scene.trolley.at.z - 1), r: 1.4, color: "cyanMid" });
+  const trolleyLamp = (): Accent => ({ kind: "dot", at: v3(scene.trolley.at.x + 2.5, scene.trolley.at.y + 2, scene.trolley.at.z - 1), r: 1.4, color: "cyanMid" });
 
   // Reutiliza `spot` (fijado al arrancar el evento) para las 3 frames del flicker:
   // solo el jitter alrededor se re-randomiza, la cuaderna elegida es la misma.
@@ -53,7 +54,7 @@ export function createShipyardAnim(scene: Scene, rng: Rng, opts: { reducedMotion
     live = [];
     const n = rng.int(4, 6);
     for (let i = 0; i < n; i++) {
-      live.push({ at: v3(s.x + (rng.next() * 2 - 1) * 1.5, s.y + (rng.next() * 2 - 1) * 1.5, s.z + rng.next() * 1.5), r: 0.6, color: rng.chance(0.6) ? "cyan" : "cyanMid" });
+      live.push({ kind: "dot", at: v3(s.x + (rng.next() * 2 - 1) * 1.5, s.y + (rng.next() * 2 - 1) * 1.5, s.z + rng.next() * 1.5), r: 0.6, color: rng.chance(0.6) ? "cyan" : "cyanMid" });
     }
   };
 

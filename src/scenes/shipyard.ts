@@ -1,7 +1,7 @@
+import type { Accent } from "../iso/accent";
 import { v3, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid, Tri } from "../iso/solids";
 import { RIVER_HALF, riverCenter } from "../map/geo";
-import type { AccentColor } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
 
 /**
@@ -12,7 +12,6 @@ import type { Rng } from "../map/seed";
  * del otro lado del río. Coordenadas en unidades del mapa viejo (1 u ≈ 1 px).
  */
 
-export interface Accent { at: Vec3; r: number; color: AccentColor }
 export interface Scene {
   ground: Solid[];
   water: Solid[];
@@ -250,7 +249,7 @@ function factory(out: Solid[], accents: Accent[]): void {
   for (const [x, y] of [[110, 101], [110, 111]] as const) out.push(prism(x, y, 0, 2, 3, 2, "rust")); // autoelevadores en los portones
   for (const [x, y] of [[112, 124], [174, 124], [QUAY_X - 1.4, 20], [QUAY_X - 1.4, 80], [QUAY_X - 1.4, 120]] as const) { // faroles
     out.push(prism(x, y, 0, 0.6, 0.6, 5, "steel"));
-    accents.push({ at: v3(x + 0.3, y + 0.3, 5), r: 1.2, color: "cyan" });
+    accents.push({ kind: "dot", at: v3(x + 0.3, y + 0.3, 5), r: 1.2, color: "cyan" });
   }
 }
 
@@ -281,7 +280,7 @@ function jungle(out: Solid[], rng: Rng): void {
 function lamps(out: Solid[], accents: Accent[]): void {
   for (const y of [12, 40, 68, 96, 124]) {
     out.push(prism(STREET_EDGE + 0.5, y, 0, 0.6, 0.6, 5, "steel"));
-    accents.push({ at: v3(STREET_EDGE + 0.8, y + 0.3, 5), r: 1.2, color: "cyan" });
+    accents.push({ kind: "dot", at: v3(STREET_EDGE + 0.8, y + 0.3, 5), r: 1.2, color: "cyan" });
   }
 }
 

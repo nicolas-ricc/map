@@ -56,7 +56,7 @@ describe("shipyard", () => {
   it("los acentos son cian y están a la altura de las paredes", () => {
     const s = scene();
     expect(s.accents.length).toBeGreaterThan(8);
-    expect(s.accents.every((a) => a.color.startsWith("cyan") && a.at.z > 0)).toBe(true);
+    expect(s.accents.every((a) => a.kind === "dot" && a.color.startsWith("cyan") && a.at.z > 0)).toBe(true);
   });
 
   it("todo el render usa colores del atlas", () => {
@@ -111,6 +111,6 @@ describe("shipyard parte 2", () => {
     const s = scene();
     const poles = s.solids.filter((x): x is Solid & { kind: "prism" } => x.kind === "prism" && x.w === 0.6 && x.h === 5 && x.at.x > STREET_EDGE && x.at.x < STREET_EDGE + 2);
     expect(poles.length).toBeGreaterThanOrEqual(5);
-    for (const p of poles) expect(s.accents.some((a) => Math.abs(a.at.x - p.at.x) < 1 && Math.abs(a.at.y - p.at.y) < 1 && a.at.z === 5)).toBe(true);
+    for (const p of poles) expect(s.accents.some((a) => a.kind === "dot" && Math.abs(a.at.x - p.at.x) < 1 && Math.abs(a.at.y - p.at.y) < 1 && a.at.z === 5)).toBe(true);
   });
 });

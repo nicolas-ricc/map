@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Accent } from "../iso/accent";
 import { createRng } from "../map/seed";
 import { shipyard } from "./shipyard";
 import { TROLLEY_CYCLE_MS, TROLLEY_PAUSE_MS, WATER_CYCLE_MS, createShipyardAnim } from "./shipyard-anim";
@@ -6,6 +7,12 @@ import { TROLLEY_CYCLE_MS, TROLLEY_PAUSE_MS, WATER_CYCLE_MS, createShipyardAnim 
 const setup = (reducedMotion = false) => {
   const scene = shipyard(createRng(7));
   return { scene, anim: createShipyardAnim(scene, createRng(3), { reducedMotion }) };
+};
+
+/** Los acentos de este escenario siempre son puntos; angosta el tipo para los tests. */
+const dot = (a: Accent): Extract<Accent, { kind: "dot" }> => {
+  if (a.kind !== "dot") throw new Error("se esperaba un acento de tipo dot");
+  return a;
 };
 
 describe("shipyard-anim", () => {
@@ -33,8 +40,8 @@ describe("shipyard-anim", () => {
     const { scene, anim } = setup();
     anim.tick(TROLLEY_CYCLE_MS / 2);
     expect(scene.trolley.at.y).toBeCloseTo(scene.trolleyRange[1], 3);
-    expect(anim.trolleyLamp().at.y).toBeCloseTo(scene.trolleyRange[1] + 2, 3);
-    expect(anim.trolleyLamp().at.z).toBeLessThan(scene.trolley.at.z);
+    expect(dot(anim.trolleyLamp()).at.y).toBeCloseTo(scene.trolleyRange[1] + 2, 3);
+    expect(dot(anim.trolleyLamp()).at.z).toBeLessThan(scene.trolley.at.z);
   });
 
   it("el agua cambia de tono por ondas y vuelve a fase tras un ciclo", () => {
@@ -61,13 +68,13 @@ describe("shipyard-anim", () => {
         seen++; run++; maxFrames = Math.max(maxFrames, run);
         expect(s.length).toBeGreaterThanOrEqual(4);
         expect(s.length).toBeLessThanOrEqual(6);
-        expect(scene.weldSpots.some((w) => Math.abs(w.x - s[0]!.at.x) < 3 && Math.abs(w.y - s[0]!.at.y) < 3)).toBe(true);
+        expect(scene.weldSpots.some((w) => Math.abs(w.x - dot(s[0]!).at.x) < 3 && Math.abs(w.y - dot(s[0]!).at.y) < 3)).toBe(true);
         if (run === 1) {
           // primera frame del evento: fija la cuaderna que todo el flicker debe respetar.
           // Se promedia la frame para cancelar el jitter y se toma la cuaderna más
           // cercana (no la primera que matchee un umbral, porque hay varias a <3u).
-          const cx = s.reduce((sum, a) => sum + a.at.x, 0) / s.length;
-          const cy = s.reduce((sum, a) => sum + a.at.y, 0) / s.length;
+          const cx = s.reduce((sum, a) => sum + dot(a).at.x, 0) / s.length;
+          const cy = s.reduce((sum, a) => sum + dot(a).at.y, 0) / s.length;
           runSpot = scene.weldSpots.reduce((best, w) => {
             const d = Math.hypot(w.x - cx, w.y - cy);
             return d < best.d ? { w, d } : best;
@@ -75,8 +82,8 @@ describe("shipyard-anim", () => {
         } else if (runSpot) {
           // frames siguientes del mismo evento: todas las chispas cerca de la MISMA cuaderna
           for (const a of s) {
-            expect(Math.abs(a.at.x - runSpot.x)).toBeLessThan(3);
-            expect(Math.abs(a.at.y - runSpot.y)).toBeLessThan(3);
+            expect(Math.abs(dot(a).at.x - runSpot.x)).toBeLessThan(3);
+            expect(Math.abs(dot(a).at.y - runSpot.y)).toBeLessThan(3);
           }
         }
       } else { run = 0; runSpot = null; }
