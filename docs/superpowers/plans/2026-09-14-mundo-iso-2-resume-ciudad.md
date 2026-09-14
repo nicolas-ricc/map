@@ -45,7 +45,8 @@
 
 **Desvíos respecto de la spec, decididos al planificar** (se documentan en la Task 8):
 
-- Columnas este en x 280 y 310 (no 276 y 306) y malecón en 334..344 (no 330..344): con 276 la manzana de la fila 218..236 quedaba a menos de una calle del agua (`estuaryEast(236) ≈ 272.5`). El cráter este pasa a (307, 224) para caer en la calle 304..310. El puente llega a x 276 (la calle del anillo este es 274..280).
+- Columnas este en x 280 y 310 (no 276 y 306) y malecón en 334..344 (no 330..344): con 276 la manzana de la fila 218..236 quedaba a menos de una calle del agua (`estuaryEast(236) ≈ 272.5`). El cráter este pasa a (307, 224) para caer en la calle 304..310. El puente llega a x 276, donde termina la calle del anillo este.
+- Anillo este en 270..276 (no 274..280) y borde sur de la ciudad en y 264 (no 266): los límites que clasifican terreno tienen que ser múltiplos de `CELL = 6`, porque `buildTerrain` clasifica cada celda por su centro (es el ruling de `QUAY_X` = 198 en `geo.ts`; con 274 la celda 270..276 salía selva encima de la calle). Quedan una vereda de 4 entre el anillo y la columna de x 280, y una calle sur de 4 (260..264).
 - La plaza no es un prisma: sus baldosas son un `ground` de `plaza` a nivel de calle (z 0.05) con `toneOffset`, rodeado por un cordón de cuatro prismas finos; la torre apoya a z 0. Motivo: un `ground` se dibuja antes que los sólidos, así que no puede pintarse sobre el techo de un prisma. Las manzanas devoradas usan el mismo esquema (`ground` de `leafDark` + losas de zócalo sueltas).
 - La cornisa no usa `toneOffset` (un prisma no lo tiene): se hace con el material contrario (`officeDark` sobre `office` y viceversa).
 - La escalera del malecón se abre hacia adentro (x 338..344) para no pisar la zona Blog.
@@ -200,7 +201,7 @@ git commit -m "refactor(scenes): constantes del astillero en geo.ts y selva comp
   - `BLOCK_W = 24`, `BLOCK_D = 18`, `STREET = 6`, `SIDEWALK = 1.5`
   - `WEST_COLS = [12, 42, 72, 102, 132, 162]`, `EAST_COLS = [280, 310]`, `ROWS = [164, 188, 218, 242]`
   - `AVENUE = { y0: 206, y1: 218 }`, `BOULEVARD = { y0: 210, y1: 214 }`
-  - `WEST_QUAY = { x0: 192, x1: 198 }`, `EAST_RING = { x0: 274, x1: 280 }`, `CITY_EDGE = { west: 12, north: 158, south: 266 }`
+  - `WEST_QUAY = { x0: 192, x1: 198 }`, `EAST_RING = { x0: 270, x1: 276 }`, `CITY_EDGE = { west: 12, north: 158, south: 264 }`
   - `PLAZA: Rect = { x: 102, y: 218, w: 54, d: 18 }`, `TOWER: Rect = { x: 121, y: 220, w: 16, d: 14 }`
   - `BRIDGE = { x0: 192, x1: 276, y0: 207, y1: 217, z: 1.2, deckH: 0.6 }`, `MALECON = { x0: 334, x1: 344, y0: 158, y1: 266, z: 0.6 }`
   - `COLLAPSED: Rect = { x: 280, y: 242, w: 24, d: 18 }`
@@ -242,7 +243,7 @@ describe("city-grid", () => {
     for (const b of blocks()) {
       expect(b.x).toBeGreaterThanOrEqual(CITY_EDGE.west);
       expect(b.y).toBeGreaterThanOrEqual(CITY_EDGE.north + STREET);
-      expect(b.y + b.d).toBeLessThanOrEqual(CITY_EDGE.south - STREET);
+      expect(b.y + b.d).toBeLessThanOrEqual(CITY_EDGE.south - 4); // la calle sur es de 4: el borde va alineado a CELL
       if (b.bank === "west") expect(b.x + b.w).toBeLessThanOrEqual(WEST_QUAY.x0 - STREET);
       else {
         expect(b.x + b.w).toBeLessThanOrEqual(MALECON.x0);
@@ -257,7 +258,7 @@ describe("city-grid", () => {
     expect(ROWS[1] + BLOCK_D).toBe(AVENUE.y0);
     expect(ROWS[2]).toBe(AVENUE.y1);
     expect(BRIDGE.x0).toBe(WEST_QUAY.x0);
-    expect(BRIDGE.x1).toBe(EAST_RING.x1 - STREET);
+    expect(BRIDGE.x1).toBe(EAST_RING.x1);
     expect(BRIDGE.y0).toBeGreaterThanOrEqual(AVENUE.y0);
     expect(BRIDGE.y1).toBeLessThanOrEqual(AVENUE.y1);
     expect(estuaryEast(BRIDGE.y1)).toBeLessThan(BRIDGE.x1); // el puente llega a tierra
@@ -319,8 +320,8 @@ export const ROWS = [164, 188, 218, 242] as const;
 export const AVENUE = { y0: 206, y1: 218 } as const;
 export const BOULEVARD = { y0: 210, y1: 214 } as const;
 export const WEST_QUAY = { x0: 192, x1: QUAY_X } as const;   // muro de contención de la ribera oeste
-export const EAST_RING = { x0: 274, x1: 280 } as const;      // calle que bordea la ribera este
-export const CITY_EDGE = { west: 12, north: 158, south: 266 } as const; // selva más allá
+export const EAST_RING = { x0: 270, x1: 276 } as const;      // calle que bordea la ribera este; x0 múltiplo de CELL (clasifica terreno)
+export const CITY_EDGE = { west: 12, north: 158, south: 264 } as const; // selva más allá; south múltiplo de CELL (clasifica terreno)
 
 export const PLAZA: Rect = { x: 102, y: 218, w: 54, d: 18 }; // une dos columnas de la fila sur de la avenida
 export const TOWER: Rect = { x: 121, y: 220, w: 16, d: 14 }; // centrada en (129, 227)
@@ -591,7 +592,7 @@ describe("city", () => {
     const s = scene();
     for (const c of s.solids) {
       if (c.kind !== "cone") continue;
-      const onCity = c.at.x >= 12 && c.at.x < 334 && c.at.y >= 158 && c.at.y < 266 && !(c.at.x > 198 && c.at.x < 274);
+      const onCity = c.at.x >= 12 && c.at.x < 334 && c.at.y >= 158 && c.at.y < 264 && !(c.at.x > 198 && c.at.x < 270);
       if (onCity) expect(inBlock(c.at.x, c.at.y) || inCrater(c.at.x, c.at.y) || (c.at.y >= 210 && c.at.y <= 214)).toBe(true);
     }
     expect(s.accents.length).toBeGreaterThan(6);
@@ -803,7 +804,7 @@ git commit -m "feat(scenes): ciudad de Resume, primera tanda: zócalos, manzanas
 
 - [ ] **Step 1: Agregar tests**
 
-En `src/scenes/city.test.ts` volver el umbral de acentos a `> 6` y agregar dentro del `describe("city")`:
+En `src/scenes/city.test.ts` volver el umbral de acentos a `> 6`, agregar `MALECON` al import de `./city-grid` y agregar dentro del `describe("city")`:
 
 ```ts
   it("avenida: boulevard, carriles, sendas y semáforos; faroles solo en avenida, puente, plaza y malecón", () => {
@@ -853,6 +854,8 @@ En `src/scenes/city.test.ts` volver el umbral de acentos a `> 6` y agregar dentr
     const sunk = s.solids.filter((x) => x.kind === "prism" && x.mat === "officeDark" && x.at.z < 0);
     expect(sunk.length).toBeGreaterThanOrEqual(3);
     for (const b of sunk) expect(b.kind === "prism" && b.at.y).toBeGreaterThanOrEqual(240);
+    // el cuarto bloque, caído en la calle frente al malecón (la spec lo pide; el mar frente al malecón ya es zona Blog)
+    expect(s.solids.some((x) => x.kind === "prism" && x.mat === "officeDark" && x.at.z === 0 && x.h <= 1 && x.at.x >= MALECON.x0 - 10 && x.at.x + x.w <= MALECON.x0)).toBe(true);
     expect(s.solids.some((x) => x.kind === "ramp" && x.mat === "asphalt" && x.dir === "w" && x.at.y === 242)).toBe(true);
   });
 
@@ -872,7 +875,7 @@ En `src/scenes/city.test.ts` volver el umbral de acentos a `> 6` y agregar dentr
     expect(cones.length).toBeGreaterThan(60);
     expect(cones.some((c) => c.kind === "cone" && c.at.y < 158)).toBe(true);           // cinturón
     expect(cones.some((c) => c.kind === "cone" && c.at.x < 12)).toBe(true);            // borde oeste
-    expect(cones.some((c) => c.kind === "cone" && c.at.x > 198 && c.at.x < 274)).toBe(true); // ribera este
+    expect(cones.some((c) => c.kind === "cone" && c.at.x > 198 && c.at.x < 270)).toBe(true); // ribera este
     for (const cr of CRATERS) expect(cones.some((c) => c.kind === "cone" && inCrater(c.at.x, c.at.y) && Math.hypot(c.at.x - cr.x, c.at.y - cr.y) <= cr.r)).toBe(true);
   });
 ```
@@ -908,12 +911,12 @@ function dashes(out: Solid[], from: Vec2, to: Vec2): void {
 
 function streets(ground: Solid[], solids: Solid[], accents: Accent[]): void {
   const westX = [...WEST_COLS.map((x) => x + BLOCK_W + STREET / 2)];            // centros de las calles N-S del oeste (39..189)
-  const eastX = [EAST_RING.x0 + STREET / 2, EAST_COLS[0] + BLOCK_W + STREET / 2]; // 277, 307
+  const eastX = [EAST_RING.x0 + STREET / 2, EAST_COLS[0] + BLOCK_W + STREET / 2]; // 273, 307
   for (const cx of [...westX, ...eastX]) {
     dashes(ground, { x: cx, y: CITY_EDGE.north }, { x: cx, y: AVENUE.y0 });
     dashes(ground, { x: cx, y: AVENUE.y1 }, { x: cx, y: CITY_EDGE.south });
   }
-  const rowsY = [CITY_EDGE.north + STREET / 2, ...ROWS.slice(1).map((y) => y - STREET / 2), CITY_EDGE.south - STREET / 2].filter((y) => y < AVENUE.y0 || y > AVENUE.y1); // 161, 185, 239, 263
+  const rowsY = [CITY_EDGE.north + STREET / 2, ...ROWS.slice(1).map((y) => y - STREET / 2), CITY_EDGE.south - 2].filter((y) => y < AVENUE.y0 || y > AVENUE.y1); // 161, 185, 239, 262 (la calle sur es de 4)
   for (const cy of rowsY) {
     dashes(ground, { x: CITY_EDGE.west, y: cy }, { x: WEST_QUAY.x0, y: cy });
     dashes(ground, { x: EAST_RING.x0, y: cy }, { x: MALECON.x0, y: cy });
@@ -977,6 +980,7 @@ function collapsed(solids: Solid[], rng: Rng): void {
   solids.push(prism(c.x + 12, c.y, 0, 12, c.d, PLINTH_H, "paving"));
   solids.push(prism(c.x + 14, c.y + 4, PLINTH_H, 8, 10, rng.int(2, 3), "officeDark")); // ruina sin fachada
   for (const [x, y, z, w, d] of [[c.x - 12, c.y + 6, -0.5, 3, 3], [c.x - 8, c.y + 12, -0.7, 4, 3], [c.x - 4, c.y + 2, -0.4, 3, 4]] as const) solids.push(prism(x, y, z, w, d, 1.5, "officeDark"));
+  solids.push(prism(MALECON.x0 - 8, 237.5, 0, 6, 3, 1, "officeDark")); // el cuarto, caído en la calle 236..242 frente al malecón (el agua frente al malecón es zona Blog)
 }
 
 function greenery(solids: Solid[], rng: Rng): void {
@@ -1517,7 +1521,7 @@ git commit -m "feat(lab): la ciudad de Resume entra al mundo; página lab/resume
 
 - [ ] **Step 1: Spec de Resume**
 
-Cambiar `**Estado:**` a `implementada (2026-09-14)` y agregar al final de §1 una tabla "Desvíos de la implementación" con las cinco entradas de la sección "Desvíos respecto de la spec" de este plan (columnas este 280/310 y malecón 334, cráter (307, 224), puente hasta 276; plaza y manzanas devoradas como `ground` a nivel de calle; cornisa por material contrario; escalera del malecón hacia adentro; parpadeo de un tick) más cualquier otro que haya surgido en las Tasks 4..7. Actualizar §2 (tabla de tramos y piezas fijas) con los números finales.
+Cambiar `**Estado:**` a `implementada (2026-09-14)` y agregar al final de §1 una tabla "Desvíos de la implementación" con las entradas de la sección "Desvíos respecto de la spec" de este plan (columnas este 280/310 y malecón 334, cráter (307, 224), puente hasta 276; anillo este 270..276 y borde sur 264, alineados a `CELL`; cuarto bloque del derrumbe caído en la calle frente al malecón; plaza y manzanas devoradas como `ground` a nivel de calle; cornisa por material contrario; escalera del malecón hacia adentro; parpadeo de un tick) más cualquier otro que haya surgido en las Tasks 4..7. Actualizar §2 (tabla de tramos y piezas fijas) con los números finales.
 
 - [ ] **Step 2: Spec del mundo**
 
