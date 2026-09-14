@@ -3,7 +3,7 @@ import { buildRenderList } from "../iso/render-list";
 import { bounds, type Solid } from "../iso/solids";
 import { allIsoColors } from "../map/palette-iso";
 import { createRng } from "../map/seed";
-import { AREA_H, AREA_W, QUAY_X, STREET_EDGE, shipyard, type Scene } from "./shipyard";
+import { AREA_H, AREA_W, STREET_EDGE, shipyard, type Scene } from "./shipyard";
 
 const scene = (): Scene => shipyard(createRng(7));
 const all = (s: Scene): Solid[] => [...s.ground, ...s.solids, s.trolley];
