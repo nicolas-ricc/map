@@ -15,7 +15,8 @@ describe("city-grid", () => {
   });
 
   it("entre manzanas vecinas queda al menos una calle", () => {
-    for (const a of blocks()) for (const b of blocks()) {
+    const bs = blocks();
+    for (const a of bs) for (const b of bs) {
       if (a === b) continue;
       const gapX = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w)), gapY = Math.max(b.y - (a.y + a.d), a.y - (b.y + b.d));
       expect(Math.max(gapX, gapY)).toBeGreaterThanOrEqual(STREET);
