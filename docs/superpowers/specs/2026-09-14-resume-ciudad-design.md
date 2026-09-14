@@ -1,7 +1,7 @@
 # Resume: ciudad de oficinas en el mundo isométrico — diseño
 
 **Fecha:** 2026-09-14
-**Estado:** diseño aprobado; pendiente de plan (plan 2 del mundo)
+**Estado:** implementada (2026-09-14)
 **Antecede:** `2026-09-14-mundo-isometrico-design.md` (§5 y "Rulings de la parte 1")
 **Alcance:** la escena Resume dentro del laboratorio (`lab/world.html`,
 `lab/resume.html`). La reintegración al sitio sigue siendo spec aparte.
@@ -28,6 +28,29 @@ Decisiones de esta spec que corrigen o precisan a §5:
 | Landmark | `LANDMARKS.cv` pasa de (130, 206) a (129, 227) |
 | Ruling para el plan 3 | §6 le da `paving` al sendero del faro; rompe la regla de materiales exclusivos. El Blog usa `rock` o `whitewash` para el sendero |
 
+### Desvíos de la implementación
+
+Decisiones del controller, tomadas al planificar (Task 1) o durante las
+Tasks 4..7, que corrigen los números y rulings de arriba y de §2.
+
+| Tema | Decisión |
+|---|---|
+| Columnas este y cráter | Columnas este en x 280 y 310 (no 276 y 306) y malecón en 334..344 (no 330..344): con 276 la manzana de la fila 218..236 quedaba a menos de una calle del agua (`estuaryEast(236) ≈ 272.5`). El cráter este pasa a (307, 224) para caer en la calle 304..310. El puente llega a x 276, donde termina la calle del anillo este |
+| Anillo este y borde sur | Anillo este en 270..276 (no 274..280) y borde sur de la ciudad en y 264 (no 266): los límites que clasifican terreno tienen que ser múltiplos de `CELL = 6` (`buildTerrain` clasifica cada celda por su centro). Queda una vereda de 4 entre el anillo y la columna de x 280, y una calle sur de 4 (260..264) |
+| Plaza y manzanas devoradas | La plaza no es un prisma: sus baldosas son un `ground` de `plaza` a nivel de calle (z 0.05) con `toneOffset`, rodeado por un cordón de cuatro prismas finos; la torre apoya a z 0. Un `ground` se dibuja antes que los sólidos, así que no puede pintarse sobre el techo de un prisma. Las manzanas devoradas usan el mismo esquema (`ground` de `leafDark` + losas de zócalo sueltas) |
+| Cornisa | No usa `toneOffset` (un prisma no lo tiene): se hace con el material contrario (`officeDark` sobre `office` y viceversa). En los edificios con techo `step`, la cornisa y el detalle de techo se apoyan sobre la huella del escalón superior (inset `STEP_INSET = 0.2`), no sobre la base completa: un elemento de ancho completo quedaría flotando sobre el retranqueo |
+| Escalera del malecón | Se abre hacia adentro (x 338..344) para no pisar la zona Blog |
+| Parpadeo | Apaga el piso encendido durante **un tick** (el siguiente `tick` lo vuelve a encender), no 100 ms fijos: así "nunca dos frames apagados seguidos" es verificable con cualquier `dt` |
+| Derrame de luz de la plaza | Los cuatro derrames dejaron de ser `dot` r 3: son dos polígonos octogonales `amberBleed` planos (z 0.12, alpha ≈ 0.55) sobre las baldosas al este de la torre. La franja sur de la plaza queda tapada por los edificios de la fila 3 desde la cámara, así que ahí no hay derrame |
+| Papeles | Derivan al **NNE** (`{ x: 0.45, y: -0.893 }`), no al ENE: con la proyección `sx = x - y`, `sy = (x + y)/2 - 1.4 z`, ENE se veía cayendo hacia abajo a la derecha. Cada papel tiene desvío lateral (±1.5, entra gradualmente en 5 u), factor de velocidad 0.8..1.2, gana altura 0.15 u por unidad recorrida y se encoge de r 0.4 a 0.12 en el último tercio antes de reciclarse |
+| Selva, autos y postes | La selva de los cinturones norte y sur y de la ribera este rechaza conos cuyo círculo toque el estuario. Los autos rechazan superposiciones entre sí y con el cuarto bloque caído. Los postes (faroles, semáforos) apoyan sobre la superficie que tienen debajo (asfalto 0, zócalo 0.3, plaza 0.05) y se omiten sobre el muelle oeste y las rampas del puente |
+| Boulevard este y estribo | El boulevard este arranca en x 283 (no 280) para no tocar la rampa del puente. Hay un estribo `plaza` bajo el tablero sobre el muelle oeste (x 192..198, z 0.6..1.2) |
+| Derrumbe | La rampa al agua va de x 274 a 286 (su labio bajo llega al agua en toda la manzana), la plataforma de `paving` va de 286 a 304, y los tres bloques hundidos están en el agua sin cruzarse; el cuarto bloque cayó en la calle frente al malecón |
+| Carriles | Las rayas de carril saltan los cráteres y no hay cebra bajo el tablero del puente (x 273) |
+| Tanque de agua | La pata mide 1.1 (no 1.2) para que el filtro de "autos" de los tests no la cuente |
+| Presupuesto | Primer dibujo ≈ 50 ms; peor redibujo 3–5 ms (un pico de 14 ms), por encima de los 3 ms que mencionaba el plan; aceptado, a revisar en el plan 3 |
+| Test de `city-grid` | El test "entre manzanas vecinas" comparaba dos arrays distintos de `blocks()`; se corrigió para iterar una sola lista |
+
 ## 2. Grilla y geometría
 
 Coordenadas de mundo. Resume es x 0..344, y 146..270. El estuario ocupa
@@ -51,8 +74,8 @@ Manzana 24×18, calle 6.
 | Eje | Tramos |
 |---|---|
 | Columnas oeste (x) | 12..36, 42..66, 72..96, 102..126, 132..156, 162..186; calle 186..192; muelle oeste 192..198 |
-| Columnas este (x) | ribera de selva hasta 270; calle 270..276; 276..300; calle 300..306; 306..330; malecón 330..344 |
-| Filas (y) | calle 158..164; 164..182; calle 182..188; 188..206; avenida 206..218; 218..236; calle 236..242; 242..260; calle 260..266 |
+| Columnas este (x) | ribera de selva hasta 270; calle (anillo) 270..276; vereda 276..280; 280..304; calle 304..310; 310..334; malecón 334..344 |
+| Filas (y) | calle 158..164; 164..182; calle 182..188; 188..206; avenida 206..218; 218..236; calle 236..242; 242..260; calle sur 260..264 (4 u, alineada a `CELL`) |
 
 Cuenta: 22 manzanas oeste (24 menos las dos que une la plaza) + plaza + 7
 este + derrumbe = 31.
@@ -64,23 +87,30 @@ este + derrumbe = 31.
 - **Plaza y torre.** La plaza une las columnas 102..126 y 132..156 de la fila
   218..236: zócalo `plaza` 54×18 en (102, 218). Torre 16×14 centrada en
   (129, 227).
-- **Avenida.** y 206..218, boulevard central de 4 u (`leafDark` bajo + conos).
-  Cruza el estuario por el puente: tablero `asphalt` 10×78 de x 192 a 270 en
-  y 207..217, z 1.2 h 0.6; rampas `asphalt` de 6 u en cada cabecera (`dir`
-  `w` y `e`); cuatro pilotes `plaza` 2×10 desde z -1; barandas `officeDark`
-  0.3×78×0.8 a cada lado; dos faroles en el medio; dos autos detenidos.
+- **Avenida.** y 206..218, boulevard central de 4 u (`leafDark` bajo + conos;
+  el tramo este arranca en x 283, no 280, para no tocar la rampa del puente).
+  Cruza el estuario por el puente: tablero `asphalt` de x 192 a 276 en
+  y 207..217 (10×84), z 1.2 h 0.6; rampas `asphalt` de 6 u en cada cabecera
+  (`dir` `w` y `e`); cuatro pilotes `plaza` 2×10 desde z -1 (x 210, 228, 246,
+  264); un estribo `plaza` bajo el tablero sobre el muelle oeste (x 192..198,
+  z 0.6..1.2, para que el tablero apoye y no flote); barandas `officeDark`
+  0.3×84×0.8 a cada lado; dos faroles cerca de cada cabecera; dos autos
+  detenidos.
 - **Muelle oeste.** Muro `plaza` en x 192..198 desde z -1 hasta 0.6, con
-  escalera al agua (rampa) a la altura de la fila 188..206 y dos bolardos.
-- **Derrumbe.** La manzana 276..300 × 242..260, donde el estuario llega a
-  x ≈ 280: rampa `asphalt` hacia el agua (`dir: "w"`), tres bloques
-  `officeDark` a z -0.5 asomando del agua y uno más caído frente al malecón.
-  Es el elemento hundido de la zona.
-- **Malecón.** Zócalo `paving` 330..344 × 158..266 a z 0.6 cuyo lado este baja
+  escalera al agua (rampa) a la altura y 194..200 y dos bolardos.
+- **Derrumbe.** La manzana 280..304 × 242..260, donde el estuario llega a
+  x ≈ 275: rampa `asphalt` hacia el agua (`dir: "w"`) de x 274 a 286 (su
+  labio bajo llega al agua en toda la manzana), plataforma `paving` de 286 a
+  304, tres bloques `officeDark` a z -0.4..-0.7 asomando del agua sin
+  cruzarse, y uno más caído en la calle 236..242 frente al malecón. Es el
+  elemento hundido de la zona.
+- **Malecón.** Zócalo `paving` 334..344 × 158..266 a z 0.6 cuyo lado este baja
   hasta z -1: es el muro de mar de la costura con el Blog y tapa el talud del
-  terreno entre asfalto y `shore`. Parapeto 0.8 sobre x 342.5..344, escalera al
-  agua en y ≈ 230, cuatro bancos, tres faroles ámbar, bolardos.
+  terreno entre asfalto y `shore`. Parapeto 0.8 sobre x 342.5..344, escalera
+  hacia adentro (x 338..344, para no pisar la zona Blog) en y ≈ 227, cuatro
+  bancos, tres faroles ámbar, bolardos.
 - **Cráteres.** Círculos fijos de selva sobre calles: (60, 185) r 5,
-  (150, 239) r 6, (303, 224) r 5. `inCrater(x, y)` los expone para el terreno
+  (150, 239) r 6, (307, 224) r 5. `inCrater(x, y)` los expone para el terreno
   y la escena.
 
 ## 3. Catálogo de objetos

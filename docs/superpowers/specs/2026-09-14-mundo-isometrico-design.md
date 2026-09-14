@@ -1,7 +1,7 @@
 # Mundo isométrico: Resume, Blog y unión de las tres zonas — diseño
 
 **Fecha:** 2026-09-14
-**Estado:** parte 1 (motor, terreno, runtime) implementada; Resume y Blog pendientes (planes 2 y 3)
+**Estado:** partes 1 y 2 implementadas; Blog pendiente (plan 3)
 **Antecede:** `2026-09-13-portfolio-isometrico-design.md` (astillero en el laboratorio)
 y `2026-09-09-mapa-rpg-sitio-personal-design.md` (plan urbano original de las tres zonas)
 
@@ -122,8 +122,9 @@ Ruling: `ramp.dir` es hacia dónde baja la rampa (convención existente):
 - **Río en Resume:** `cityTerrainAt` no usa un río angosto en
   `riverCenter ± RIVER_HALF`: hereda el ancho del canal del astillero en la
   costura y = 146 (x 198..eastBank≈241) y se abre hacia el sur
-  (`ESTUARY_FLARE` en `terrain.ts`). Motivo: continuidad del agua en la
-  costura. Resume (plan 2) debe contar con ese estuario.
+  (`ESTUARY_FLARE`). Motivo: continuidad del agua en la costura. `estuaryEast`
+  vive ahora en `src/scenes/city-grid.ts` (se mudó de `terrain.ts` en el
+  plan 2, junto con el resto de la grilla de la ciudad).
 - **Orden de capas:** el agua se dibuja **debajo** del suelo (no "entre el
   suelo y las sombras" como dice §7): con la cámara al SE el suelo alto
   proyecta sobre el agua que tiene al norte y el agua (z = -1) nunca puede
@@ -142,6 +143,9 @@ Ruling: `ramp.dir` es hacia dónde baja la rampa (convención existente):
   alto, hay que ordenar suelo y sólidos en una sola lista de profundidad.
 
 ## 5. Resume: ciudad de oficinas (`src/scenes/city.ts`, `city-anim.ts`)
+
+Bajado a detalle e implementado en `2026-09-14-resume-ciudad-design.md`; ese
+documento manda donde difiera de esta sección.
 
 - **Grilla.** Manzanas de 30×24, calles de 6 (`asphalt` a z -0.4), veredas de
   1.5 u a z 0.3 en `paving`, cordón como escalón. Avenida principal E-O de
@@ -174,7 +178,8 @@ Ruling: `ramp.dir` es hacia dónde baja la rampa (convención existente):
 
 - **Punta.** `poly` de roca sobre las celdas `headland`, dos o tres
   afloramientos (`poly` a z 6..9), `reef` de conos chatos de `rock`. Sendero
-  de `paving` desde la escollera hasta el faro. Casa del farero: prisma
+  de `rock` desde la escollera hasta el faro (ruling de la spec de Resume:
+  `paving` es exclusivo de la ciudad). Casa del farero: prisma
   `whitewash` con `gable` y ventana `magentaBleed`.
 - **Faro.** Seis cilindros apilados (r 3.2 → 2.2, h 4) alternando `whitewash`
   y `rust`: 24 u. Galería: cilindro r 3, h 0.6 en `steel` con 8 postes.
