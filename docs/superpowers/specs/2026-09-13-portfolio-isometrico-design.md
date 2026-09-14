@@ -33,7 +33,7 @@ Criterios de éxito:
 | Proyección | Dimétrica 2:1 (ángulo de 26.57°), ortográfica, cámara fija en el SE mirando al NO. Eje Z (altura) exagerado ×1.4 |
 | Luz | Atardecer rasante: sol a ~25° de elevación desde el **oeste-sudoeste**. Sombras largas y duras hacia el ENE (a la derecha en pantalla). Con la cámara al SE, las paredes visibles son la sur y la este: la sur queda iluminada, la este en sombra. (Un sol al NO dejaría las dos en sombra.) |
 | Paleta | Atlas nuevo `palette-iso.ts`: base cálida (hormigón ocre, óxido, losa arena), sombra fría azulada, agua verde oscuro, selva en dos verdes, cian como único acento artificial. Tres tonos por material, generados una vez y congelados en el atlas |
-| Alcance | Laboratorio (`lab/portfolio.html` → `/map/lab/portfolio.html` en dev), excluido del build de producción. Con animación: carro de la grúa, agua, chispas de soldadura |
+| Alcance | Laboratorio (`lab/portfolio.html` → `/map/lab/portfolio.html` en dev), excluido del build de producción. Con animación: carro de la grúa, agua, chispas de soldadura. Desde la parte 1 del mundo, el terreno lo genera `src/scenes/terrain.ts` y el río desemboca en una bahía al NE |
 | Modelo | Lista declarativa de sólidos en coordenadas de mundo → motor puro proyecta, sombrea, ordena → runtime vuelca a `Graphics` |
 | Plan urbano | El mismo del astillero top-down (commit `6c2b795`): línea de producción O→E que muere en el agua, calle de transferencia N-S, ribera dragada recta, dique seco, dos gradas, grúa pórtico, talleres + playa + vías al SO, muelle de alistamiento al este del río. En dimétrico, el eje O→E queda en diagonal, cumpliendo la grilla de "evitar oclusión" |
 

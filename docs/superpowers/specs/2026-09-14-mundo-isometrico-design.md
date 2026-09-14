@@ -1,7 +1,7 @@
 # Mundo isométrico: Resume, Blog y unión de las tres zonas — diseño
 
 **Fecha:** 2026-09-14
-**Estado:** aprobado en conversación, pendiente de plan de implementación
+**Estado:** parte 1 (motor, terreno, runtime) implementada; Resume y Blog pendientes (planes 2 y 3)
 **Antecede:** `2026-09-13-portfolio-isometrico-design.md` (astillero en el laboratorio)
 y `2026-09-09-mapa-rpg-sitio-personal-design.md` (plan urbano original de las tres zonas)
 
@@ -81,6 +81,9 @@ Todo puro, sin Pixi.
 Fuera de alcance: rotación de sólidos, texturas, cilindro cónico (el faro se
 apila).
 
+Ruling: `ramp.dir` es hacia dónde baja la rampa (convención existente):
+`dir: "n"` tiene el borde alto al sur.
+
 ## 4. Mundo y terreno compartido
 
 - **Coordenadas.** `WORLD_W = 560`, `WORLD_H = 270`, unidades del mapa viejo.
@@ -113,6 +116,25 @@ apila).
   con `terrain`, `water: { river, sea }`, `solids`, `accents`, `landmarks`
   (coordenadas de mundo, para que la reintegración proyecte con `project()`) y
   los sólidos animados con nombre. Cada escena recibe `createRng(seed ^ hash(zoneId))`.
+
+#### Rulings de la parte 1
+
+- **Río en Resume:** `cityTerrainAt` no usa un río angosto en
+  `riverCenter ± RIVER_HALF`: hereda el ancho del canal del astillero en la
+  costura y = 146 (x 198..eastBank≈241) y se abre hacia el sur
+  (`ESTUARY_FLARE` en `terrain.ts`). Motivo: continuidad del agua en la
+  costura. Resume (plan 2) debe contar con ese estuario.
+- **Orden de capas:** el agua se dibuja **debajo** del suelo (no "entre el
+  suelo y las sombras" como dice §7): con la cámara al SE el suelo alto
+  proyecta sobre el agua que tiene al norte y el agua (z = -1) nunca puede
+  estar delante de un suelo. Si no, el mar tapaba la punta.
+- **Orilla frente a la bahía:** la franja `shore` continúa frente a la
+  desembocadura (bajío) y su borde exterior ondula (`shoreWidth(y)`), para
+  que la costa recta del límite de zona no se lea como una raya.
+- **Altura de la punta:** la punta nace a z ≈ 1 junto al muelle de
+  alistamiento y sube hasta z ≈ 7 desde x ≈ 355 (`headlandZ(x)` en
+  `terrain.ts`); así ningún suelo alto queda pegado a los galpones (el suelo
+  no se ordena en profundidad con los sólidos).
 
 ## 5. Resume: ciudad de oficinas (`src/scenes/city.ts`, `city-anim.ts`)
 
