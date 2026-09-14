@@ -6,7 +6,7 @@ import { createRng } from "../map/seed";
 import { AREA_H, AREA_W, QUAY_X, STREET_EDGE, shipyard, type Scene } from "./shipyard";
 
 const scene = (): Scene => shipyard(createRng(7));
-const all = (s: Scene): Solid[] => [...s.ground, ...s.water, ...s.solids, s.trolley];
+const all = (s: Scene): Solid[] => [...s.ground, ...s.solids, s.trolley];
 
 describe("shipyard", () => {
   it("es determinística por seed", () => {
@@ -22,17 +22,6 @@ describe("shipyard", () => {
       expect(b.max.x).toBeLessThanOrEqual(AREA_W + 1);
       expect(b.max.y).toBeLessThanOrEqual(AREA_H + 1);
     }
-  });
-
-  it("el agua es un solo suelo, hundido, con offset de tono en cero", () => {
-    const s = scene();
-    expect(s.water).toHaveLength(1);
-    const w = s.water[0]!;
-    expect(w.kind).toBe("ground");
-    if (w.kind !== "ground") return;
-    expect(w.tris.length).toBeGreaterThan(200);
-    expect(w.tris.every((t) => t.pts.every((p) => p.z === -1) && (t.toneOffset ?? 0) === 0)).toBe(true);
-    expect(w.tris.every((t) => t.pts.every((p) => p.x >= QUAY_X))).toBe(true);
   });
 
   it("hay naves a dos aguas, gradas en rampa, un casco, cuadernas y una grúa", () => {

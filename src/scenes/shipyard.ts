@@ -1,7 +1,7 @@
 import type { Accent } from "../iso/accent";
 import { v3, type Vec2, type Vec3 } from "../iso/geometry";
-import type { Solid, Tri } from "../iso/solids";
-import { RIVER_HALF, riverCenter } from "../map/geo";
+import type { Solid } from "../iso/solids";
+import { MOUTH_Y, RIVER_HALF, riverCenter } from "../map/geo";
 import type { Rng } from "../map/seed";
 
 /**
@@ -13,8 +13,7 @@ import type { Rng } from "../map/seed";
  */
 
 export interface Scene {
-  ground: Solid[];
-  water: Solid[];
+  ground: Solid[];     // suelo hundido del dique y franjas (calles, rieles)
   solids: Solid[];
   accents: Accent[];
   trolley: Solid & { kind: "prism" };
@@ -28,7 +27,6 @@ export const AREA_W = 344, AREA_H = 146;
 // la propiedad "todo el agua tiene x >= QUAY_X".
 export const QUAY_X = 198, QUAY_W = 4;
 export const BOTTOM = 142;
-export const CELL = 6;
 
 const STREET_X = 100, STREET_W = 8;
 export const STREET_EDGE = STREET_X + STREET_W; // x donde empiezan los faroles
@@ -38,57 +36,10 @@ const HALL_X = 8, HALL_W = 90, HALL_H = 10;
 const SLIP_X = 110;
 const RAIL_Y = [131, 134] as const; // vías del oeste
 const GANTRY_X = 150, GANTRY_H = 24;
-const DOCK = { x: 120, y: 6, w: 72, d: 24, depth: 6 } as const; // alineado a CELL
+export const DOCK = { x: 120, y: 6, w: 72, d: 24, depth: 6 } as const; // alineado a CELL
 const WATER_Z = -1;
 
-type Terrain = "slab" | "water" | "east" | "jungle" | "dock";
-
-const eastBank = (y: number): number => riverCenter(y) + RIVER_HALF;
-
-function terrainAt(x: number, y: number): Terrain {
-  if (x >= DOCK.x && x < DOCK.x + DOCK.w && y >= DOCK.y && y < DOCK.y + DOCK.d) return "dock";
-  if (x < QUAY_X) return x < 42 && y > 100 ? "jungle" : y >= BOTTOM ? "jungle" : "slab";
-  if (x <= eastBank(y)) return "water";
-  return x > 330 || y > 124 ? "jungle" : "east";
-}
-
-// ---------------------------------------------------------------- terreno
-
-interface Terrains { ground: Solid[]; water: Solid }
-
-/** Una grilla de CELL con alturas por vértice; cada celda son dos triángulos clasificados por su centro. */
-function buildTerrain(rng: Rng): Terrains {
-  const cols = Math.ceil(AREA_W / CELL), rows = Math.ceil(AREA_H / CELL);
-  const jitter: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0 };
-  const base: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth };
-  const z: number[][] = [];
-  for (let j = 0; j <= rows; j++) {
-    z.push([]);
-    for (let i = 0; i <= cols; i++) {
-      const t = terrainAt(Math.min(i * CELL, AREA_W - 1), Math.min(j * CELL, AREA_H - 1));
-      z[j]!.push(base[t] + (rng.next() * 2 - 1) * jitter[t]);
-    }
-  }
-  const tris: Record<Terrain, Tri[]> = { slab: [], water: [], east: [], jungle: [], dock: [] };
-  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-    const x0 = i * CELL, y0 = j * CELL, x1 = Math.min(x0 + CELL, AREA_W), y1 = Math.min(y0 + CELL, AREA_H);
-    const t = terrainAt(x0 + CELL / 2, y0 + CELL / 2);
-    if (t === "dock") continue; // el pozo se amuebla en Task 9
-    const p = (x: number, y: number, zz: number) => v3(x, y, t === "water" ? WATER_Z : zz);
-    const a = p(x0, y0, z[j]![i]!), b = p(x1, y0, z[j]![i + 1]!), c = p(x1, y1, z[j + 1]![i + 1]!), d = p(x0, y1, z[j + 1]![i]!);
-    // diagonal alternada: el "papercraft" no se lee como una grilla de cuadrados
-    if ((i + j) % 2 === 0) tris[t].push({ pts: [a, b, c] }, { pts: [a, c, d] });
-    else tris[t].push({ pts: [a, b, d] }, { pts: [b, c, d] });
-  }
-  return {
-    ground: [
-      { kind: "ground", mat: "slab", tris: tris.slab },
-      { kind: "ground", mat: "sand", tris: tris.east },
-      { kind: "ground", mat: "leafDark", tris: tris.jungle },
-    ],
-    water: { kind: "ground", mat: "water", tris: tris.water },
-  };
-}
+export const eastBank = (y: number): number => riverCenter(y) + RIVER_HALF;
 
 // ---------------------------------------------------------------- piezas
 
@@ -256,10 +207,10 @@ function factory(out: Solid[], accents: Accent[]): void {
 // ---------------------------------------------------------------- muelle de alistamiento (E)
 
 function fittingOut(out: Solid[], rng: Rng): void {
-  for (const x of [304, 316]) out.push(prism(x, 24, 0, 8, 96, 6, "concrete", "gable"));
-  out.push({ kind: "cylinder", at: v3(310, 10, 0), r: 4, h: 6, mat: "concrete" });
-  for (let i = 0; i < 6; i++) out.push(prism(302 + rng.int(0, 24), 124 + rng.int(0, 10), 0, 3, 2, 1, "rust")); // chatarra
-  for (let y = 1; y < AREA_H; y += 3) out.push({ kind: "cone", at: v3(eastBank(y) + 1.5, y, 0), r: 1.6, h: 1.2, mat: "rock", sides: 5 }); // escollera
+  for (const x of [304, 316]) out.push(prism(x, 24, 0, 8, 92, 6, "concrete", "gable"));
+  out.push({ kind: "cylinder", at: v3(310, 122, 0), r: 4, h: 6, mat: "concrete" });
+  for (let i = 0; i < 6; i++) out.push(prism(302 + rng.int(0, 24), 130 + rng.int(0, 10), 0, 3, 2, 1, "rust")); // chatarra
+  for (let y = MOUTH_Y + 1; y < AREA_H; y += 3) out.push({ kind: "cone", at: v3(eastBank(y) + 1.5, y, 0), r: 1.6, h: 1.2, mat: "rock", sides: 5 }); // escollera
 }
 
 // ---------------------------------------------------------------- selva y faroles
@@ -273,7 +224,8 @@ function jungle(out: Solid[], rng: Rng): void {
   };
   cluster(3, 39, 102, 125, 10);   // SO, al norte de las vías (r ≤ 4: nunca las pisa)
   cluster(3, 39, 139, 143, 4);    // SO, al sur de las vías
-  cluster(332, 340, 2, 143, 10);  // borde este (ruling: 340, no 342: r=4 en x=342 excede AREA_W+1)
+  cluster(332, 340, 26, 94, 6);   // borde este, entre la bahía y la punta
+  cluster(332, 340, 136, 143, 2); // al sur de la punta
   cluster(301, 340, 127, 143, 6); // al sur de los galpones (ruling: 301, no 300: el test exige at.x > 300)
 }
 
@@ -285,8 +237,7 @@ function lamps(out: Solid[], accents: Accent[]): void {
 }
 
 export function shipyard(rng: Rng): Scene {
-  const terrain = buildTerrain(rng);
-  const ground: Solid[] = [...terrain.ground];
+  const ground: Solid[] = [];
   const solids: Solid[] = [];
   const accents: Accent[] = [];
   const weldSpots: Vec3[] = [];
@@ -304,5 +255,5 @@ export function shipyard(rng: Rng): Scene {
   lamps(solids, accents);
   ground.push(...solids.filter((s) => s.kind === "strip"));
   const raised = solids.filter((s) => s.kind !== "strip");
-  return { ground, water: [terrain.water], solids: raised, accents, trolley: g.trolley, trolleyRange: g.range, weldSpots };
+  return { ground, solids: raised, accents, trolley: g.trolley, trolleyRange: g.range, weldSpots };
 }

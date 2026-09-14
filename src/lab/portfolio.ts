@@ -4,6 +4,7 @@ import { ISO_COLORS } from "../map/palette-iso";
 import { createRng } from "../map/seed";
 import { shipyard } from "../scenes/shipyard";
 import { createShipyardAnim } from "../scenes/shipyard-anim";
+import { buildTerrain } from "../scenes/terrain";
 import { drawAccents, drawLayer, fitTransform } from "./draw";
 
 const SEED = 7;
@@ -17,8 +18,10 @@ async function boot(): Promise<void> {
   host.appendChild(app.canvas);
   app.ticker.maxFPS = 30;
 
+  const mesh = buildTerrain(createRng(SEED), ["portfolio"]);
   const scene = shipyard(createRng(SEED));
-  const anim = createShipyardAnim(scene, createRng(SEED + 1), { reducedMotion });
+  const water = [mesh.river];
+  const anim = createShipyardAnim(scene, water, createRng(SEED + 1), { reducedMotion });
 
   const world = new Container();
   app.stage.addChild(world);
@@ -34,15 +37,15 @@ async function boot(): Promise<void> {
   gSparks.blendMode = "add";
   world.addChild(gGround, gWater, gShadow, gTrolleyShadow, gSolid, gTrolley, gAccents, gTrolleyLamp, gSparks);
 
-  const staticItems = buildRenderList([...scene.ground, ...scene.solids]);
+  const staticItems = buildRenderList([...mesh.ground, ...scene.ground, ...scene.solids]);
   // Encuadre con todo lo que puede aparecer en pantalla (agua y carro incluidos), calculado una sola vez al boot.
-  const fitItems = buildRenderList([...scene.ground, ...scene.water, ...scene.solids, scene.trolley]);
+  const fitItems = buildRenderList([...mesh.ground, ...scene.ground, ...water, ...scene.solids, scene.trolley]);
   drawLayer(gGround, staticItems, "ground");
   drawLayer(gShadow, staticItems, "shadow");
   drawLayer(gSolid, staticItems, "solid");
   drawAccents(gAccents, scene.accents);
 
-  const redrawWater = (): void => drawLayer(gWater, buildRenderList(scene.water), "ground");
+  const redrawWater = (): void => drawLayer(gWater, buildRenderList(water), "ground");
   const redrawTrolley = (): void => {
     const items = buildRenderList([scene.trolley]);
     drawLayer(gTrolleyShadow, items, "shadow");

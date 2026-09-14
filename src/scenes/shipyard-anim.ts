@@ -1,5 +1,6 @@
 import type { Accent } from "../iso/accent";
 import { v3, type Vec3 } from "../iso/geometry";
+import type { Solid } from "../iso/solids";
 import type { Rng } from "../map/seed";
 import type { Scene } from "./shipyard";
 
@@ -30,10 +31,9 @@ function trolleyPhase(ms: number): number {
   return 1 - easeInOut((t - 2 * TROLLEY_PAUSE_MS - move) / move);
 }
 
-export function createShipyardAnim(scene: Scene, rng: Rng, opts: { reducedMotion: boolean }): ShipyardAnim {
+export function createShipyardAnim(scene: Scene, water: Solid[], rng: Rng, opts: { reducedMotion: boolean }): ShipyardAnim {
   const [y0, y1] = scene.trolleyRange;
-  const water = scene.water[0]!;
-  const tris = water.kind === "ground" ? water.tris : [];
+  const tris = water.flatMap((w) => (w.kind === "ground" ? w.tris : []));
   const centers = tris.map((t) => (t.pts[0].x + t.pts[1].x + t.pts[2].x + t.pts[0].y + t.pts[1].y + t.pts[2].y) / 3);
 
   const nextGap = () => rng.int(SPARK_GAP_MS[0], SPARK_GAP_MS[1]);

@@ -3,10 +3,12 @@ import type { Accent } from "../iso/accent";
 import { createRng } from "../map/seed";
 import { shipyard } from "./shipyard";
 import { TROLLEY_CYCLE_MS, TROLLEY_PAUSE_MS, WATER_CYCLE_MS, createShipyardAnim } from "./shipyard-anim";
+import { buildTerrain } from "./terrain";
 
 const setup = (reducedMotion = false) => {
   const scene = shipyard(createRng(7));
-  return { scene, anim: createShipyardAnim(scene, createRng(3), { reducedMotion }) };
+  const water = [buildTerrain(createRng(7), ["portfolio"]).river];
+  return { scene, water, anim: createShipyardAnim(scene, water, createRng(3), { reducedMotion }) };
 };
 
 /** Los acentos de este escenario siempre son puntos; angosta el tipo para los tests. */
@@ -45,8 +47,8 @@ describe("shipyard-anim", () => {
   });
 
   it("el agua cambia de tono por ondas y vuelve a fase tras un ciclo", () => {
-    const { scene, anim } = setup();
-    const tris = scene.water[0]!.kind === "ground" ? scene.water[0]!.tris : [];
+    const { water, anim } = setup();
+    const tris = water.flatMap((w) => (w.kind === "ground" ? w.tris : []));
     const c = anim.tick(100);
     expect(c.water).toBe(true);
     const offsets = tris.map((t) => t.toneOffset ?? 0);
