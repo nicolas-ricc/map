@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MOUTH_Y, WORLD_H, WORLD_W, ZONE_SPLIT_Y } from "../map/geo";
+import { MOUTH_Y, WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y } from "../map/geo";
 import { createRng } from "../map/seed";
 import type { Solid, Tri } from "../iso/solids";
 import { QUAY_X } from "./shipyard";
@@ -33,6 +33,16 @@ describe("clasificación", () => {
     expect(terrainAt(50, 200)).toBe("paving");
     expect(terrainAt(255, 200)).toBe("water");
   });
+  it("el agua es continua en la costura y el estuario no llega al límite con Blog", () => {
+    // la última fila de celdas del astillero (centro 141) y la primera de la ciudad (centro 147) mojan las mismas columnas
+    const waterX = (y: number) => { const xs: number[] = []; for (let x = 3; x < ZONE_SPLIT_X; x += CELL) if (terrainAt(x, y) === "water") xs.push(x); return xs; };
+    const north = waterX(141), south = waterX(147);
+    expect(north.length).toBeGreaterThan(3);
+    expect(south[0]).toBe(north[0]);
+    expect(Math.abs(south[south.length - 1]! - north[north.length - 1]!)).toBeLessThanOrEqual(CELL);
+    // al sur del todo el estuario sigue dejando tierra antes de x = 344
+    expect(terrainAt(ZONE_SPLIT_X - 3, WORLD_H - 3)).not.toBe("water");
+  });
 });
 
 describe("buildTerrain", () => {
@@ -55,6 +65,8 @@ describe("buildTerrain", () => {
     expect(tris(m.river).length).toBeGreaterThan(200);
     expect(tris(m.river).some((t) => t.pts.every((p) => p.y < MOUTH_Y && p.x > 300))).toBe(true); // la bahía es río
     expect(tris(m.sea).length).toBeGreaterThan(600);
+    // el canal del astillero nunca cruza al oeste del muelle: ninguna celda de agua del río tiene vértices en x < QUAY_X
+    expect(tris(m.river).filter((t) => t.pts.every((p) => p.y < ZONE_SPLIT_Y)).every((t) => t.pts.every((p) => p.x >= QUAY_X))).toBe(true);
   });
   it("la punta está alta y cae al mar; el dique seco no tiene suelo (lo pone la escena)", () => {
     const m = buildTerrain(createRng(7));
@@ -73,6 +85,7 @@ describe("buildTerrain", () => {
     const onSeam = (m: ReturnType<typeof buildTerrain>) => new Map(allTris(m).flatMap((t) => t.pts).filter((v) => v.y === SEAM_Y).map((v) => [`${v.x},${v.y}`, v.z]));
     const a = onSeam(p), b = onSeam(c);
     expect(a.size).toBeGreaterThan(10);
+    expect([...a.keys()].filter((k) => b.has(k)).length).toBeGreaterThan(10);
     for (const [k, z] of a) if (b.has(k)) expect(b.get(k)).toBe(z);
     expect(allTris(p).every((t) => t.pts.every((v) => v.y <= ZONE_SPLIT_Y + CELL))).toBe(true);
   });

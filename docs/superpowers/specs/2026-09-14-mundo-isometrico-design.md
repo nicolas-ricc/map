@@ -135,6 +135,11 @@ Ruling: `ramp.dir` es hacia dónde baja la rampa (convención existente):
   alistamiento y sube hasta z ≈ 7 desde x ≈ 355 (`headlandZ(x)` en
   `terrain.ts`); así ningún suelo alto queda pegado a los galpones (el suelo
   no se ordena en profundidad con los sólidos).
+- **Suelo y sólidos no se ordenan en profundidad entre sí:** el terreno se
+  pinta entero antes que los sólidos (y el agua antes que el terreno). Por
+  eso nada alto del terreno puede quedar pegado a un sólido, y por eso la
+  punta nace baja. Si una escena futura necesita edificios junto a suelo
+  alto, hay que ordenar suelo y sólidos en una sola lista de profundidad.
 
 ## 5. Resume: ciudad de oficinas (`src/scenes/city.ts`, `city-anim.ts`)
 

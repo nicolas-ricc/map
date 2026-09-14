@@ -14,7 +14,7 @@ export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "paving" |
 
 export const CELL = 6;
 const WATER_Z = -1;
-const JUNGLE_BELT = 12;   // a cada lado de ZONE_SPLIT_Y
+const JUNGLE_BELT = 12;   // solo del lado ciudad de ZONE_SPLIT_Y; la franja del astillero sale de y >= BOTTOM en shipyardTerrainAt
 const SHORE_W = 12;       // agua clara a esta distancia de la tierra
 const REEF_W = 6;
 const SHORE_WOBBLE = 5;   // amplitud del ondulado del borde exterior de la orilla
@@ -81,7 +81,7 @@ const headlandZ = (x: number): number => {
   return HEADLAND_BASE_Z + (HEADLAND_TOP_Z - HEADLAND_BASE_Z) * t;
 };
 
-const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth, paving: 0, sea: WATER_Z, shore: WATER_Z, headland: HEADLAND_TOP_Z, reef: 0.5 };
+const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth, paving: 0, sea: WATER_Z, shore: WATER_Z, headland: HEADLAND_TOP_Z, reef: 0.5 }; // headland: solo referencia; la altura real la da headlandZ(x)
 const JITTER: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0, paving: 0.15, sea: 0, shore: 0, headland: 1.5, reef: 0.3 };
 const MAT: Record<Exclude<Terrain, "dock">, Material> = { slab: "slab", water: "water", east: "sand", jungle: "leafDark", paving: "paving", sea: "waterDeep", shore: "water", headland: "rock", reef: "rock" };
 const FLAT = new Set<Terrain>(["water", "sea", "shore", "dock"]);
