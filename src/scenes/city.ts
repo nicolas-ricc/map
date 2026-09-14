@@ -18,6 +18,7 @@ import { jungle } from "./flora";
 export const PLINTH_H = 0.3;
 export const TOWER_H = 30;
 export const MAX_BUILDING_H = 18;
+export const TALL_H = 17; // desde acá el edificio solo admite sala de máquinas en el techo
 const FLOOR_H = 3;
 const TILE = 6; // baldosa de la plaza y del suelo devorado
 
@@ -40,10 +41,15 @@ const prism = (x: number, y: number, z: number, w: number, d: number, h: number,
   return p;
 };
 
-/** Suelo facetado de baldosas: `TILE`×`TILE`, un tercio con toneOffset ±1 (baldosas rotas). */
-function tiles(rng: Rng, r: Rect, z: number, mat: Material): Solid {
+/** Baldosa rota del suelo devorado: un tercio con ±1. */
+const brokenTone = (rng: Rng): number => (rng.chance(1 / 3) ? rng.pick([-1, 1]) : 0);
+/** Baldosa de la plaza: la mitad más clara y un quinto más oscura, para que la plaza se lea como un claro y no como asfalto. */
+const plazaTone = (rng: Rng): number => { const r = rng.next(); return r < 0.5 ? 1 : r < 0.7 ? -1 : 0; };
+
+/** Suelo facetado de baldosas `TILE`×`TILE`, con el tono de cada una según `tone`. */
+function tiles(rng: Rng, r: Rect, z: number, mat: Material, tone: (rng: Rng) => number = brokenTone): Solid {
   const tris: Tri[] = [];
-  const off = (): number => (rng.chance(1 / 3) ? rng.pick([-1, 1]) : 0);
+  const off = (): number => tone(rng);
   for (let x = r.x; x < r.x + r.w; x += TILE) for (let y = r.y; y < r.y + r.d; y += TILE) {
     const w = Math.min(TILE, r.x + r.w - x), d = Math.min(TILE, r.y + r.d - y);
     const a = v3(x, y, z), b = v3(x + w, y, z), c = v3(x + w, y + d, z), dd = v3(x, y + d, z);
@@ -67,6 +73,7 @@ function lamp(solids: Solid[], accents: Accent[], x: number, y: number, z: numbe
  * completo quedaría flotando sobre el retranqueo.
  */
 function building(out: Solid[], rng: Rng, x: number, y: number, z: number, w: number, d: number, h: number, mat: Material, roof?: "step"): void {
+  const lowRoof = h >= TALL_H; // ver roofDetail: sobre un edificio de 17..18 solo entra la sala de máquinas bajo el tope de 21
   const facade: Facade = { floors: Math.max(1, Math.round(h / FLOOR_H)), cols: rng.int(2, 4), base: rng.chance(0.5) ? "glass" : "portico" };
   out.push(prism(x, y, z, w, d, h, mat, roof ? { roof, facade } : { facade }));
   const cornice: Material = mat === "office" ? "officeDark" : "office";
@@ -74,17 +81,24 @@ function building(out: Solid[], rng: Rng, x: number, y: number, z: number, w: nu
     const ix = w * STEP_INSET, iy = d * STEP_INSET;
     const top = z + h + h * STEP_RATIO;
     out.push(prism(x + ix - 0.5, y + iy - 0.5, top, w - 2 * ix + 1, d - 2 * iy + 1, 0.4, cornice));
-    roofDetail(out, rng, x + ix, y + iy, w - 2 * ix, d - 2 * iy, top + 0.4);
+    roofDetail(out, rng, x + ix, y + iy, w - 2 * ix, d - 2 * iy, top + 0.4, lowRoof);
   } else {
     const top = z + h;
     out.push(prism(x - 0.5, y - 0.5, top, w + 1, d + 1, 0.4, cornice));
-    roofDetail(out, rng, x, y, w, d, top + 0.4);
+    roofDetail(out, rng, x, y, w, d, top + 0.4, lowRoof);
   }
 }
 
-function roofDetail(out: Solid[], rng: Rng, x: number, y: number, w: number, d: number, z: number): void {
+/**
+ * Detalle de techo. Con `lowRoof` (edificios de 17..18) se fuerza la sala de
+ * máquinas: es el único detalle que entra bajo el tope de 21 (0.3 de zócalo +
+ * 18 + 0.4 de cornisa + 2 = 20.7); el tanque, la antena y los conos lo pasan.
+ * El rng se consume igual en los dos casos, así la semilla no se desalinea.
+ */
+function roofDetail(out: Solid[], rng: Rng, x: number, y: number, w: number, d: number, z: number, lowRoof = false): void {
   const cx = x + w / 2, cy = y + d / 2;
-  switch (rng.int(0, 3)) {
+  const pick = rng.int(0, 3);
+  switch (lowRoof ? 1 : pick) {
     case 0: // tanque de agua sobre cuatro postes (1.1, no 1.2: distingue el poste del auto en el filtro de tests)
       for (const [dx, dy] of [[-0.8, -0.8], [0.8, -0.8], [0.8, 0.8], [-0.8, 0.8]] as const) out.push(prism(cx + dx - 0.15, cy + dy - 0.15, z, 0.3, 0.3, 1.1, "steel"));
       out.push({ kind: "cylinder", at: v3(cx, cy, z + 1.1), r: 1.2, h: 2, mat: "rust", sides: 6 });
@@ -103,8 +117,13 @@ function pickType(rng: Rng, maxH: number): BlockType {
   return t === "tower" && maxH < 12 ? "pair" : t;
 }
 
-/** Una manzana común: zócalo más contenido por rng. `maxH` topa la altura (fila frente a la torre). */
-function block(solids: Solid[], ground: Solid[], rng: Rng, b: Block, maxH: number): void {
+/**
+ * Una manzana común: zócalo más contenido por rng. `maxH` topa la altura (fila
+ * frente a la torre). `tallPending` son las riberas que todavía no tienen un
+ * edificio de 17..18: la primera manzana tipo torre de cada una se lo lleva, así
+ * el skyline no queda plano abajo del landmark.
+ */
+function block(solids: Solid[], ground: Solid[], rng: Rng, b: Block, maxH: number, tallPending: Set<Block["bank"]>): void {
   const type = pickType(rng, maxH);
   const ix = b.x + SIDEWALK, iy = b.y + SIDEWALK, iw = b.w - 2 * SIDEWALK, id = b.d - 2 * SIDEWALK; // huella útil 21×15
   if (type === "eaten") {
@@ -117,7 +136,8 @@ function block(solids: Solid[], ground: Solid[], rng: Rng, b: Block, maxH: numbe
   }
   solids.push(prism(b.x, b.y, 0, b.w, b.d, PLINTH_H, "paving"));
   if (type === "tower") {
-    const w = rng.int(12, 14), d = rng.int(10, 12), h = rng.int(12, Math.max(12, Math.min(16, maxH)));
+    const tall = tallPending.delete(b.bank);
+    const w = rng.int(12, 14), d = rng.int(10, 12), h = tall ? rng.int(TALL_H, MAX_BUILDING_H) : rng.int(12, Math.max(12, Math.min(MAX_BUILDING_H, maxH)));
     building(solids, rng, ix + (iw - w) / 2, iy + (id - d) / 2, PLINTH_H, w, d, h, "office");
   } else if (type === "pair") {
     const y = iy + (id - 13) / 2;
@@ -134,19 +154,31 @@ function block(solids: Solid[], ground: Solid[], rng: Rng, b: Block, maxH: numbe
 /** Ruling: frente a la torre (fila sur, x 96..162) nada supera 10 para que sus ventanas encendidas no floten sobre otro edificio. */
 const maxHeightFor = (b: Block): number => (b.row === 3 && b.x >= 96 && b.x + b.w <= 162 ? 10 : MAX_BUILDING_H);
 
-/** Charco de luz: octógono plano a ras del piso, que proyectado se ve como una elipse achatada. */
-function puddle(x: number, y: number, r = 2.5): Accent {
-  const pts = Array.from({ length: 8 }, (_, i) => { const a = ((i + 0.5) / 8) * Math.PI * 2; return v3(x + r * Math.cos(a), y + r * Math.sin(a), 0.12); });
-  return { kind: "poly", pts, color: "amberBleed", alpha: 0.55 };
+const PUDDLE_ALPHA = 0.25;
+const PUDDLE_RADII = [2.5, 1.8, 1.2] as const;
+
+/**
+ * Charco de luz: tres octógonos planos concéntricos de radio decreciente, a ras
+ * del piso. Proyectados se ven como elipses achatadas y, con poco alfa y
+ * superpuestos, el borde se deshace en vez de recortarse como una mancha.
+ */
+function puddle(x: number, y: number): Accent[] {
+  return PUDDLE_RADII.map((r) => ({
+    kind: "poly",
+    pts: Array.from({ length: 8 }, (_, i) => { const a = ((i + 0.5) / 8) * Math.PI * 2; return v3(x + r * Math.cos(a), y + r * Math.sin(a), 0.12); }),
+    color: "amberBleed",
+    alpha: PUDDLE_ALPHA,
+  }));
 }
 
 // ---------------------------------------------------------------- plaza y torre
 
 function plazaAndTower(solids: Solid[], ground: Solid[], accents: Accent[], rng: Rng): CityScene["tower"] {
-  ground.push(tiles(rng, PLAZA, 0.05, "plaza"));
-  // cordón: cuatro prismas finos alrededor de la plaza
-  solids.push(prism(PLAZA.x, PLAZA.y, 0, PLAZA.w, 0.6, PLINTH_H, "plaza"), prism(PLAZA.x, PLAZA.y + PLAZA.d - 0.6, 0, PLAZA.w, 0.6, PLINTH_H, "plaza"));
-  solids.push(prism(PLAZA.x, PLAZA.y, 0, 0.6, PLAZA.d, PLINTH_H, "plaza"), prism(PLAZA.x + PLAZA.w - 0.6, PLAZA.y, 0, 0.6, PLAZA.d, PLINTH_H, "plaza"));
+  ground.push(tiles(rng, PLAZA, 0.05, "plaza", plazaTone));
+  // cordón: una banda de `paving` de 1.2 alrededor de la plaza, ancha para que el contorno se lea al zoom de mundo
+  const curb = 1.2;
+  solids.push(prism(PLAZA.x, PLAZA.y, 0, PLAZA.w, curb, PLINTH_H, "paving"), prism(PLAZA.x, PLAZA.y + PLAZA.d - curb, 0, PLAZA.w, curb, PLINTH_H, "paving"));
+  solids.push(prism(PLAZA.x, PLAZA.y, 0, curb, PLAZA.d, PLINTH_H, "paving"), prism(PLAZA.x + PLAZA.w - curb, PLAZA.y, 0, curb, PLAZA.d, PLINTH_H, "paving"));
 
   const facade: Facade = { floors: 8, cols: 4, litFloor: 5, base: "portico" };
   const tower = prism(TOWER.x, TOWER.y, 0, TOWER.w, TOWER.d, TOWER_H, "officeDark", { facade });
@@ -166,8 +198,12 @@ function plazaAndTower(solids: Solid[], ground: Solid[], accents: Accent[], rng:
   // derrame de luz: charcos planos sobre las baldosas, solo en la franja este de
   // la plaza (entre la pared este de la torre y el cordón), que es la parte que
   // la cámara ve libre de paredes, techos y árboles.
-  for (const [x, y] of [[TOWER.x + TOWER.w + 8, TOWER.y + 1.5], [TOWER.x + TOWER.w + 8, TOWER.y + 8]] as const) accents.push(puddle(x, y));
-  for (const [x, y] of [[PLAZA.x + 4, PLAZA.y + 3], [PLAZA.x + PLAZA.w - 6, PLAZA.y + 3], [PLAZA.x + 4, PLAZA.y + PLAZA.d - 3.6], [PLAZA.x + PLAZA.w - 6, PLAZA.y + PLAZA.d - 3.6]] as const) solids.push(prism(x, y, 0.05, 2, 0.6, 0.5, "paving"));
+  // desviación del brief: la franja libre de la plaza (sin la pared este, los
+  // conos de la esquina y los techos de la fila de enfrente) es esta diagonal,
+  // no el pie mismo de la pared; los dos charcos se solapan y se leen como un
+  // solo derrame estirado hacia el este.
+  for (const [x, y] of [[TOWER.x + TOWER.w + 6.5, TOWER.y + 2], [TOWER.x + TOWER.w + 9, TOWER.y + 4]] as const) accents.push(...puddle(x, y));
+  for (const [x, y] of [[PLAZA.x + 4, PLAZA.y + 3], [PLAZA.x + PLAZA.w - 6, PLAZA.y + 3], [PLAZA.x + 4, PLAZA.y + PLAZA.d - 4.2], [PLAZA.x + PLAZA.w - 6, PLAZA.y + PLAZA.d - 4.2]] as const) solids.push(prism(x, y, 0.05, 2, 0.6, 0.5, "paving"));
   lamp(solids, accents, PLAZA.x + 2, PLAZA.y + PLAZA.d / 2, 0.05);
   lamp(solids, accents, PLAZA.x + PLAZA.w - 2.6, PLAZA.y + PLAZA.d / 2, 0.05);
   return { litWindows, antenna: v3(mast.x, mast.y, mast.z + 5), paperWindow };
@@ -227,8 +263,9 @@ function avenue(ground: Solid[], solids: Solid[]): void {
     for (let k = -2; k <= 2; k++) ground.push(strip([{ x: cx + k, y: AVENUE.y0 }, { x: cx + k, y: AVENUE.y1 }], 0.5, "paving"));
   }
   for (const x of [...WEST_COLS, ...EAST_COLS]) {
-    const clipsRamp = x === EAST_COLS[0]; // el primer tramo este roza la rampa del puente (276..282)
-    solids.push(prism(clipsRamp ? x + 3 : x, BOULEVARD.y0, 0, clipsRamp ? BLOCK_W - 3 : BLOCK_W, BOULEVARD.y1 - BOULEVARD.y0, 0.3, "leafDark"));
+    const x0 = x === EAST_COLS[0] ? x + 3 : x;                                  // el primer tramo este roza la rampa del puente (276..282)
+    const x1 = x === EAST_COLS[1] ? MALECON.x0 - 0.5 : x + BLOCK_W;             // el último termina al pie del malecón, sin meterse en su muro
+    solids.push(prism(x0, BOULEVARD.y0, 0, x1 - x0, BOULEVARD.y1 - BOULEVARD.y0, 0.3, "leafDark"));
     for (const dx of [4, 12, 20]) solids.push({ kind: "cone", at: v3(x + dx, BOULEVARD.y0 + 2, 0.3), r: 1.5, h: 4, mat: "leaf" });
   }
 }
@@ -291,7 +328,8 @@ function collapsed(solids: Solid[], rng: Rng): void {
   solids.push({ kind: "ramp", at: v3(c.x - 6, c.y, -1.2), w: 12, d: c.d, h: 1.5, mat: "asphalt", dir: "w" }); // la mitad oeste se hunde en el estuario
   solids.push(prism(c.x + 6, c.y, 0, 18, c.d, PLINTH_H, "paving")); // pegada al labio alto de la rampa (286), sin escalón
   solids.push(prism(c.x + 14, c.y + 4, PLINTH_H, 8, 10, rng.int(2, 3), "officeDark")); // ruina sin fachada, dentro de la plataforma
-  for (const [x, y, z, w, d] of [[c.x - 12, c.y + 6, -0.5, 3, 3], [c.x - 8, c.y + 12, -0.7, 4, 3], [c.x - 10, c.y + 1, -0.4, 3, 4]] as const) solids.push(prism(x, y, z, w, d, 1.5, "officeDark"));
+  // la losa grande del edificio caído, más dos cascotes; las tres enteras en agua (x + w < estuaryEast) y al oeste del labio de la rampa
+  for (const [x, y, z, w, d] of [[c.x - 14, c.y + 8, -0.9, 8, 6], [c.x - 12, c.y + 1, -0.5, 4, 3], [c.x - 16, c.y + 16, -0.7, 3, 4]] as const) solids.push(prism(x, y, z, w, d, 1.2, "officeDark"));
   solids.push(prism(FALLEN_BLOCK.x, FALLEN_BLOCK.y, 0, FALLEN_BLOCK.w, FALLEN_BLOCK.d, 1, "officeDark")); // el cuarto, caído en la calle frente al malecón (el agua frente al malecón es zona Blog)
 }
 
@@ -350,7 +388,8 @@ function cars(solids: Solid[], rng: Rng): void {
 
 export function city(rng: Rng): CityScene {
   const ground: Solid[] = [], solids: Solid[] = [], accents: Accent[] = [];
-  for (const b of blocks()) if (b.kind === "block") block(solids, ground, rng, b, maxHeightFor(b));
+  const tallPending = new Set<Block["bank"]>(["west", "east"]);
+  for (const b of blocks()) if (b.kind === "block") block(solids, ground, rng, b, maxHeightFor(b), tallPending);
   const tower = plazaAndTower(solids, ground, accents, rng);
   lanes(ground);
   avenue(ground, solids);
