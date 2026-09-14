@@ -86,8 +86,13 @@ apila).
 - **Coordenadas.** `WORLD_W = 560`, `WORLD_H = 270`, unidades del mapa viejo.
   Portfolio x 0..344, y 0..146 (como hoy). Resume x 0..344, y 146..270.
   Blog x 344..560, y 0..270. `geo.ts` conserva `riverCenter` y `splitX` y
-  suma `HEADLAND`: la punta nace en el muelle de alistamiento
-  (x 330..344, y 100..130) y llega hasta x≈400, y≈118, con el faro en la punta.
+  suma dos formas: `HEADLAND`, la punta que nace en el muelle de alistamiento
+  (x 330..344, y 100..130) y llega hasta x≈400, y≈118, con el faro en la
+  punta; y `MOUTH`, la desembocadura: en el mapa viejo el río corría de norte
+  a sur sin tocar el mar, así que ahora dobla al este en su tramo norte
+  (y < 24) y desemboca en una bahía en la esquina NE del astillero. Es la
+  única salida de los barcos al mar. Toca al astillero: el tanque en
+  (310, 10) y la selva del borde norte-este se mueven al sur de la bahía.
 - **Un clasificador, una malla.** `src/scenes/terrain.ts` exporta
   `terrainAt(x, y): Terrain`, que despacha por `zoneAt` a
   `shipyardTerrainAt`, `cityTerrainAt`, `seaTerrainAt`. `buildTerrain(rng)`
@@ -152,10 +157,16 @@ apila).
   18×6×3 con caseta), barcaza (`hull` 40×9×2 con contenedores `rust`/`steel`),
   y un pecio fijo a z -3 junto al arrecife. Los que navegan llevan luz de
   mástil `magentaMid` y luces de posición.
-- **Rutas.** Nacen en la boca del río y van al este por mar abierto, siempre
-  al sur de la punta: nunca pasan detrás del faro ni de la roca. Velocidades
-  1.2 / 2 / 0.8 u/s, fases distintas; al superar x = `WORLD_W + 40` reaparecen
-  en la boca. `Graphics` propias por barco para casco y sombra.
+- **Rutas.** Nacen en la desembocadura (`MOUTH`, esquina NE del astillero),
+  rodean la punta por el este, siempre con x mayor que el extremo de la roca
+  mientras |y - 118| < 40, y siguen al sudeste hasta el borde este del mundo.
+  Al rodear la punta por el este quedan delante del faro en profundidad:
+  nunca pasan detrás de él ni de la roca. Velocidades 1.2 / 2 / 0.8 u/s,
+  fases distintas. En los últimos 30 u antes del borde el barco, su sombra y
+  su estela bajan el alpha a 0 (bruma de distancia); al cruzar el borde se
+  reciclan en la desembocadura con alpha subiendo de 0 a 1 en 30 u. Nada se
+  dibuja fuera de la malla de mar, así el diorama conserva sus bordes.
+  `Graphics` propias por barco para casco y sombra.
 - **Estelas.** 3..5 triángulos `up` de `waterDeep` detrás de cada barco, en la
   capa de mar, en V, desvanecidos a 25 u. Se regeneran con el barco.
 - **Mar.** `waterDeep` mar adentro, `water` en `shore`. Onda diagonal de tono
@@ -185,9 +196,10 @@ apila).
   para las tres escenas, en lugar del `AnimChanges` de campos fijos. Cada
   animación se registra con id y `Graphics`; el loop redibuja solo los ids
   devueltos.
-- **Encuadre.** `fitTransform` sobre todo lo que puede aparecer, rutas de
-  barcos incluidas. En `world.html`, teclas `1`, `2`, `3`, `0` encuadran cada
-  zona o el mundo.
+- **Encuadre.** `fitTransform` sobre la geometría estática del mundo; las
+  rutas de los barcos no la extienden porque terminan en el borde de la
+  malla. En `world.html`, teclas `1`, `2`, `3`, `0` encuadran cada zona o el
+  mundo.
 - **Presupuesto.** Primer dibujo < 150 ms en desktop; redibujos animados
   < 3 ms por frame. Medido con `performance.now()` e impreso en consola en dev.
 
@@ -208,8 +220,10 @@ apila).
   = 6); nada apoyado fuera de su zona salvo selva; ningún edificio pisa una
   calle; ningún sólido de ciudad usa materiales del astillero salvo
   `steel`/`rust` en vehículos; nada supera 18 salvo los tres landmarks.
-- **Animación.** Rutas enteramente sobre `sea`/`shore`, ningún punto detrás de
-  un sólido estático, cada barco vuelve a su posición tras un ciclo. Haz: 8 s
+- **Animación.** Rutas enteramente sobre `sea`/`shore`/`MOUTH`, ningún punto
+  detrás de un sólido estático que se le superponga en pantalla (`isBehind` +
+  `screenBounds`), alpha 0 exactamente en el borde, cada barco vuelve a su
+  posición tras un ciclo. Haz: 8 s
   por vuelta, fijo con `reduced-motion`. Papeles a ≤ 30 u de la ventana.
   Parpadeo: nunca dos frames apagados seguidos.
 - **Exclusión.** `dist/` no contiene nada de `lab/`.
@@ -219,7 +233,7 @@ apila).
 ## 9. Orden de implementación sugerido
 
 1. Motor: fachadas, `poly`, rampa N/S, acentos, colores, materiales, tope de sombra.
-2. Terreno compartido y `world.ts`; `shipyard()` deja de generar terreno; lab del mundo con solo el astillero.
+2. Terreno compartido y `world.ts`; `shipyard()` deja de generar terreno y recibe la desembocadura al NE; lab del mundo con solo el astillero.
 3. Resume (comparte selva y borde con el astillero).
 4. Blog.
 5. Runtime común, páginas de lab, presupuesto, capturas.
