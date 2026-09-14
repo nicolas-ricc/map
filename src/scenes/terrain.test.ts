@@ -61,6 +61,10 @@ describe("buildTerrain", () => {
     const rock = m.ground.filter((g) => g.kind === "ground" && g.mat === "rock").flatMap(tris);
     const high = rock.filter((t) => t.pts.every((p) => p.z >= 4));
     expect(high.length).toBeGreaterThan(20);
+    // la base de la punta (x < 340) es baja: nada alto junto a los galpones del muelle
+    const base = rock.filter((t) => t.pts.every((p) => p.x <= 340 && p.y > 96 && p.y < 136));
+    expect(base.length).toBeGreaterThan(0);
+    expect(base.every((t) => t.pts.every((p) => p.z < 4))).toBe(true);
     const inDock = allTris(m).filter((t) => t.pts.every((p) => p.x > 122 && p.x < 190 && p.y > 8 && p.y < 28));
     expect(inDock).toEqual([]);
   });

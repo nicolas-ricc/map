@@ -70,7 +70,18 @@ export function terrainAt(x: number, y: number): Terrain {
   }
 }
 
-const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth, paving: 0, sea: WATER_Z, shore: WATER_Z, headland: 6, reef: 0.5 };
+const HEADLAND_BASE_Z = 1;    // altura de la punta donde nace, junto al muelle de alistamiento
+const HEADLAND_TOP_Z = 7;     // altura plena, hacia el faro
+const HEADLAND_RISE_X0 = 330; // x donde nace la punta
+const HEADLAND_RISE_X1 = 355; // x desde donde tiene altura plena
+
+/** La punta sube desde su base hasta el faro: rampa en x, con el jitter de `headland` encima. */
+const headlandZ = (x: number): number => {
+  const t = Math.min(1, Math.max(0, (x - HEADLAND_RISE_X0) / (HEADLAND_RISE_X1 - HEADLAND_RISE_X0)));
+  return HEADLAND_BASE_Z + (HEADLAND_TOP_Z - HEADLAND_BASE_Z) * t;
+};
+
+const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth, paving: 0, sea: WATER_Z, shore: WATER_Z, headland: HEADLAND_TOP_Z, reef: 0.5 };
 const JITTER: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0, paving: 0.15, sea: 0, shore: 0, headland: 1.5, reef: 0.3 };
 const MAT: Record<Exclude<Terrain, "dock">, Material> = { slab: "slab", water: "water", east: "sand", jungle: "leafDark", paving: "paving", sea: "waterDeep", shore: "water", headland: "rock", reef: "rock" };
 const FLAT = new Set<Terrain>(["water", "sea", "shore", "dock"]);
@@ -82,8 +93,10 @@ export function buildTerrain(rng: Rng, zones?: readonly WorldZone[]): TerrainMes
   for (let j = 0; j <= rows; j++) {
     z.push([]);
     for (let i = 0; i <= cols; i++) {
-      const t = terrainAt(Math.min(i * CELL, WORLD_W - 1), Math.min(j * CELL, WORLD_H - 1));
-      z[j]!.push(BASE_Z[t] + (rng.next() * 2 - 1) * JITTER[t]);
+      const x = Math.min(i * CELL, WORLD_W - 1), y = Math.min(j * CELL, WORLD_H - 1);
+      const t = terrainAt(x, y);
+      const base = t === "headland" ? headlandZ(x) : BASE_Z[t];
+      z[j]!.push(base + (rng.next() * 2 - 1) * JITTER[t]);
     }
   }
   const tris = {} as Record<Terrain, Tri[]>;
