@@ -41,6 +41,7 @@ function plant(out: Solid[]): void {
   for (let i = 0; i < 5; i++) out.push({ kind: "ramp", at: v3(x + i * 20, y, h), w: 20, d, h: 4, mat: "brick", dir: "w" }); // dientes de sierra: cara vertical al este
   out.push(prism(x - 0.6, y - 0.6, h - 0.8, w + 1.2, d + 1.2, 0.8, "concrete"));                                      // cornisa, bajo el techo: no pisa la huella de los dientes
   for (const px of [x + 20, x + 60]) out.push(prism(px, y + d - 0.2, 0, 6, 0.5, 8, "concrete"));                       // portones en la cara sur, sobresalen 0.3 (no coplanares con el muro)
+  out.push(prism(x + w - 0.2, -23, 0, 0.5, 6, 8, "concrete"));                                                        // portón este, de donde sale la cinta
 }
 
 function chimneys(out: Solid[]): Vec3[] {
@@ -63,11 +64,11 @@ function siding(out: Solid[]): void {
   out.push(prism(6, SIDING_Y - 1.3, 0, 9, 2.6, 3.6, "steel"), prism(12, SIDING_Y - 1.3, 3.6, 3, 2.6, 1, "steel"));      // locomotora y cabina
 }
 
-/** Del portón este de la planta al patio de material: dos tramos rectos a z 6 sobre caballetes cada 12 u. */
+/** Del portón este de la planta al patio de material: arranca justo afuera del portón, dos tramos rectos a z 6 sobre caballetes cada 12 u. */
 function conveyor(out: Solid[]): void {
-  out.push(prism(119, -20, CONVEYOR_Z, 2, 22, 0.6, "steel"));
-  out.push(prism(30, 1, CONVEYOR_Z, 90, 2, 0.6, "steel"));
-  for (let y = -16; y < 2; y += 12) out.push(prism(119.6, y, 0, 0.8, 0.8, CONVEYOR_Z, "steel"));
+  out.push(prism(121, -20, CONVEYOR_Z, 2, 22, 0.6, "steel"));
+  out.push(prism(30, 1, CONVEYOR_Z, 93, 2, 0.6, "steel"));
+  for (let y = -16; y < 2; y += 12) out.push(prism(121.6, y, 0, 0.8, 0.8, CONVEYOR_Z, "steel"));
   for (let x = 34; x < 120; x += 12) out.push(prism(x, 1.6, 0, 0.8, 0.8, CONVEYOR_Z, "steel"));
 }
 

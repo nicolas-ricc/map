@@ -55,7 +55,9 @@ describe("factory", () => {
       const a = bounds(wagons[i]!), b = bounds(wagons[j]!);
       expect(a.max.x <= b.min.x || b.max.x <= a.min.x).toBe(true);
     }
+    const conveyorPieces = s.solids.filter((x) => x.kind === "prism" && ((x.at.z === 6 && x.h === 0.6) || (x.w === 0.8 && x.d === 0.8 && x.h === 6)));
     expect(s.solids.filter((x) => x.kind === "prism" && x.at.z === 6 && x.h === 0.6)).toHaveLength(2); // dos tramos de cinta
+    for (const c of conveyorPieces) { const b = bounds(c); expect(b.min.x >= PLANT.x + PLANT.w || b.min.y >= PLANT.y + PLANT.d).toBe(true); } // la cinta no pisa la planta
     expect(s.solids.filter((x) => x.kind === "prism" && x.w === 3 && x.d === 3 && x.h === 3 && x.mat === "steel")).toHaveLength(6); // transformadores
     expect(s.solids.filter((x) => x.kind === "prism" && x.w === 6 && x.d === 2.4 && x.h === 2.8)).toHaveLength(3); // camiones
     const rails = s.ground.filter((x) => x.kind === "strip" && x.mat === "steel");
