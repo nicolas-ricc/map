@@ -20,6 +20,6 @@ export function bootWorldPage(zones: readonly WorldZone[] | undefined, frame: La
   if (scene.shipyard) animators.push(shipyardAnimator(scene.shipyard, [scene.terrain.river], createRng(SEED + 1), { reducedMotion }));
   if (scene.city) animators.push(cityAnimator(scene.city, createRng(SEED + 2), { reducedMotion }));
   if (scene.factory) animators.push(factoryAnimator(scene.factory, createRng(SEED + 4), { reducedMotion }));
-  if (scene.sea) animators.push(seaAnimator(scene.sea, scene.terrain, createRng(SEED + 3), { reducedMotion }));
+  if (scene.sea) animators.push(seaAnimator(scene.sea, scene.terrain, { reducedMotion }));
   void bootLab(host, scene, animators, { reducedMotion, log: import.meta.env.DEV, frame });
 }

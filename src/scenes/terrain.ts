@@ -9,7 +9,11 @@ import { CITY_EDGE, DISTRICT_BANK_Y, EAST_RING, MALECON_STREET_X, estuaryEast, i
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
  * contenido) más una de CELL_BLEED alrededor (el sangrado). Cada zona aporta
  * su clasificador; `terrainAt` despacha por geografía. Una sola malla por
- * grilla garantiza que los vértices en las costuras compartan altura.
+ * grilla garantiza que los vértices en las costuras compartan altura. Los
+ * `Tri` de los cuerpos de agua (`sea`, `shore`, `abyss`) se comparten con los
+ * animadores, que les mutan `toneOffset` in place (el runtime nunca vuelve a
+ * dibujar un cuerpo reclamado de forma estática), así que un `TerrainMesh`
+ * deja de ser un valor puro después de un `tick`.
  */
 export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "asphalt" | "sea" | "shore" | "headland" | "reef" | "abyss";
 export type BleedTerrain = "jungle" | "sea" | "abyss";

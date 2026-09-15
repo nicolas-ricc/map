@@ -2,7 +2,6 @@ import type { Accent } from "../iso/accent";
 import { v3, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid, Tri } from "../iso/solids";
 import { distToHeadland } from "../map/geo";
-import type { Rng } from "../map/seed";
 import type { SeaScene } from "./sea";
 import { ship as buildShip, type ShipKind } from "./ships";
 import type { TerrainMesh } from "./terrain";
@@ -32,7 +31,7 @@ import type { TerrainMesh } from "./terrain";
 // con la salida de la bahía, y ROUTE[0] y el heading inicial están fijados por el test, sin margen).
 export const ROUTE: Vec2[] = [{ x: 326, y: -24 }, { x: 350, y: 10 }, { x: 500, y: 20 }, { x: 510, y: 118 }, { x: 520, y: 172 }, { x: 545, y: 224 }, { x: 610, y: 260 }];
 export const SHIPS: readonly { kind: ShipKind; speed: number; phase: number }[] = [{ kind: "cargo", speed: 1.2, phase: 0 }, { kind: "tug", speed: 2, phase: 0.4 }, { kind: "barge", speed: 0.8, phase: 0.75 }];
-export const FADE_U = 30, TURN_U = 20, WAKE_LEN = 25;
+export const FADE_U = 30, TURN_U = 20;
 // SEA_STEP_MS 150 (no 100, Task 6): en el lab medido (Chrome headless vía CDP, sin GPU) el peor
 // redibujo en 5 s rondaba 9-14 ms con 100 ms y sigue en 9-12 ms con 150 ms: por encima de la meta de
 // 6 ms. Queda pendiente medir en un Chrome de escritorio con GPU (Task 7) antes de decidir si hace
@@ -79,7 +78,7 @@ const centerKey = (t: Tri): number => (t.pts[0].x + t.pts[1].x + t.pts[2].x + t.
 const centerX = (t: Tri): number => (t.pts[0].x + t.pts[1].x + t.pts[2].x) / 3;
 const centerY = (t: Tri): number => (t.pts[0].y + t.pts[1].y + t.pts[2].y) / 3;
 
-export function createSeaAnim(scene: SeaScene, terrain: TerrainMesh, rng: Rng, opts: { reducedMotion: boolean }): SeaAnim {
+export function createSeaAnim(scene: SeaScene, terrain: TerrainMesh, opts: { reducedMotion: boolean }): SeaAnim {
   const seaTris = terrain.sea.kind === "ground" ? terrain.sea.tris : [], shoreTris = terrain.shore.kind === "ground" ? terrain.shore.tris : [];
   const abyssTris = terrain.abyss.kind === "ground" ? terrain.abyss.tris : [];
   // bandas por x: cada una lleva su parte de mar y de orilla; la espuma del arrecife tiene su propia
@@ -115,7 +114,7 @@ export function createSeaAnim(scene: SeaScene, terrain: TerrainMesh, rng: Rng, o
     const built = buildShip(SHIPS[k]!.kind, p, p.heading);
     const c = Math.cos(p.heading), s = Math.sin(p.heading);
     const local = (dx: number, dy: number) => v3(p.x + dx * c - dy * s, p.y + dx * s + dy * c, WATER_Z + 0.05);
-    const wake: Tri[] = [1, 2, 3, 4].map((i): Tri => ({ pts: [local(-6 * i + 3, 0), local(-6 * i, -(0.8 + 1.2 * i)), local(-6 * i, 0.8 + 1.2 * i)], toneOffset: i < 2 ? 1 : i < 4 ? 0 : -1 }));
+    const wake: Tri[] = [1, 2, 3, 4].map((i): Tri => ({ pts: [local(-6 * i + 3, 0), local(-6 * i, -(0.8 + 1.2 * i)), local(-6 * i, 0.8 + 1.2 * i)], toneOffset: i < 2 ? 1 : 0 }));
     return { solids: built.solids, lights: built.lights, wake: [{ kind: "ground", mat: "foam", tris: wake }], alpha };
   };
 
@@ -151,7 +150,6 @@ export function createSeaAnim(scene: SeaScene, terrain: TerrainMesh, rng: Rng, o
       for (let k = 0; k < SHIPS.length; k++) { dists[k] = dists[k]! + (SHIPS[k]!.speed * dtMs) / 1000; if (dists[k]! >= L) dists[k] = dists[k]! - L; }
       const bs = Math.floor(clock / (BUOY_PERIOD_MS / 2));
       if (bs !== buoyStep) { buoyStep = bs; c.buoys = true; }
-      void rng;
       return c;
     },
   };

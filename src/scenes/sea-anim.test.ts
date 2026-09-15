@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import { isBehind, overlaps, screenBounds } from "../iso/depth";
 import { bounds, type Solid, type Tri } from "../iso/solids";
 import { WORLD } from "../map/geo";
-import { createRng } from "../map/seed";
 import { BEAM_PERIOD_MS, FADE_U, ROUTE, SEA_STEP_MS, SHIPS, createSeaAnim, routeAt, routeLength } from "./sea-anim";
 import { ship } from "./ships";
 import { bleedTerrainAt, terrainAt } from "./terrain";
 import { world } from "./world";
 
 const WATER = new Set(["water", "sea", "shore", "abyss"]);
-const setup = (reducedMotion = false) => { const w = world(7); return { w, a: createSeaAnim(w.sea!, w.terrain, createRng(3), { reducedMotion }) }; };
+const setup = (reducedMotion = false) => { const w = world(7); return { w, a: createSeaAnim(w.sea!, w.terrain, { reducedMotion }) }; };
 const tris = (s: Solid): Tri[] => (s.kind === "ground" ? s.tris : []);
 
 describe("ruta", () => {

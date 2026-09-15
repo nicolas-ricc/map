@@ -12,7 +12,6 @@ import { buildTerrain, type TerrainMesh } from "./terrain";
 /**
  * El mundo entero: terreno compartido más una escena por zona. Cada escena
  * recibe su propio Rng derivado del seed, así retocar una no reordena las otras.
- * Blog se enchufa acá cuando exista (plan 3).
  */
 export interface WorldScene {
   terrain: TerrainMesh;
