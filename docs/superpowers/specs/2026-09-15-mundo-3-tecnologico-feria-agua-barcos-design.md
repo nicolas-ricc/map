@@ -148,6 +148,36 @@ Líneas de consola crudas (tres corridas):
 [lab] peor redibujo en 5 s: 8.10 ms
 ```
 
+**Distrito tecnológico (Task 13).** Con el suburbio reemplazado por el
+distrito tecnológico ya animado (Tareas 10–12: torres de muro cortina,
+campus y atrios con fachada completa, laboratorios, telecom, arena y
+auditorio; 1 190 sólidos elevados), se repitió la misma medición sobre
+`world.html`. Dos corridas: primer dibujo (segunda carga) 140.1 y 138.9 ms,
+30 107 polígonos estáticos en ambas (sube desde los 25 256 de la Task 9 por
+las fachadas nuevas del distrito); peor redibujo (mayor de tres en 5 s)
+10.90 y 12.20 ms. Ninguna corrida fue un pico aislado, así que no hizo
+falta una tercera. Primer dibujo 138.9–140.1 ms (< 170 ms, con margen
+frente al umbral de la puerta de §8.2), 30 107 polígonos (< 36 000), peor
+redibujo 10.90–12.20 ms (< 15 ms): la puerta de §8.2 no se activa y las
+fachadas de campus y atrios (`base: "glass"`, `floors: h/3`, `cols: 3`)
+quedan como en las Tareas 10–12; no se tocó `city-pieces.ts` ni `tech.ts`.
+
+Líneas de consola crudas (dos corridas):
+
+```
+[lab] primer dibujo: 139.0 ms, 30107 polígonos estáticos
+[lab] primer dibujo: 140.1 ms, 30107 polígonos estáticos
+[lab] peor redibujo en 5 s: 10.20 ms
+[lab] peor redibujo en 5 s: 8.30 ms
+[lab] peor redibujo en 5 s: 10.90 ms
+
+[lab] primer dibujo: 139.0 ms, 30107 polígonos estáticos
+[lab] primer dibujo: 138.9 ms, 30107 polígonos estáticos
+[lab] peor redibujo en 5 s: 12.20 ms
+[lab] peor redibujo en 5 s: 7.70 ms
+[lab] peor redibujo en 5 s: 11.60 ms
+```
+
 ## 3. Distrito tecnológico (`src/scenes/tech.ts`, `tech-anim.ts`, `tech-animator.ts`)
 
 Reemplaza `suburb.ts` (se borra) sobre la misma grilla: `suburbBlocks()`,
