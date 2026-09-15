@@ -71,6 +71,10 @@ describe("hinterland", () => {
     expect(s.solids.filter((x) => x.kind === "prism" && x.mat === "steel" && x.w === 3 && x.d === 2 && x.h === 3)).toHaveLength(6);
     expect(s.ground.some((g) => g.kind === "strip" && g.mat === "road" && g.width === 6)).toBe(true);
     expect(s.solids.filter((x) => x.kind === "prism" && x.h === 1.2 && x.w === 2.2 && bounds(x).min.x >= PARKING.x && bounds(x).max.x <= PARKING.x + PARKING.w).length).toBeGreaterThanOrEqual(10);
+    expect(s.solids.filter((x) => x.kind === "cone" && x.mat === "rust" && bounds(x).max.y < -204)).toHaveLength(3); // acopios de carbón
+    expect(s.ground.filter((g) => g.kind === "strip" && g.mat === "steel" && g.width === 0.8)).toHaveLength(1); // cinta transportadora
+    expect(s.solids.filter((x) => x.kind === "prism" && x.h === 1.2 && x.w !== 2.2 && x.mat === "steel" && bounds(x).max.y < -204)).toHaveLength(4); // cerco de la central
+    expect(s.accents.filter((a) => a.kind === "dot" && a.color === "cyan" && a.at.y < -204)).toHaveLength(5); // 2 farolas del patio de transformadores + 3 de la calle
     const north = s.solids.filter((x) => bounds(x).max.y < -204 && !isFlat(x));
     expect(north.length).toBeGreaterThan(30); expect(north.length).toBeLessThanOrEqual(250);
     for (const x of north) { const b = bounds(x); expect(inCoverQuad((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, 16 / 9, 30)).toBe(true); }
