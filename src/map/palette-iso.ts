@@ -8,6 +8,12 @@
  * canal RGB: `lit = top × (0.82, 0.74, 0.62)`, `shade = top × (0.40, 0.42, 0.60)`,
  * `up = top × (1.16, 1.12, 1.02)`, `down = top × (0.86, 0.88, 0.94)`, generados
  * con un script y pegados también como literales.
+ * El agua (`shallow`, `water`, `waterDeep`, `abyss`, `hullBlue`) usa otra regla:
+ * `lit = top × (0.30, 0.55, 0.90)` (el seno, frío: el rojo se hunde y el azul casi
+ * no cede — la resta R−B queda más fría que en `top`, no solo más oscura),
+ * `down = top × (0.78, 0.84, 0.96)`, `shade = top × (0.40, 0.42, 0.60)`,
+ * `up = top × 0.3 + 0xf0a070 × 0.7` (la cresta, tomada del atardecer).
+ * `hullBlue` sigue la regla de ciudad/costa.
  */
 export const ISO_TONES = {
   slab:      { top: 0x9a7f62, lit: 0x81613e, shade: 0x3d3942, up: 0xb89268, down: 0x82705e },
@@ -16,8 +22,10 @@ export const ISO_TONES = {
   steel:     { top: 0x6f7280, lit: 0x605755, shade: 0x2a3350, up: 0x888489, down: 0x5c6479 },
   road:      { top: 0x4f4a52, lit: 0x483832, shade: 0x1c213b, up: 0x645756, down: 0x404150 },
   rail:      { top: 0xb8a68c, lit: 0x987e5e, shade: 0x4b4b55, up: 0xdabe97, down: 0x9c9283 },
-  water:     { top: 0x1f4a55, lit: 0x243835, shade: 0x06213c, up: 0x2f5759, down: 0x154153 },
-  waterDeep: { top: 0x1c4450, lit: 0x213431, shade: 0x051f3a, up: 0x2b5054, down: 0x133c4e },
+  shallow:   { top: 0x2f7f86, lit: 0x0e4679, shade: 0x133550, up: 0xb69677, down: 0x256b81 }, // orillas, bajíos, ríos: turquesa sobre arena
+  water:     { top: 0x225f6c, lit: 0x0a3461, shade: 0x0e2841, up: 0xb28d6f, down: 0x1b5068 }, // bahía, estuario, mar cerca de la costa
+  waterDeep: { top: 0x183f56, lit: 0x07234d, shade: 0x0a1a34, up: 0xaf8368, down: 0x133553 }, // mar abierto
+  hullBlue:  { top: 0x2f4a6e, lit: 0x273744, shade: 0x131f42, up: 0x375370, down: 0x284167 }, // obra muerta de los barcos
   leaf:      { top: 0x3f6a33, lit: 0x3c511b, shade: 0x14302d, up: 0x537b33, down: 0x315d35 },
   leafDark:  { top: 0x2a4a27, lit: 0x2c3812, shade: 0x0b2128, up: 0x3b5726, down: 0x1f412a },
   rock:      { top: 0x6b5f55, lit: 0x5d4835, shade: 0x282b3c, up: 0x846e59, down: 0x585453 },
@@ -39,7 +47,7 @@ export const ISO_TONES = {
   // Blog: faro y espuma
   whitewash: { top: 0xd6cfbf, lit: 0xaf9976, shade: 0x565773, up: 0xf8e8c3, down: 0xb8b6b4 },
   foam:      { top: 0xc4d3d6, lit: 0xa19c85, shade: 0x4e5980, up: 0xe3ecda, down: 0xa9bac9 },
-  abyss:     { top: 0x12303e, lit: 0x0f2426, shade: 0x071425, up: 0x15363f, down: 0x0f2a3a },
+  abyss:     { top: 0x0f2740, lit: 0x05153a, shade: 0x061026, up: 0xad7c62, down: 0x0c213d },
 } as const;
 
 export const ISO_COLORS = {
