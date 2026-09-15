@@ -5,6 +5,7 @@ import { cityAnimator } from "../scenes/city-animator";
 import { factoryAnimator } from "../scenes/factory-animator";
 import { seaAnimator } from "../scenes/sea-animator";
 import { shipyardAnimator } from "../scenes/shipyard-animator";
+import { techAnimator } from "../scenes/tech-animator";
 import { waterAnimator } from "../scenes/water-animator";
 import { world } from "../scenes/world";
 import type { LabFrame } from "./draw";
@@ -22,6 +23,7 @@ export function bootWorldPage(zones: readonly WorldZone[] | undefined, frame: La
   if (scene.shipyard) animators.push(shipyardAnimator(scene.shipyard, createRng(SEED + 1), { reducedMotion }));
   if (scene.city) animators.push(cityAnimator(scene.city, createRng(SEED + 2), { reducedMotion }));
   if (scene.factory) animators.push(factoryAnimator(scene.factory, createRng(SEED + 4), { reducedMotion }));
+  if (scene.tech) animators.push(techAnimator(scene.tech, createRng(SEED + 5), { reducedMotion }));
   if (scene.sea) animators.push(seaAnimator(scene.sea, { reducedMotion }));
   void bootLab(host, scene, animators, { reducedMotion, log: import.meta.env.DEV, frame });
 }
