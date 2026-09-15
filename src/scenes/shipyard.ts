@@ -213,7 +213,7 @@ function jungle(out: Solid[], rng: Rng): void {
   const cluster = (x0: number, x1: number, y0: number, y1: number, n: number) => flora(out, rng, { x0, x1, y0, y1 }, n);
   cluster(3, 39, 102, 125, 10);   // SO, al norte de las vías (r ≤ 4: nunca las pisa)
   cluster(3, 39, 139, 143, 4);    // SO, al sur de las vías
-  cluster(332, 340, 26, 94, 6);   // borde este, entre la bahía y la punta
+  cluster(332, 340, 50, 94, 6);   // borde este, entre la bahía y la punta (y0 50, Task 6: deja fuera del alcance diagonal del carguero que sale de la bahía)
   cluster(332, 340, 136, 143, 2); // al sur de la punta
   cluster(301, 328, 127, 143, 6); // al sur de los galpones, sin pisar la base de la punta (x ≥ 330)
 }

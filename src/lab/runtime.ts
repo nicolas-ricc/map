@@ -45,7 +45,7 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
   drawLayer(gSolid, staticItems, "solid");
   drawAccents(gAccents, scene.accents);
   // agua estática: todo cuerpo de agua que ningún animador reclame (el astillero anima el río; el Blog animará el mar)
-  const animatedWater = new Set(animators.flatMap((a) => a.ids.flatMap((id) => { const l = a.layer(id); return l.kind === "water" ? l.water : []; })));
+  const animatedWater = new Set(animators.flatMap((a) => [...(a.claims ?? []), ...a.ids.flatMap((id) => { const l = a.layer(id); return l.kind === "water" ? l.water : []; })]));
   const staticWater = new Graphics();
   waterSlot.addChild(staticWater);
   drawLayer(staticWater, buildRenderList([terrain.river, terrain.sea, terrain.shore, terrain.abyss].filter((w) => !animatedWater.has(w))), "ground");
@@ -57,16 +57,16 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
     if (kind === "water") {
       const g = new Graphics();
       waterSlot.addChild(g);
-      redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "water" }; drawLayer(g, buildRenderList(l.water), "ground"); });
+      redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "water" }; drawLayer(g, buildRenderList(l.water), "ground"); g.alpha = l.alpha ?? 1; });
     } else if (kind === "solid") {
       const gs = new Graphics(), gc = new Graphics(), g = new Graphics();
       shadowSlot.addChild(gs); coreSlot.addChild(gc); solidSlot.addChild(g);
-      redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "solid" }; const items = buildRenderList(l.solids); drawLayer(gs, items, "shadow"); drawLayer(gc, items, "shadowCore"); drawLayer(g, items, "solid"); });
+      redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "solid" }; const items = buildRenderList(l.solids); drawLayer(gs, items, "shadow"); drawLayer(gc, items, "shadowCore"); drawLayer(g, items, "solid"); const al = l.alpha ?? 1; gs.alpha = gc.alpha = g.alpha = al; });
     } else {
       const g = new Graphics();
       g.blendMode = "add";
       accentSlot.addChild(g);
-      redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "accent" }; drawAccents(g, l.accents); });
+      redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "accent" }; drawAccents(g, l.accents); g.alpha = l.alpha ?? 1; });
     }
     redraw.get(id)!();
   }
