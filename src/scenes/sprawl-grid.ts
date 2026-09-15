@@ -26,8 +26,11 @@ const northDist = (y: number): number => WORLD.y0 - y;
 
 /** La bahía sigue hacia el norte al este de la orilla oeste del río. */
 export const bayWater = (x: number, y: number): boolean => y < WORLD.y0 && x >= riverCenter(y) - RIVER_HALF;
-/** Al sur del contenido el estuario sigue hasta juntarse con el mar. */
-export const estuaryWater = (x: number, y: number): boolean => y > WORLD.y1 && x >= QUAY_X && x <= estuaryEast(y) && x < ZONE_SPLIT_X;
+/** La lengua de tierra entre el estuario y el mar se adelgaza de 37 a 0 en las dos primeras celdas al sur del contenido; después es toda agua. */
+const SPIT_LEN = 2 * CELL_BLEED;
+export const spitEast = (y: number): number => ZONE_SPLIT_X - (ZONE_SPLIT_X - estuaryEast(WORLD.y1)) * Math.min(1, (y - WORLD.y1) / SPIT_LEN);
+/** Al sur del contenido el estuario sigue hasta juntarse con el mar, rodeando la punta de la lengua. */
+export const estuaryWater = (x: number, y: number): boolean => y > WORLD.y1 && x >= QUAY_X && x < ZONE_SPLIT_X && (x <= estuaryEast(y) || x >= spitEast(y));
 
 /**
  * Tierra construida en un punto fuera del contenido, o null si es selva, loma

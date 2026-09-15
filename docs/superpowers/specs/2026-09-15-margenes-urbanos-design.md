@@ -29,6 +29,32 @@ mar terminan contra una pared verde recta en `y = 336`.
 | Presupuesto | ≤ 1 400 sólidos elevados nuevos en total; fachadas solo en las manzanas a menos de 60 u del contenido. Primer dibujo de `world.html` se mide antes y después |
 | Métrica del objetivo | Dentro del cuadrilátero del *cover*, la selva (con roca) del sangrado baja del 68 % a ≤ 20 % del sangrado visible; test en `sprawl-grid.test.ts` muestreando cada 6 u |
 
+### Desvíos de la implementación
+
+- `coverQuad(aspect, inset)` e `inCoverQuad` viven en `src/map/geo.ts` (el lab
+  proyecta `coverQuad` en `coverFrame`): el suburbio solo arma manzanas cuyo
+  centro cae en el cover 16:9 ensanchado `COVER_MARGIN = 30` u, porque la
+  cámara del sitio nunca va a mostrar el resto. Los hitos quedaron en
+  `WATER_TOWER (−114, 242)`, `STADIUM (102, 448)` y `CHURCH (12, 352)`: las
+  esquinas propuestas caían fuera del cover.
+- Las hileras son de 4 casas por fila (no 5) y los baldíos usan dos
+  triángulos (no baldosas): el suburbio pasó de 12 k a 6 k polígonos.
+- `sortByDepth` busca pares con un barrido por x de pantalla (mismo orden que
+  antes, con test contra la versión de todos los pares): era cuadrático y con
+  2 600 sólidos elevados pesaba más que el dibujo.
+- La lengua entre el estuario y el mar se adelgaza en dos celdas
+  (`spitEast`), no en 104 u: como sliver larga se leía como un error.
+- El cinturón verde (`GREEN_BELT`, `y 110..158`) sigue hacia el oeste sobre
+  el sangrado: separa el hinterland del suburbio, con sus conos repartidos
+  entre las dos escenas por la costura `y = 146` (materiales por zona).
+- Un muelle de graneles sobre la bahía (`pier`, x 190..208) con grúa torre:
+  la costa al norte del astillero quedaba vacía.
+- Medido en headless (Chrome vía CDP, sin GPU, DPR 2, `world.html`): primer
+  dibujo caliente 96 ms → 115–130 ms con 17 407 → 25 283 polígonos
+  estáticos; peor redibujo sin cambio (5–10 ms, las escenas nuevas son
+  estáticas). Selva + roca dentro del cover: 45 % → 7,4 % del total y
+  68 % → 7,9 % del sangrado.
+
 ## 3. Geografía (`src/scenes/sprawl-grid.ts`, `src/scenes/terrain.ts`)
 
 - `builtAt(x, y): "industrial" | "urban" | null` para puntos fuera de `WORLD`:

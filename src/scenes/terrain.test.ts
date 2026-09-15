@@ -85,7 +85,8 @@ describe("clasificación", () => {
     expect(bleedTerrainAt(100, -300)).toBe("jungle");       // más allá del alcance norte
     expect(bleedTerrainAt(100, 700)).toBe("jungle");        // más allá del alcance sur
     expect(bleedTerrainAt(250, 400)).toBe("river");         // el estuario sigue
-    expect(bleedTerrainAt(338, 400)).toBe("jungle");        // la lengua entre el estuario (que en y 400 llega a 330) y el mar
+    expect(bleedTerrainAt(330, 340)).toBe("jungle");        // la punta de la lengua entre el estuario y el mar
+    expect(bleedTerrainAt(338, 400)).toBe("river");         // la lengua termina en dos celdas; después el estuario es todo agua hasta el mar
     expect(bleedTerrainAt(346, 400)).toBe("shore");         // orilla frente a la costa de Resume
     expect(bleedTerrainAt(400, 400)).toBe("sea");
     expect(bleedTerrainAt(560, 500)).toBe("abyss");

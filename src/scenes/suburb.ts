@@ -23,9 +23,9 @@ export const DENSE_D = 60, ROWS_D = 160; // distancia al contenido: hasta acá m
 export const MAX_SUBURB_H = 12;
 const HOUSE_MATS: readonly Material[] = ["stone", "office", "officeDark"];
 /** Hitos: el depósito de agua al oeste, el estadio y la iglesia al sur. Cada uno reemplaza la manzana que cae en su esquina. */
-export const WATER_TOWER = { x: -204, y: 242 } as const;
-export const STADIUM = { x: 12, y: 448 } as const;
-export const CHURCH = { x: -84, y: 328 } as const;
+export const WATER_TOWER = { x: -114, y: 242 } as const;
+export const STADIUM = { x: 102, y: 448 } as const;
+export const CHURCH = { x: 12, y: 352 } as const;
 
 type Kind = "dense" | "rows" | "park" | "lot" | "waterTower" | "stadium" | "church";
 
