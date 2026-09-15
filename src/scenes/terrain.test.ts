@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BLEED, MOUTH_Y, QUAY_X, RIVER_HALF, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, riverCenter, worldZoneAt } from "../map/geo";
 import { createRng } from "../map/seed";
 import type { Solid, Tri } from "../iso/solids";
-import { CELL, bleedTerrainAt, bleedZ, buildTerrain, seaTerrainAt, shipyardTerrainAt, terrainAt, waterBand } from "./terrain";
+import { CELL, baseToneAt, bleedTerrainAt, bleedZ, buildTerrain, seaTerrainAt, shipyardTerrainAt, terrainAt, waterBand } from "./terrain";
 
 const tris = (s: Solid): Tri[] => (s.kind === "ground" ? s.tris : []);
 // La fila de vértices más cercana a ZONE_SPLIT_Y = 146 es y = 144: la comparten la última fila de celdas del astillero (centro 141) y la primera de la ciudad (centro 147).
@@ -127,6 +127,36 @@ describe("buildTerrain", () => {
     expect(waterBand(200, 300)).toBe("shallow"); expect(waterBand(240, 300)).toBe("water"); // orilla y centro del estuario
     expect(waterBand(560, 60)).toBe("abyss"); expect(waterBand(100, 100)).toBeNull();
     expect(tris(m.water[3]!).length).toBeGreaterThan(400);
+    // baseTone tiene dientes: "shallow" no queda todo en 0 (depthAt cuantiza en pasos de CELL, así que la
+    // primera celda de agua junto a tierra, d = CELL, es el borde somero: +1), y "water" cruza por las dos puntas.
+    expect(tris(m.water[0]!).some((t) => t.baseTone === 1)).toBe(true);
+    expect(tris(m.water[1]!).some((t) => t.baseTone === 1)).toBe(true);
+    expect(tris(m.water[1]!).some((t) => t.baseTone === -1)).toBe(true);
+    // (200,300) es la orilla del estuario (waterBand "shallow"), a depthAt = CELL = 6 de tierra: la
+    // primera celda de agua, el borde más somero posible, así que baseToneAt da +1 exacto.
+    expect(waterBand(200, 300)).toBe("shallow");
+    expect(baseToneAt(200, 300, "shallow")).toBe(1);
+  });
+
+  it("el sangrado no deja agujeros de cuarto de celda: toda celda de 18 con agua dentro del cover produce 8 triángulos (2 por subcelda de 9)", () => {
+    const m = buildTerrain(createRng(7));
+    const all = m.water.flatMap(tris);
+    // celda real del sangrado (ancla bx0 = -402, by0 = -438), en la bahía al norte, dentro del cover.
+    const x0 = 282, y0 = -420, x1 = 300, y1 = -402;
+    const inCell = all.filter((t) => t.pts.every((p) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1));
+    expect(inCell.length).toBe(8);
+  });
+
+  it("el canal del astillero y la bahía siguen clasificando como agua (no como agujero) en m.water", () => {
+    const m = buildTerrain(createRng(7));
+    const all = m.water.flatMap(tris);
+    // la bahía es río: al norte de la desembocadura, al este del canal, sigue habiendo agua en m.water.
+    expect(all.some((t) => t.pts.every((p) => p.y < MOUTH_Y && p.x > 300))).toBe(true);
+    // el canal del astillero nunca cruza al oeste del muelle: ningún triángulo de agua del contenido
+    // (dentro de WORLD, y < ZONE_SPLIT_Y) tiene vértices en x < QUAY_X.
+    const inContent = (p: { x: number; y: number }) => p.x >= WORLD.x0 && p.x <= WORLD.x1 && p.y >= WORLD.y0 && p.y <= WORLD.y1;
+    expect(all.filter((t) => t.pts.every((p) => inContent(p) && p.y < ZONE_SPLIT_Y))).not.toEqual([]);
+    expect(all.filter((t) => t.pts.every((p) => inContent(p) && p.y < ZONE_SPLIT_Y)).every((t) => t.pts.every((p) => p.x >= QUAY_X))).toBe(true);
   });
 
   it("el agua del sangrado usa celdas de 9 dentro del cover y de 18 afuera", () => {

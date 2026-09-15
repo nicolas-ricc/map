@@ -44,7 +44,7 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
   drawLayer(gCore, staticItems, "shadowCore");
   drawLayer(gSolid, staticItems, "solid");
   drawAccents(gAccents, scene.accents);
-  // agua estática: todo cuerpo de agua que ningún animador reclame (el astillero anima el río; el Blog animará el mar)
+  // agua estática: todo cuerpo de agua (por profundidad, más la espuma) que ningún animador reclame; hoy ninguno la anima
   const animatedWater = new Set(animators.flatMap((a) => [...(a.claims ?? []), ...a.ids.flatMap((id) => { const l = a.layer(id); return l.kind === "water" ? l.water : []; })]));
   const staticWater = new Graphics();
   waterSlot.addChild(staticWater);

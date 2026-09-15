@@ -11,11 +11,13 @@ import { COVER_MARGIN, bayWater, beyondBuilt, builtAt, estuaryWater } from "./sp
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
  * contenido) más una de CELL_BLEED alrededor (el sangrado). Cada zona aporta
  * su clasificador; `terrainAt` despacha por geografía. Una sola malla por
- * grilla garantiza que los vértices en las costuras compartan altura. Los
- * `Tri` de los cuerpos de agua (`sea`, `shore`, `abyss`) se comparten con los
- * animadores, que les mutan `toneOffset` in place (el runtime nunca vuelve a
- * dibujar un cuerpo reclamado de forma estática), así que un `TerrainMesh`
- * deja de ser un valor puro después de un `tick`.
+ * grilla garantiza que los vértices en las costuras compartan altura. El agua
+ * (de contenido y de sangrado) se reparte por profundidad (distancia a
+ * tierra) en `TerrainMesh.water`, un `Solid` por `WaterMat` (`shallow`,
+ * `water`, `waterDeep`, `abyss`), más `TerrainMesh.foam` junto a la costa;
+ * queda estática acá. Un animador de agua futuro reclamará esos `Solid` y les
+ * mutará `toneOffset` in place, igual que hoy hace el astillero con sus otros
+ * cuerpos animados.
  */
 export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "asphalt" | "sea" | "shore" | "headland" | "reef" | "abyss";
 /** Sangrado: selva y lomas, agua (mar, orilla, fosa, estuario) y tierra construida (industrial de Portfolio, urbana de Resume). */
@@ -124,20 +126,27 @@ export function waterBand(x: number, y: number): WaterMat | null {
   return d < SHALLOW_D ? "shallow" : d <= DEEP_D ? "water" : "waterDeep";
 }
 
-/** Posición dentro de la banda, −1 (borde somero) … +1 (borde profundo), en pasos enteros. */
+/** Posición dentro de la banda, +1 (borde somero, junto a tierra) … −1 (borde profundo), en pasos enteros. */
 export function baseToneAt(x: number, y: number, mat: WaterMat): number {
   const d = depthAt(x, y);
-  const frac = mat === "shallow" ? d / SHALLOW_D : mat === "water" ? (d - SHALLOW_D) / (DEEP_D - SHALLOW_D) : mat === "waterDeep" ? Math.min(1, (d - DEEP_D) / DEEP_D) : Math.min(1, Math.max(0, (x - abyssX(y)) / ABYSS_RAMP));
+  // "shallow" nunca ve d = 0 (depthAt cuantiza en pasos de CELL): la primera celda de agua ya está a
+  // CELL de tierra, así que la fracción arranca ahí, no en 0, o toda la banda redondearía a 0.
+  const frac = mat === "shallow" ? Math.max(0, (d - CELL) / (SHALLOW_D - CELL)) : mat === "water" ? (d - SHALLOW_D) / (DEEP_D - SHALLOW_D) : mat === "waterDeep" ? Math.min(1, (d - DEEP_D) / DEEP_D) : Math.min(1, Math.max(0, (x - abyssX(y)) / ABYSS_RAMP));
   return Math.max(-1, Math.min(1, Math.round(1 - 2 * frac)));
 }
 
 type WaterTris = Record<WaterMat, Tri[]>;
 const newWaterTris = (): WaterTris => ({ shallow: [], water: [], waterDeep: [], abyss: [] });
 
-/** Dos triángulos de agua por celda, con `baseTone` por su centro, y copia en `foam` si están a menos de FOAM_W de tierra. */
-function waterCell(w: WaterTris, foam: Tri[], x0: number, y0: number, x1: number, y1: number, i: number, j: number): void {
+/**
+ * Dos triángulos de agua por celda, con `baseTone` por su centro, y copia en
+ * `foam` si están a menos de FOAM_W de tierra. `fallback` cubre la subcelda
+ * cuyo propio centro clasifica como tierra (agujero de cuarto de celda) pero
+ * cuya celda de 18 ya era agua: hereda la banda del centro de esa celda.
+ */
+function waterCell(w: WaterTris, foam: Tri[], x0: number, y0: number, x1: number, y1: number, i: number, j: number, fallback?: WaterMat): void {
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  const mat = waterBand(cx, cy);
+  const mat = waterBand(cx, cy) ?? fallback;
   if (!mat) return;
   const tmp: Tri[] = [];
   cellTris(tmp, x0, y0, x1, y1, WATER_Z, WATER_Z, WATER_Z, WATER_Z, WATER_Z, i, j);
@@ -185,8 +194,12 @@ function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
     if (inside(cx, cy)) continue;
     const t = bleedTerrainAt(cx, cy);
     if (BLEED_WATER.has(t)) {
-      if (inCoverQuad(cx, cy, 16 / 9, COVER_MARGIN)) { for (let sj = 0; sj < 2; sj++) for (let si = 0; si < 2; si++) waterCell(w, foam, x0 + si * CELL_WATER, y0 + sj * CELL_WATER, x0 + (si + 1) * CELL_WATER, y0 + (sj + 1) * CELL_WATER, i * 2 + si, j * 2 + sj); }
-      else waterCell(w, foam, x0, y0, x1, y1, i, j);
+      if (inCoverQuad(cx, cy, 16 / 9, COVER_MARGIN)) {
+        // la celda de 18 ya es agua: si el centro de alguna subcelda de 9 cae en tierra, esa
+        // subcelda hereda la banda del centro de la celda de 18 (no queda un agujero sin pintar).
+        const fallback = waterBand(cx, cy) ?? undefined;
+        for (let sj = 0; sj < 2; sj++) for (let si = 0; si < 2; si++) waterCell(w, foam, x0 + si * CELL_WATER, y0 + sj * CELL_WATER, x0 + (si + 1) * CELL_WATER, y0 + (sj + 1) * CELL_WATER, i * 2 + si, j * 2 + sj, fallback);
+      } else waterCell(w, foam, x0, y0, x1, y1, i, j);
       continue;
     }
     const mat: Material = t === "jungle" ? (bleedZ(cx, cy) > ROCK_FROM_Z ? "rock" : "leafDark") : BLEED_MAT[t as "industrial" | "urban"];
