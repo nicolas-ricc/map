@@ -19,6 +19,9 @@ export const FAIR = { x0: 84, y0: -348, y1: -204 } as const;
 /** Orilla oeste de la bahía para cada y (≈ 212..277 en la franja de la feria). */
 export const bayShoreX = (y: number): number => riverCenter(y) - RIVER_HALF;
 
+/** El rectángulo geométrico de la feria, agua incluida (a diferencia de `fairAt`, que excluye la bahía). Lo comparten `builtAt` y el aplanado de vértices del sangrado en terrain.ts. */
+export const inFairBox = (x: number, y: number): boolean => y < WORLD.y0 && x >= FAIR.x0 && y >= FAIR.y0 && y < FAIR.y1;
+
 /** El borde de la tierra construida ondula a lo largo del lado: nunca es una línea recta. */
 export function reachAt(side: keyof typeof REACH, along: number): number {
   return REACH[side] + WOBBLE * (0.5 + 0.5 * Math.sin(along / 61 + (side === "s" ? 1.7 : 0.4)));
@@ -30,7 +33,7 @@ const westDist = (x: number): number => WORLD.x0 - x;
 const northDist = (y: number): number => WORLD.y0 - y;
 
 /** La bahía sigue hacia el norte al este de la orilla oeste del río. */
-export const bayWater = (x: number, y: number): boolean => y < WORLD.y0 && x >= riverCenter(y) - RIVER_HALF;
+export const bayWater = (x: number, y: number): boolean => y < WORLD.y0 && x >= bayShoreX(y);
 /** La lengua de tierra entre el estuario y el mar se adelgaza de 37 a 0 en las dos primeras celdas al sur del contenido; después es toda agua. */
 const SPIT_LEN = 2 * CELL_BLEED;
 export const spitEast = (y: number): number => ZONE_SPLIT_X - (ZONE_SPLIT_X - estuaryEast(WORLD.y1)) * Math.min(1, (y - WORLD.y1) / SPIT_LEN);
@@ -54,7 +57,7 @@ export function builtAt(x: number, y: number): Built | null {
   if (w > 0 && w > reachAt("w", y)) return null;
   if (n > 0 && n > reachAt("n", x)) return null;
   if (s <= 0 && w <= 0 && n <= 0) return null; // adentro del contenido
-  if (y < WORLD.y0 && x >= FAIR.x0 && y >= FAIR.y0 && y < FAIR.y1) return "fair";
+  if (inFairBox(x, y)) return "fair";
   return y < ZONE_SPLIT_Y ? "industrial" : "urban";
 }
 

@@ -1,11 +1,11 @@
 import { v3 } from "../iso/geometry";
 import type { Solid, Tri } from "../iso/solids";
-import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, RIVER_HALF, SHORE_W, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, eastBank, inHeadland, inMouth, riverCenter, shoreWidth, worldZoneAt, type WorldZone } from "../map/geo";
+import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, SHORE_W, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, eastBank, inHeadland, inMouth, shoreWidth, worldZoneAt, type WorldZone } from "../map/geo";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
 import { CITY_EDGE, DISTRICT_BANK_Y, EAST_RING, MALECON_STREET_X, estuaryEast, inCrater } from "./city-grid";
 import { depthAt } from "./depth-map";
-import { FAIR, bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
+import { bayShoreX, bayWater, beyondBuilt, builtAt, estuaryWater, inFairBox } from "./sprawl-grid";
 
 /**
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
@@ -92,7 +92,7 @@ const HILL_TAPER = 72; // las lomas del norte bajan a 0 en las 4 celdas antes de
 /** Altura base de la selva del sangrado: lomas que suben con la distancia más allá de la tierra construida, solo detrás de ella (norte y oeste). Al sur y al este queda chato. */
 export function bleedZ(x: number, y: number): number {
   let hill = Math.min(1, beyondBuilt(x, y) / HILL_REACH);
-  if (y < WORLD.y0) hill *= Math.min(1, Math.max(0, (riverCenter(y) - RIVER_HALF - x) / HILL_TAPER));
+  if (y < WORLD.y0) hill *= Math.min(1, Math.max(0, (bayShoreX(y) - x) / HILL_TAPER));
   return 0.6 + HILL_H * hill;
 }
 
@@ -184,7 +184,7 @@ function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
       // la orilla de la bahía es una curva más fina que la grilla: dentro del rectángulo de la
       // feria la tratamos siempre como tierra plana, aunque ese vértice puntual ya sea bahía,
       // para que la arena no se incline hacia el agua (la celda de agua vecina no lee este arreglo).
-      if (y < WORLD.y0 && x >= FAIR.x0 && y >= FAIR.y0 && y < FAIR.y1) { z[j]!.push(r * JITTER.asphalt); continue; }
+      if (inFairBox(x, y)) { z[j]!.push(r * JITTER.asphalt); continue; }
       const t = bleedTerrainAt(x, y);
       if (BLEED_WATER.has(t)) { z[j]!.push(WATER_Z); continue; }
       if (BLEED_BUILT.has(t)) { z[j]!.push(r * JITTER.asphalt); continue; } // tierra construida: plana como el asfalto del contenido

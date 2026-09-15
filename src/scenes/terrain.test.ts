@@ -95,7 +95,7 @@ describe("clasificación", () => {
     expect(bleedTerrainAt(400, -100)).toBe("sea");
     expect(bleedTerrainAt(600, 100)).toBe("abyss");
     expect(bleedZ(-380, 100)).toBeGreaterThan(9);   // loma al oeste, más allá de la tierra construida
-    expect(bleedZ(100, -700)).toBeGreaterThan(9);   // loma al norte, bien más allá del alcance nuevo
+    expect(bleedZ(-380, -430)).toBeGreaterThan(9);  // loma al norte, dentro de la grilla del sangrado
     expect(bleedZ(-100, 100)).toBe(0.6);            // sobre la tierra construida no sube
     expect(bleedZ(100, 500)).toBe(0.6);             // chato al sur
     expect(bleedZ(-60, 100)).toBe(0.6);             // en la costura no sube
