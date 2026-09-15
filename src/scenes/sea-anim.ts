@@ -32,6 +32,18 @@ export const FADE_U = 30, TURN_U = 20;
 export const BEAM_PERIOD_MS = 8000, BEAM_LEN = 24, BEAM_INNER = 12, BEAM_HALF = (7 * Math.PI) / 180;
 export const BUOY_PERIOD_MS = 2000;
 
+// Lancha de la feria: hace la lanzadera entre la punta del futuro muelle de la feria (Task 17, bahía
+// norte) y la orilla de la bahía frente al muelle de graneles. Ambos extremos están en agua hoy
+// (bayWater); la feria en sí todavía no existe.
+//
+// Corridos 42 u al este (7 pasos de 6, Step 4 de la brief) respecto del trazado original
+// ({ x: 248, y: -288 } / { x: 229, y: -84 }): la línea recta entre esos dos puntos cruza, cerca de
+// y ≈ -200/-233, la punta occidental de la bahía norte (donde el borde de agua de `bayWater` retrocede
+// hacia el este formando una ensenada) y queda sobre tierra en ese tramo (`depthAt` = 0, no solo
+// "detrás de un sólido"). Con el corrimiento la recta entera queda a ≥ 6 u de la costa.
+export const FERRY_ROUTE: readonly [Vec2, Vec2] = [{ x: 290, y: -288 }, { x: 271, y: -84 }];
+export const FERRY_SPEED = 3, FERRY_PAUSE_MS = 4000;
+
 const seg = ROUTE.slice(1).map((b, i) => { const a = ROUTE[i]!; const len = Math.hypot(b.x - a.x, b.y - a.y); return { a, b, len, heading: Math.atan2(b.y - a.y, b.x - a.x) }; });
 const cum = seg.reduce<number[]>((acc, s) => [...acc, (acc[acc.length - 1] ?? 0) + s.len], [0]);
 export const routeLength = (): number => cum[cum.length - 1]!;
@@ -51,13 +63,14 @@ export function routeAt(dist: number): { x: number; y: number; heading: number }
 }
 
 export interface ShipFrame { solids: Solid[]; lights: Accent[]; wake: Solid[]; alpha: number }
-export interface SeaChanges { ships: boolean; beam: boolean; buoys: boolean }
+export interface SeaChanges { ships: boolean; beam: boolean; buoys: boolean; ferry: boolean }
 export interface SeaAnim {
   ship(k: number): ShipFrame;
   dist(k: number): number;
   alphaAt(dist: number): number;
   beam(): Accent[];
   buoys(): Accent[];
+  ferry(): ShipFrame;
   tick(dtMs: number): SeaChanges;
 }
 
@@ -66,6 +79,15 @@ export function createSeaAnim(scene: SeaScene, opts: { reducedMotion: boolean })
   const L = routeLength();
   const dists = SHIPS.map((s) => s.phase * L);
   const alphaAt = (d: number): number => Math.max(0, Math.min(1, d / FADE_U, (L - d) / FADE_U));
+
+  const [fa, fb] = FERRY_ROUTE, ferryLen = Math.hypot(fb.x - fa.x, fb.y - fa.y);
+  const ferryHeadings = [Math.atan2(fb.y - fa.y, fb.x - fa.x), Math.atan2(fa.y - fb.y, fa.x - fb.x)] as const;
+  let ferryDist = 0, ferryDir = 1, ferryPause = FERRY_PAUSE_MS;
+  const ferryFrame = (): ShipFrame => {
+    const t = ferryDist / ferryLen, p = { x: fa.x + (fb.x - fa.x) * t, y: fa.y + (fb.y - fa.y) * t }, heading = ferryDir > 0 ? ferryHeadings[0] : ferryHeadings[1];
+    const built = buildShip("ferry", p, heading);
+    return { solids: built.solids, lights: built.lights, wake: [{ kind: "ground", mat: "foam", tris: wake("ferry", p, heading) }], alpha: 1 };
+  };
 
   const shipFrame = (k: number): ShipFrame => {
     const p = routeAt(dists[k]!), alpha = alphaAt(dists[k]!);
@@ -88,14 +110,21 @@ export function createSeaAnim(scene: SeaScene, opts: { reducedMotion: boolean })
     alphaAt,
     beam: () => [wedge(BEAM_LEN, "magentaBleed", 0.5), wedge(BEAM_INNER, "magenta", 0.6)],
     buoys: () => scene.buoys.flatMap((b, k) => (buoyOn(k) ? [{ kind: "dot" as const, at: v3(b.x, b.y, b.z + 0.3), r: 0.8, color: "magentaMid" as const }] : [])),
+    ferry: ferryFrame,
     tick(dtMs) {
-      const none: SeaChanges = { ships: false, beam: false, buoys: false };
+      const none: SeaChanges = { ships: false, beam: false, buoys: false, ferry: false };
       if (opts.reducedMotion || dtMs <= 0) return none;
       clock += dtMs;
-      const c: SeaChanges = { ships: true, beam: true, buoys: false };
+      const c: SeaChanges = { ships: true, beam: true, buoys: false, ferry: false };
       for (let k = 0; k < SHIPS.length; k++) { dists[k] = dists[k]! + (SHIPS[k]!.speed * dtMs) / 1000; if (dists[k]! >= L) dists[k] = dists[k]! - L; }
       const bs = Math.floor(clock / (BUOY_PERIOD_MS / 2));
       if (bs !== buoyStep) { buoyStep = bs; c.buoys = true; }
+      if (ferryPause > 0) ferryPause -= dtMs;
+      else {
+        ferryDist += (ferryDir * FERRY_SPEED * dtMs) / 1000; c.ferry = true;
+        if (ferryDist >= ferryLen) { ferryDist = ferryLen; ferryDir = -1; ferryPause = FERRY_PAUSE_MS; }
+        else if (ferryDist <= 0) { ferryDist = 0; ferryDir = 1; ferryPause = FERRY_PAUSE_MS; }
+      }
       return c;
     },
   };

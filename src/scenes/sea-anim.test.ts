@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { depthAt } from "./depth-map";
 import { isBehind, overlaps, screenBounds } from "../iso/depth";
-import { bounds } from "../iso/solids";
+import { v3 } from "../iso/geometry";
+import { bounds, isFlat } from "../iso/solids";
 import { WORLD } from "../map/geo";
-import { BEAM_PERIOD_MS, FADE_U, ROUTE, SHIPS, createSeaAnim, routeAt, routeLength } from "./sea-anim";
+import { BEAM_PERIOD_MS, FADE_U, FERRY_PAUSE_MS, FERRY_ROUTE, FERRY_SPEED, ROUTE, SHIPS, createSeaAnim, routeAt, routeLength } from "./sea-anim";
 import { ship } from "./ships";
 import { bleedTerrainAt, terrainAt } from "./terrain";
 import { world } from "./world";
@@ -69,6 +71,29 @@ describe("barcos", () => {
   });
 });
 
+describe("lancha de la feria", () => {
+  it("la lancha va del muelle de la feria al de graneles y vuelve, parando 4 s en cada punta, siempre sobre agua y nunca detrás de un sólido estático", () => {
+    const { a: anim } = setup(false);
+    const [fa, fb] = FERRY_ROUTE, L = Math.hypot(fb.x - fa.x, fb.y - fa.y);
+    const f0 = anim.ferry();
+    expect(f0.alpha).toBe(1);
+    const hull0 = f0.solids.find((s) => s.kind === "hull")!;
+    expect(hull0.kind === "hull" && hull0.at).toMatchObject({ x: fa.x, y: fa.y });
+    anim.tick(FERRY_PAUSE_MS + 100); // arranca
+    const seen: { x: number; y: number }[] = [];
+    for (let t = 0; t < (2 * L) / FERRY_SPEED + 10; t += 1) { anim.tick(1000); const h = anim.ferry().solids.find((s) => s.kind === "hull")!; if (h.kind === "hull") seen.push({ x: h.at.x, y: h.at.y }); }
+    expect(seen.some((p) => Math.hypot(p.x - fb.x, p.y - fb.y) < FERRY_SPEED)).toBe(true); // llegó al otro muelle
+    expect(seen.some((p) => Math.hypot(p.x - fa.x, p.y - fa.y) < FERRY_SPEED)).toBe(true); // y volvió
+    for (const p of seen) expect(depthAt(p.x, p.y)).toBeGreaterThanOrEqual(6);
+    const statics = world(7).solids.filter((s) => !isFlat(s));
+    for (let t = 0; t <= 1; t += 0.05) {
+      const p = { x: fa.x + (fb.x - fa.x) * t, y: fa.y + (fb.y - fa.y) * t };
+      const box = bounds({ kind: "hull", at: v3(p.x, p.y, -1), len: 26, beam: 7, h: 3, mat: "hull" });
+      for (const s of statics) { const sb = bounds(s); if (overlaps(screenBounds(box), screenBounds(sb))) expect(isBehind(box, sb)).toBe(false); }
+    }
+  });
+});
+
 describe("mar, haz y boyas", () => {
   it("el haz da una vuelta cada 8 s y con reduced-motion apunta al este", () => {
     const { a } = setup();
@@ -81,7 +106,7 @@ describe("mar, haz y boyas", () => {
     expect(a.beam()).toHaveLength(2);
     const r = setup(true).a;
     expect(Math.abs(angle(r.beam()))).toBeLessThan(0.2);
-    expect(r.tick(500)).toEqual({ ships: false, beam: false, buoys: false });
+    expect(r.tick(500)).toEqual({ ships: false, beam: false, buoys: false, ferry: false });
   });
   it("las boyas parpadean desfasadas: nunca las dos apagadas, cada una encendida la mitad del período", () => {
     const { a } = setup();

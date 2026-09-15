@@ -6,7 +6,7 @@ describe("seaAnimator", () => {
   it("expone las capas del mar (barcos, haz, boyas) y con reduced-motion no devuelve ids", () => {
     const w = world(7);
     const a = seaAnimator(w.sea!, { reducedMotion: false });
-    expect(a.ids).toEqual(expect.arrayContaining(["sea.ship0", "sea.wake2", "sea.lights1", "sea.beam", "sea.buoys"]));
+    expect(a.ids).toEqual(expect.arrayContaining(["sea.ship0", "sea.wake2", "sea.lights1", "sea.beam", "sea.buoys", "sea.ferry", "sea.ferryWake", "sea.ferryLights"]));
     expect(a.layer("sea.ship0").kind).toBe("solid");
     expect(a.layer("sea.wake0")).toMatchObject({ kind: "water", alpha: 0 }); // fase 0: en la bahía, aún invisible: no hace falta redibujarlo
     const ids = a.tick(100);
