@@ -102,8 +102,9 @@ sección "Desvíos respecto de la spec"):
 - `glass` es compartido entre Blog y Resume: la linterna del faro es `glass`
   por spec §7.
 - Espuma del arrecife: alterna `toneOffset 0 / -1` sobre material propio
-  `foam` (no `+2 / +1` sobre `shore`) cada 500 ms; `sea.foam` va dentro de
-  `sea.band0`, no como capa propia. El cerco de la obra son cuatro prismas
+  `foam` (no `+2 / +1` sobre `shore`) cada 500 ms; `sea.foam` es su propia
+  capa `water`, dibujada después de `sea.band0..2` y `sea.abyss`, no dentro
+  de una banda. El cerco de la obra son cuatro prismas
   `officeDark` de 1.2 (no un `strip`, que se pintaría bajo el zócalo).
 - Grúa de la obra: mástil en `x + w − 8` y pluma de 14 (no 20): la huella útil
   mide 21 (`SIDEWALK = 1.5`) y pluma + contrapluma no pueden superarla.
@@ -141,8 +142,8 @@ Surgidos durante la ejecución de las tareas (no estaban en el plan):
   en `DISTRICT_BANK_Y`.
 - `SEA_STEP_MS = 150` (el mar se redibuja cada 150 ms, no cada frame) para
   bajar el costo de redibujo; la espuma del arrecife (`sea.foam`) es su
-  propia capa dentro de `sea.band0`, dibujada después de las bandas del mar.
-  Las capas de barco/estela/haz solo se redibujan mientras están visibles.
+  propia capa `water`, dibujada después de `sea.band0..2` y `sea.abyss`,
+  y se repinta cada 500 ms.
 - Presupuesto medido en Chrome headless sin GPU, DPR 2 (ver detalle abajo):
   el objetivo de peor redibujo ≤ 6 ms **no se cumple** en este entorno en
   ninguna página salvo `portfolio.html`. La solución de recambio prevista en
@@ -150,7 +151,11 @@ Surgidos durante la ejecución de las tareas (no estaban en el plan):
   `BANDS = 4` + `sea.band3`) **no se implementó**: falta medir primero en un
   Chrome de escritorio con GPU real, donde el costo del `AlphaFilter` por
   banda y el de recomponer el mar cada `SEA_STEP_MS` puede ser muy distinto.
-  Ver la tabla de presupuesto en el reporte de la Task 7
+  `buildRenderList` calcula `shadowPolygon` dos veces por sólido elevado (la
+  banda completa y el núcleo), así que el costo de CPU por redibujo de las
+  capas animadas prácticamente se duplicó con la Task 1; conviene medir eso
+  primero en un navegador de escritorio con GPU antes de ir al recambio de
+  RenderTexture. Ver la tabla de presupuesto en el reporte de la Task 7
   (`task-7-report.md`) y la memoria `mapa-iso-world-rulings.md`.
 
 ## 3. Sombras (`src/iso/light.ts`, `render-list.ts`, `src/lab/runtime.ts`)
@@ -448,9 +453,10 @@ Hereda el §6 de la spec del mundo; lo que sigue lo precisa o lo corrige.
 
 ### Animator
 
-`seaAnimator(scene, terrain, rng, opts)`, ids: `sea.band0..2` (water),
+`seaAnimator(scene, terrain, opts)`, ids: `sea.band0..2` (water),
 `sea.ship0..2` (solid), `sea.wake0..2` (water), `sea.beam` (accent),
-`sea.buoys` (accent), `sea.foam` (dentro de la banda que tiene el arrecife).
+`sea.buoys` (accent), `sea.foam` (su propia capa `water`, dibujada después
+de `sea.band0..2` y `sea.abyss`).
 
 Tests (`sea.test`, `sea-anim.test`): determinismo; cilindros del faro = 6 y
 altura total del faro 29..30 sobre z 7; casa sobre la punta; sendero entero

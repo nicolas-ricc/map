@@ -17,7 +17,7 @@ Contenido editable en `content/*.json`. Diseño en `docs/superpowers/specs/`, pl
 (motor puro en `src/iso/`, terreno compartido en `src/scenes/terrain.ts`,
 escenas en `src/scenes/`, incluidas `factory.ts` (fábrica de Portfolio),
 `district.ts` (distrito moderno de Resume) y `sea.ts` (punta, faro y barcos de
-Blog)). El mundo tiene origen en `(-60, -60)` y un sangrado de terreno de
+Blog). El mundo tiene origen en `(-60, -60)` y un sangrado de terreno de
 relleno alrededor de todo el contenido, para que la cámara *cover* nunca
 muestre cielo. `/map/lab/portfolio.html` muestra solo el astillero;
 `/map/lab/resume.html` muestra la ciudad de oficinas más el astillero,
