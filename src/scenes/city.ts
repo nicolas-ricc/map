@@ -316,8 +316,6 @@ function jungleOnLand(out: Solid[], rng: Rng, rect: { x0: number; x1: number; y0
 
 function greenery(solids: Solid[], rng: Rng): void {
   jungleOnLand(solids, rng, { x0: WORLD.x0 + 3, x1: 340, y0: ZONE_SPLIT_Y + 1, y1: CITY_EDGE.north - 2 }, 30);      // cinturón de costura, sin pisar el estuario
-  jungle(solids, rng, { x0: WORLD.x0 + 2, x1: CITY_EDGE.west - 2, y0: CITY_EDGE.north, y1: CITY_EDGE.south }, 12); // borde oeste, crecido con el distrito
-  jungleOnLand(solids, rng, { x0: CITY_EDGE.west, x1: 330, y0: CITY_EDGE.south, y1: WORLD.y1 - 5 }, 14);           // borde sur, crecido con el distrito, sin pisar el estuario
   for (let y = ROWS[0]; y < COLLAPSED.y; y += 8) {                                                        // ribera este del estuario, ciudad vieja
     const x0 = Math.ceil(estuaryEast(y + 6)) + 2, x1 = EAST_RING.x0 - 3;
     if (x1 - x0 >= 2) jungleOnLand(solids, rng, { x0, x1, y0: y, y1: y + 6 }, rng.int(1, 2));

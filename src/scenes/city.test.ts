@@ -191,12 +191,12 @@ describe("city", () => {
     }
   });
 
-  it("selva: cinturón norte, bordes oeste y sur, ribera este y cráteres, más de 60 conos", () => {
+  it("selva: cinturón norte, ribera este y cráteres, más de 60 conos (los bordes oeste y sur son del suburbio)", () => {
     const s = scene();
     const cones = s.solids.filter((x) => x.kind === "cone" && (x.mat === "leaf" || x.mat === "leafDark"));
     expect(cones.length).toBeGreaterThan(60);
     expect(cones.some((c) => c.kind === "cone" && c.at.y < CITY_EDGE.north)).toBe(true);        // cinturón
-    expect(cones.some((c) => c.kind === "cone" && c.at.x < CITY_EDGE.west)).toBe(true);         // borde oeste
+    expect(cones.some((c) => c.kind === "cone" && c.at.x < CITY_EDGE.west)).toBe(false);        // borde oeste: asfalto del suburbio
     expect(cones.some((c) => c.kind === "cone" && c.at.x > QUAY_X && c.at.x < EAST_RING.x0)).toBe(true); // ribera este
     for (const cr of CRATERS) expect(cones.some((c) => c.kind === "cone" && inCrater(c.at.x, c.at.y) && Math.hypot(c.at.x - cr.x, c.at.y - cr.y) <= cr.r)).toBe(true);
   });
