@@ -24,13 +24,18 @@ export function zoneFrame(frame: LabFrame): RenderItem[] {
   return [{ layer: "ground", pts, color: 0 }];
 }
 
+const COVER_INSET = 3; // el borde del terreno está a z −1 (agua) o 0.6 ± 0.8 (selva), ±1.4 px respecto del paralelogramo a z 0
+
 /**
  * Rectángulo de aspecto `aspect` inscripto en el terreno con sangrado
  * proyectado: lo que la cámara cover del sitio podrá mostrar sin cielo.
  * Un rectángulo Wx×Wy se proyecta como paralelogramo de lados con pendiente
  * ±1/2 (rombo solo si Wx = Wy). El rectángulo inscripto más grande cumple
  * h + w/2 = min(Wx, Wy); se centra en x y queda apoyado en el borde inferior
- * del rango factible (v0 = |Wx − Wy|/4 + w/4 bajo el vértice superior).
+ * del rango factible (v0 = |Wx − Wy|/4 + w/4 bajo el vértice superior). El
+ * paralelogramo asume z = 0 en el borde, pero el terreno real ondula
+ * (agua a z −1, selva a 0.6 ± 0.8): se retrae `COVER_INSET` hacia el centro
+ * para no exponer cielo en las esquinas donde el rectángulo es tangente.
  */
 export function coverFrame(aspect: number): RenderItem[] {
   const x0 = WORLD.x0 - BLEED.x, y0 = WORLD.y0 - BLEED.y, x1 = WORLD.x1 + BLEED.x, y1 = WORLD.y1 + BLEED.y;
@@ -39,7 +44,8 @@ export function coverFrame(aspect: number): RenderItem[] {
   const top = project(v3(x0, y0, 0));
   const u0 = top.x + (wx - wy) / 2 - w / 2;
   const v0 = top.y + Math.abs(wx - wy) / 4 + w / 4;
-  return [{ layer: "ground", pts: [u0, v0, u0 + w, v0, u0 + w, v0 + h, u0, v0 + h], color: 0 }];
+  const h2 = h - 2 * COVER_INSET, w2 = aspect * h2, u = u0 + (w - w2) / 2, v = v0 + COVER_INSET;
+  return [{ layer: "ground", pts: [u, v, u + w2, v, u + w2, v + h2, u, v + h2], color: 0 }];
 }
 
 export interface Fit { x: number; y: number; scale: number }
