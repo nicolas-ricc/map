@@ -4,12 +4,13 @@ import type { Animator } from "../scenes/animator";
 import { cityAnimator } from "../scenes/city-animator";
 import { shipyardAnimator } from "../scenes/shipyard-animator";
 import { world } from "../scenes/world";
+import type { LabFrame } from "./draw";
 import { bootLab } from "./runtime";
 
 const SEED = 7;
 
 /** Una página del laboratorio: el mundo (o algunas zonas), sus animadores y el encuadre inicial. */
-export function bootWorldPage(zones: readonly WorldZone[] | undefined, frame: WorldZone | "all"): void {
+export function bootWorldPage(zones: readonly WorldZone[] | undefined, frame: LabFrame): void {
   const host = document.getElementById("lab-host") as HTMLDivElement;
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const scene = world(SEED, zones ? { zones } : {});

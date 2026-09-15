@@ -34,6 +34,7 @@ export const ISO_TONES = {
   // Blog: faro y espuma
   whitewash: { top: 0xd6cfbf, lit: 0xaf9976, shade: 0x565773, up: 0xf8e8c3, down: 0xb8b6b4 },
   foam:      { top: 0xc4d3d6, lit: 0xa19c85, shade: 0x4e5980, up: 0xe3ecda, down: 0xa9bac9 },
+  abyss:     { top: 0x12303e, lit: 0x0f2426, shade: 0x071425, up: 0x15363f, down: 0x0f2a3a },
 } as const;
 
 export const ISO_COLORS = {

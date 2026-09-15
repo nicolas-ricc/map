@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fitTransform, zoneFrame } from "./draw";
+import type { RenderItem } from "../iso/render-list";
+import { coverFrame, fitTransform, zoneFrame } from "./draw";
 
 describe("fitTransform", () => {
   it("escala para que el bounding box entre con margen y quede centrado", () => {
@@ -19,13 +20,26 @@ describe("zoneFrame", () => {
     const [it] = zoneFrame("blog");
     expect(it!.pts).toHaveLength(8);
     const xs = it!.pts.filter((_, i) => i % 2 === 0), ys = it!.pts.filter((_, i) => i % 2 === 1);
-    expect(Math.min(...xs)).toBe(344 - 270);   // esquina SO: x - y
-    expect(Math.max(...xs)).toBe(560);          // esquina NE
-    expect(Math.min(...ys)).toBe(172 - 30 * 1.4); // esquina NO en alto: (344 + 0) / 2 - 42
-    expect(Math.max(...ys)).toBe((560 + 270) / 2);
+    expect(Math.min(...xs)).toBe(344 - 336);   // esquina SO: x - y
+    expect(Math.max(...xs)).toBe(570 + 60);     // esquina NE
+    expect(Math.min(...ys)).toBe((344 - 60) / 2 - 30 * 1.4); // esquina NO en alto
+    expect(Math.max(...ys)).toBe((570 + 336) / 2);
   });
   it("all cubre el mundo", () => {
     const [it] = zoneFrame("all");
-    expect(Math.max(...it!.pts.filter((_, i) => i % 2 === 0))).toBe(560);
+    expect(Math.max(...it!.pts.filter((_, i) => i % 2 === 0))).toBe(630);
+  });
+});
+
+describe("coverFrame", () => {
+  it("el rectángulo cover 16:9 contiene la caja del contenido con la torre", () => {
+    const box = (items: RenderItem[]) => {
+      const xs = items.flatMap((i) => i.pts.filter((_, k) => k % 2 === 0)), ys = items.flatMap((i) => i.pts.filter((_, k) => k % 2 === 1));
+      return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+    };
+    const cover = box(coverFrame(16 / 9)), all = box(zoneFrame("all"));
+    expect(all.minX).toBeGreaterThanOrEqual(cover.minX); expect(all.maxX).toBeLessThanOrEqual(cover.maxX);
+    expect(all.minY).toBeGreaterThanOrEqual(cover.minY); expect(all.maxY).toBeLessThanOrEqual(cover.maxY);
+    expect((cover.maxX - cover.minX) / (cover.maxY - cover.minY)).toBeCloseTo(16 / 9, 6);
   });
 });

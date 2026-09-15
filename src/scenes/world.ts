@@ -29,16 +29,18 @@ const ZONE_INDEX: Record<WorldZone, number> = { portfolio: 1, cv: 2, blog: 3 };
 export const LANDMARKS: Record<WorldZone, Vec3> = {
   portfolio: v3(150, 50, 0),
   cv: v3(129, 227, 0),
-  blog: v3(396, 118, 0),
+  blog: v3(470, 160, 0),
 };
 
-export function zoneRng(seed: number, zone: WorldZone): Rng {
-  return createRng(seed * 31 + ZONE_INDEX[zone]);
+/** Rng por zona y parte (0 = escena principal, 1 = escena secundaria: fábrica, distrito). Retocar una no reordena las otras. */
+export function zoneRng(seed: number, zone: WorldZone, part = 0): Rng {
+  return createRng(seed * 31 + ZONE_INDEX[zone] + 16 * part);
 }
 
 export function world(seed: number, opts: { zones?: readonly WorldZone[] } = {}): WorldScene {
   const zones = opts.zones ?? ALL_ZONES;
-  const terrain = buildTerrain(createRng(seed), zones);
+  // sin filtro explícito de zonas, buildTerrain recibe `undefined`: solo entonces construye el sangrado.
+  const terrain = buildTerrain(createRng(seed), opts.zones);
   const ground: Solid[] = [], solids: Solid[] = [], accents: Accent[] = [];
   let sy: Scene | null = null, ct: CityScene | null = null;
   if (zones.includes("portfolio")) {

@@ -1,13 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { HEADLAND, MOUTH_Y, RIVER_HALF, WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y, distToHeadland, inHeadland, inMouth, pointInPolygon, riverCenter, worldZoneAt } from "./geo";
+import { HEADLAND, MOUTH_Y, RIVER_HALF, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, inHeadland, inMouth, pointInPolygon, riverCenter, shoreWidth, worldZoneAt } from "./geo";
 
 describe("mundo", () => {
-  it("tres zonas que cubren el mundo", () => {
-    expect([WORLD_W, WORLD_H, ZONE_SPLIT_X, ZONE_SPLIT_Y]).toEqual([560, 270, 344, 146]);
+  it("el contenido tiene origen negativo y lados múltiplos de 18", () => {
+    expect(WORLD).toEqual({ x0: -60, y0: -60, x1: 570, y1: 336 });
+    expect([ZONE_SPLIT_X, ZONE_SPLIT_Y]).toEqual([344, 146]);
+    expect((WORLD.x1 - WORLD.x0) % 18).toBe(0);
+    expect((WORLD.y1 - WORLD.y0) % 18).toBe(0);
+  });
+
+  it("zona clickeable: la punta y su orilla son Portfolio, la orilla del malecón Resume, el mar abierto Blog", () => {
     expect(worldZoneAt(10, 10)).toBe("portfolio");
+    expect(worldZoneAt(-30, -30)).toBe("portfolio");   // banda de la fábrica
     expect(worldZoneAt(10, 200)).toBe("cv");
+    expect(worldZoneAt(-30, 300)).toBe("cv");          // distrito
+    expect(worldZoneAt(380, 118)).toBe("portfolio");   // punta
+    expect(worldZoneAt(404, 118)).toBe("portfolio");   // arrecife
+    expect(worldZoneAt(350, 100)).toBe("portfolio");   // orilla del astillero
+    expect(worldZoneAt(350, 200)).toBe("cv");          // orilla del malecón
+    expect(worldZoneAt(500, 200)).toBe("blog");
     expect(worldZoneAt(400, 10)).toBe("blog");
     expect(worldZoneAt(400, 260)).toBe("blog");
+    for (let y = -60; y < 336; y += 6) expect(worldZoneAt(ZONE_SPLIT_X + shoreWidth(y) - 0.5, y)).not.toBe("blog");
+  });
+
+  it("la fosa empieza en x ≈ 392 al norte, a más de 30 u de la punta, y se abre al este hacia el sur", () => {
+    expect(abyssX(-60)).toBeCloseTo(392 + 6 * Math.sin(-60 / 17), 6);
+    expect(abyssX(118) - 400).toBeGreaterThan(30);
+    expect(abyssX(336)).toBeGreaterThan(abyssX(-60) + 90);
+    expect(shoreWidth(0)).toBeGreaterThan(4);
   });
 
   it("la desembocadura es todo lo que hay al este del río por encima de MOUTH_Y", () => {

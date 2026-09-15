@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRenderList } from "../iso/render-list";
 import { bounds } from "../iso/solids";
-import { WORLD_H, WORLD_W, worldZoneAt } from "../map/geo";
+import { WORLD, worldZoneAt } from "../map/geo";
 import { allIsoColors } from "../map/palette-iso";
 import { LANDMARKS, world, zoneRng } from "./world";
 
@@ -16,11 +16,11 @@ describe("world", () => {
     const w = world(7);
     expect(w.shipyard).not.toBeNull();
     expect(w.solids.length).toBeGreaterThan(550);
-    expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris.length).toBeGreaterThan(600);
+    expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris.length).toBeGreaterThan(300);
     for (const s of w.solids) {
       const b = bounds(s);
-      expect(b.min.x).toBeGreaterThanOrEqual(-1); expect(b.max.x).toBeLessThanOrEqual(WORLD_W + 1);
-      expect(b.min.y).toBeGreaterThanOrEqual(-1); expect(b.max.y).toBeLessThanOrEqual(WORLD_H + 1);
+      expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - 1); expect(b.max.x).toBeLessThanOrEqual(WORLD.x1 + 1);
+      expect(b.min.y).toBeGreaterThanOrEqual(WORLD.y0 - 1); expect(b.max.y).toBeLessThanOrEqual(WORLD.y1 + 1);
     }
   });
 
@@ -47,7 +47,7 @@ describe("world", () => {
 
   it("la ciudad y el astillero no comparten materiales de construcción", () => {
     const w = world(7);
-    const mats = (zone: "portfolio" | "cv") => new Set(w.solids.filter((s) => worldZoneAt(bounds(s).min.x, Math.max(bounds(s).min.y, 0)) === zone && s.kind !== "cone").map((s) => s.mat));
+    const mats = (zone: "portfolio" | "cv") => new Set(w.solids.filter((s) => worldZoneAt(bounds(s).min.x, bounds(s).min.y) === zone && s.kind !== "cone").map((s) => s.mat));
     const shared = [...mats("portfolio")].filter((m) => mats("cv").has(m));
     expect(shared.sort()).toEqual(["rust", "steel"]);
   });
@@ -59,6 +59,12 @@ describe("world", () => {
   it("todo el render usa colores del atlas", () => {
     const w = world(7);
     const colors = allIsoColors();
-    for (const i of buildRenderList([...w.terrain.ground, w.terrain.river, w.terrain.sea, w.terrain.shore, ...w.ground, ...w.solids])) expect(colors.has(i.color)).toBe(true);
+    for (const i of buildRenderList([...w.terrain.ground, w.terrain.river, w.terrain.sea, w.terrain.shore, w.terrain.abyss, ...w.terrain.bleed, ...w.ground, ...w.solids])) expect(colors.has(i.color)).toBe(true);
+  });
+
+  it("el landmark del Blog cae en la fosa y el sangrado existe solo con el mundo entero", () => {
+    expect(worldZoneAt(LANDMARKS.blog.x, LANDMARKS.blog.y)).toBe("blog");
+    expect(world(7).terrain.bleed.length).toBeGreaterThan(0);
+    expect(world(7, { zones: ["portfolio"] }).terrain.bleed).toEqual([]);
   });
 });

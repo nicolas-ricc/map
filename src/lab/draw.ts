@@ -3,17 +3,39 @@ import { accentItem, type Accent } from "../iso/accent";
 import { v3 } from "../iso/geometry";
 import { project } from "../iso/project";
 import type { Layer, RenderItem } from "../iso/render-list";
-import { WORLD_H, WORLD_W, ZONE_SPLIT_X, ZONE_SPLIT_Y, type WorldZone } from "../map/geo";
+import { BLEED, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, type WorldZone } from "../map/geo";
 
 const FRAME_H = 30; // alto de referencia para que entren los landmarks
 
-/** Caja de una zona (o del mundo) proyectada, como un RenderItem para fitTransform. */
-export function zoneFrame(zone: WorldZone | "all"): RenderItem[] {
-  const box = { all: [0, 0, WORLD_W, WORLD_H], portfolio: [0, 0, ZONE_SPLIT_X, ZONE_SPLIT_Y], cv: [0, ZONE_SPLIT_Y, ZONE_SPLIT_X, WORLD_H], blog: [ZONE_SPLIT_X, 0, WORLD_W, WORLD_H] }[zone];
+export type LabFrame = WorldZone | "all" | "cover";
+
+/** Caja de una zona (o del mundo) proyectada, como un RenderItem para fitTransform. `cover` es el rectángulo 16:9 inscripto en el rombo del sangrado. */
+export function zoneFrame(frame: LabFrame): RenderItem[] {
+  if (frame === "cover") return coverFrame(16 / 9);
+  const box = {
+    all: [WORLD.x0, WORLD.y0, WORLD.x1, WORLD.y1],
+    portfolio: [WORLD.x0, WORLD.y0, ZONE_SPLIT_X, ZONE_SPLIT_Y],
+    cv: [WORLD.x0, ZONE_SPLIT_Y, ZONE_SPLIT_X, WORLD.y1],
+    blog: [ZONE_SPLIT_X, WORLD.y0, WORLD.x1, WORLD.y1],
+  }[frame];
   const [x0, y0, x1, y1] = box as [number, number, number, number];
   const pts: number[] = [];
   for (const [x, y, z] of [[x0, y0, FRAME_H], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0]] as const) { const p = project(v3(x, y, z)); pts.push(p.x, p.y); }
   return [{ layer: "ground", pts, color: 0 }];
+}
+
+/**
+ * Rectángulo de aspecto `aspect` inscripto en el rombo del terreno con
+ * sangrado, centrado en él: lo que la cámara cover del sitio podrá mostrar sin
+ * cielo. Rombo de semidiagonales a (horizontal) y a/2: el rectángulo inscripto
+ * mide u = aspect·a/(aspect+2) de semiancho y v = a/(aspect+2) de semialto.
+ */
+export function coverFrame(aspect: number): RenderItem[] {
+  const x0 = WORLD.x0 - BLEED.x, y0 = WORLD.y0 - BLEED.y, x1 = WORLD.x1 + BLEED.x, y1 = WORLD.y1 + BLEED.y;
+  const c = project(v3((x0 + x1) / 2, (y0 + y1) / 2, 0));
+  const a = (x1 - x0 + y1 - y0) / 2;
+  const v = a / (aspect + 2), u = aspect * v;
+  return [{ layer: "ground", pts: [c.x - u, c.y - v, c.x + u, c.y - v, c.x + u, c.y + v, c.x - u, c.y + v], color: 0 }];
 }
 
 export interface Fit { x: number; y: number; scale: number }
