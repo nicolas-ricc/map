@@ -208,8 +208,8 @@ const LANE_X = [...WEST_LANE_X, ...EAST_LANE_X];
 function lanes(ground: Solid[]): void {
   for (const cx of LANE_X) {
     dashes(ground, { x: cx, y: CITY_EDGE.north }, { x: cx, y: AVENUE.y0 });
-    // al sur de la avenida el anillo este se corta donde entra el estuario, y la ribera este no pasa del distrito: el suelo se dibuja encima del agua
-    const yEnd = cx > QUAY_X ? Math.min(DISTRICT_ROWS[0] - STREET, estuaryReaches(cx) - 1) : CITY_EDGE.south;
+    // al sur de la avenida el anillo este se corta donde entra el estuario, y no pasa de donde la ribera este se vuelve selva: el suelo se dibuja encima del agua
+    const yEnd = cx > QUAY_X ? Math.min(DISTRICT_BANK_Y, estuaryReaches(cx) - 1) : CITY_EDGE.south;
     if (yEnd > AVENUE.y1 + 3) dashes(ground, { x: cx, y: AVENUE.y1 }, { x: cx, y: yEnd });
   }
   const rowsY = [CITY_EDGE.north + STREET / 2, ...ROWS.slice(1).map((y) => y - STREET / 2), CITY_EDGE.south - 2].filter((y) => y < AVENUE.y0 || y > AVENUE.y1); // 161, 185, 239, 269, 299, 322 (la calle sur es de 4)

@@ -119,6 +119,12 @@ describe("city", () => {
     for (const g of strips) if (g.kind === "strip") for (const p of g.path) expect(p.x <= QUAY_X || p.x > estuaryEast(p.y)).toBe(true);
     // ninguna raya cae sobre la plaza: el suelo se dibuja en orden de inserción y la taparía
     for (const g of strips) if (g.kind === "strip") for (const p of g.path) expect(inPlaza(p.x, p.y)).toBe(false);
+    // ninguna raya del anillo este llega a la franja de selva de la ribera (salvo el cruce de la avenida)
+    for (const g of strips) {
+      if (g.kind !== "strip" || g.mat !== "paving" || g.width !== 0.4) continue;
+      if (!g.path.some((p) => p.x > EAST_RING.x0)) continue;
+      for (const p of g.path) expect(p.y <= DISTRICT_BANK_Y || (p.y >= AVENUE.y0 && p.y <= AVENUE.y1)).toBe(true);
+    }
     // los dos charcos de luz sí caen enteros dentro de la plaza (alpha 0.25: el reloj y el cartel del distrito también son amberBleed, con otro alpha)
     const spills = s.accents.filter((a) => a.kind === "poly" && a.color === "amberBleed" && a.alpha === 0.25);
     expect(spills.length).toBeGreaterThanOrEqual(2);
