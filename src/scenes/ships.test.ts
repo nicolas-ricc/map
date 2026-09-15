@@ -28,6 +28,7 @@ describe("ships", () => {
     expect(s.solids.filter((x) => x.kind === "poly" && x.facade).length).toBeGreaterThanOrEqual(4);
     expect(s.solids.filter((x) => x.kind === "cylinder")).toHaveLength(2);
     expect(s.solids.filter((x) => x.kind === "poly" && x.mat === "steel" && x.h === 8)).toHaveLength(2); // kingposts
+    expect(s.solids.filter((x) => x.kind === "poly" && x.mat === "hullBlue" && x.h === 0.8)).toHaveLength(2); // amurada
     expect(s.lights.slice(0, 3).map((l) => l.color)).toEqual(["magentaMid", "magenta", "cyanMid"]);
     const south = ship("cargo", { x: 100, y: 100 }, Math.PI / 2);
     expect(Math.max(...south.solids.map((x) => bounds(x).max.y))).toBeCloseTo(160, 6);
