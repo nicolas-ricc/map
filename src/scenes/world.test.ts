@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildRenderList } from "../iso/render-list";
-import { bounds, isFlat } from "../iso/solids";
+import { bounds, isFlat, type Solid } from "../iso/solids";
 import { WORLD, worldZoneAt } from "../map/geo";
 import { allIsoColors } from "../map/palette-iso";
 import { LANDMARKS, world, zoneRng } from "./world";
@@ -33,7 +33,8 @@ describe("world", () => {
     expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris).toEqual([]);
     const b = world(7, { zones: ["blog"] });
     expect(b.city).toBeNull();
-    expect(b.solids).toEqual([]);
+    expect(b.sea).not.toBeNull();
+    expect(b.solids.length).toBeGreaterThanOrEqual(80);
   });
 
   it("el mundo entero trae astillero y ciudad, y el landmark de Resume cae en la torre", () => {
@@ -47,11 +48,13 @@ describe("world", () => {
     expect(LANDMARKS.cv.y).toBeGreaterThan(b.min.y); expect(LANDMARKS.cv.y).toBeLessThan(b.max.y);
   });
 
-  it("la ciudad y el astillero no comparten materiales de construcción", () => {
+  it("astillero + fábrica, ciudad + distrito y Blog no comparten materiales de construcción, salvo los compartidos por regla", () => {
     const w = world(7);
-    const mats = (zone: "portfolio" | "cv") => new Set(w.solids.filter((s) => worldZoneAt(bounds(s).min.x, bounds(s).min.y) === zone && s.kind !== "cone").map((s) => s.mat));
-    const shared = [...mats("portfolio")].filter((m) => mats("cv").has(m));
-    expect(shared.sort()).toEqual(["rust", "steel"]);
+    const mats = (solids: Solid[]) => new Set(solids.filter((s) => s.kind !== "cone").map((s) => s.mat));
+    const portfolio = mats([...w.shipyard!.solids, ...w.factory!.solids]), cv = mats(w.city!.solids), blog = mats(w.sea!.solids);
+    expect([...portfolio].filter((m) => cv.has(m)).sort()).toEqual(["rust", "steel"]);
+    const sharedWithBlog = ["steel", "rust", "hull", "rock", "glass"]; // glass: la linterna del faro (spec §7)
+    for (const other of [portfolio, cv]) for (const m of blog) if (other.has(m)) expect(sharedWithBlog).toContain(m);
   });
 
   it("los landmarks caen en su zona", () => {

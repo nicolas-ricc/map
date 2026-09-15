@@ -5,6 +5,7 @@ import type { WorldZone } from "../map/geo";
 import { createRng, type Rng } from "../map/seed";
 import { city, type CityScene } from "./city";
 import { factory, type FactoryScene } from "./factory";
+import { sea, type SeaScene } from "./sea";
 import { shipyard, type Scene } from "./shipyard";
 import { buildTerrain, type TerrainMesh } from "./terrain";
 
@@ -22,6 +23,7 @@ export interface WorldScene {
   shipyard: Scene | null;
   city: CityScene | null;
   factory: FactoryScene | null;
+  sea: SeaScene | null;
 }
 
 const ALL_ZONES: readonly WorldZone[] = ["portfolio", "cv", "blog"];
@@ -54,5 +56,10 @@ export function world(seed: number, opts: { zones?: readonly WorldZone[] } = {})
     ct = city(zoneRng(seed, "cv"), zoneRng(seed, "cv", 1));
     ground.push(...ct.ground); solids.push(...ct.solids); accents.push(...ct.accents);
   }
-  return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct, factory: fa };
+  let se: SeaScene | null = null;
+  if (zones.includes("blog")) {
+    se = sea(zoneRng(seed, "blog"));
+    ground.push(...se.ground); solids.push(...se.solids); accents.push(...se.accents);
+  }
+  return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct, factory: fa, sea: se };
 }

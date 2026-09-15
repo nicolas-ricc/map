@@ -102,6 +102,14 @@ describe("tessellate", () => {
     expect(top.pts).toContainEqual({ x: 0, y: -2, z: 2 });
   });
 
+  it("hull con heading π/2 tiene la proa al sur (+y) y gira alrededor de la popa", () => {
+    const pts = tessellateAll({ kind: "hull", at: v3(10, 20, 0), len: 20, beam: 4, h: 2, mat: "hull", heading: Math.PI / 2 }).flatMap((f) => f.pts);
+    expect(Math.max(...pts.map((p) => p.y))).toBeCloseTo(40, 6);
+    expect(Math.min(...pts.map((p) => p.y))).toBeCloseTo(20, 6);
+    expect(Math.min(...pts.map((p) => p.x))).toBeCloseTo(8, 6);
+    expect(Math.max(...pts.map((p) => p.x))).toBeCloseTo(12, 6);
+  });
+
   it("franja: un cuadrilátero horizontal por segmento, sin descarte", () => {
     const s: Solid = { kind: "strip", path: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }], width: 2, z: -0.4, mat: "road" };
     const vis = tessellate(s);
