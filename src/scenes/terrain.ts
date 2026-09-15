@@ -27,7 +27,10 @@ const REEF_W = 6;
 
 export type WaterMat = "shallow" | "water" | "waterDeep" | "abyss";
 export const WATER_MATS: readonly WaterMat[] = ["shallow", "water", "waterDeep", "abyss"];
-export const SHALLOW_D = 12, DEEP_D = 48, FOAM_W = 3, CELL_WATER = 9;
+// FOAM_W = 9 (no el 3 de la spec): la spec mide en unidades finas, pero depthAt cuantiza en la grilla
+// de CELL = 6 (más la diagonal, 8.49), así que la primera cadena de celdas de agua junto a tierra ya
+// está a 6 u; 9 la cubre sin llegar a la segunda cadena.
+export const SHALLOW_D = 12, DEEP_D = 48, FOAM_W = 9, CELL_WATER = 9;
 const ABYSS_RAMP = 60;
 
 export interface TerrainMesh { ground: Solid[]; bleed: Solid[]; water: Solid[]; foam: Solid }
@@ -142,7 +145,7 @@ function waterCell(w: WaterTris, foam: Tri[], x0: number, y0: number, x1: number
   for (const t of tmp) {
     t.baseTone = base;
     w[mat].push(t);
-    if (depthAt(cx, cy) < FOAM_W * CELL) foam.push({ pts: t.pts });
+    if (depthAt(cx, cy) < FOAM_W) foam.push({ pts: t.pts });
   }
 }
 
