@@ -20,7 +20,13 @@ const CURTAIN_WINDOW = { w: 0.85, h: 0.8 } as const;
 /** Caja del piso encendido de la torre (city.ts pone la torre; acá solo hace falta dónde queda). */
 const LIT: Bounds = { min: v3(TOWER.x, TOWER.y, LIT_FLOOR * (TOWER_H / TOWER_FLOORS)), max: v3(TOWER.x + TOWER.w, TOWER.y + TOWER.d, (LIT_FLOOR + 1) * (TOWER_H / TOWER_FLOORS)) };
 
-/** Regla del piso encendido: si un edificio de 24 en esta manzana se superpondría en pantalla con el piso encendido quedando delante, la manzana se limita a 10. */
+/**
+ * Regla del piso encendido: si un edificio de 24 en esta manzana se
+ * superpondría en pantalla con el piso encendido quedando delante, la
+ * manzana se limita a 10. Con la grilla actual ninguna manzana del distrito
+ * queda delante (todas están al oeste o al sur de la torre); es una guarda
+ * para si el distrito gana filas más cercanas en el futuro.
+ */
 export function maxDistrictHeight(b: Rect): number {
   const box: Bounds = { min: v3(b.x, b.y, 0), max: v3(b.x + b.w, b.y + b.d, MAX_DISTRICT_H + PLINTH_H + 1) };
   return overlaps(screenBounds(box), screenBounds(LIT)) && isBehind(LIT, box) ? FRONT_CAP_H : MAX_DISTRICT_H;

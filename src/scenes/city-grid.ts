@@ -26,6 +26,8 @@ export const BOULEVARD = { y0: 210, y1: 214 } as const;
 export const WEST_QUAY = { x0: 192, x1: QUAY_X } as const;   // muro de contención de la ribera oeste
 export const EAST_RING = { x0: 270, x1: 276 } as const;      // calle que bordea la ribera este; x0 múltiplo de CELL (clasifica terreno)
 export const CITY_EDGE = { west: -54, north: 158, south: 324 } as const; // selva más allá; south múltiplo de CELL (clasifica terreno)
+export const DISTRICT_BANK_Y = 264; // ribera este del distrito desde acá; múltiplo de CELL (clasifica terreno)
+export const MALECON_STREET_X = 336; // calle del malecón; múltiplo de CELL (clasifica terreno)
 
 export const PLAZA: Rect = { x: 102, y: 218, w: 54, d: 18 }; // une dos columnas de la fila sur de la avenida
 export const TOWER: Rect = { x: 121, y: 220, w: 16, d: 14 }; // centrada en (129, 227)

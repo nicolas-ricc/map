@@ -5,7 +5,7 @@ import { STEP_INSET, STEP_RATIO, tessellate, type Solid } from "../iso/solids";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
 import { QUAY_X, WORLD, ZONE_SPLIT_Y } from "../map/geo";
-import { AVENUE, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, DISTRICT_ROWS, EAST_COLS, EAST_RING, FALLEN_BLOCK, LIT_FLOOR, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, TOWER_FLOORS, TOWER_H, WEST_COLS, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inBlock, inCrater, type Block } from "./city-grid";
+import { AVENUE, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, DISTRICT_BANK_Y, DISTRICT_ROWS, EAST_COLS, EAST_RING, FALLEN_BLOCK, LIT_FLOOR, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, TOWER_FLOORS, TOWER_H, WEST_COLS, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inBlock, inCrater, type Block } from "./city-grid";
 import { jungle } from "./flora";
 import { PLINTH_H, brokenTone, lamp, plazaTone, prism, tiles } from "./city-pieces";
 import { districtBlock, maxDistrictHeight } from "./district";
@@ -212,7 +212,7 @@ function lanes(ground: Solid[]): void {
     const yEnd = cx > QUAY_X ? Math.min(DISTRICT_ROWS[0] - STREET, estuaryReaches(cx) - 1) : CITY_EDGE.south;
     if (yEnd > AVENUE.y1 + 3) dashes(ground, { x: cx, y: AVENUE.y1 }, { x: cx, y: yEnd });
   }
-  const rowsY = [CITY_EDGE.north + STREET / 2, ...ROWS.slice(1).map((y) => y - STREET / 2), CITY_EDGE.south - 2].filter((y) => y < AVENUE.y0 || y > AVENUE.y1); // 161, 185, 239, 262 (la calle sur es de 4)
+  const rowsY = [CITY_EDGE.north + STREET / 2, ...ROWS.slice(1).map((y) => y - STREET / 2), CITY_EDGE.south - 2].filter((y) => y < AVENUE.y0 || y > AVENUE.y1); // 161, 185, 239, 269, 299, 322 (la calle sur es de 4)
   for (const cy of rowsY) {
     dashes(ground, { x: CITY_EDGE.west, y: cy }, { x: WEST_QUAY.x0, y: cy });
     if (cy < DISTRICT_ROWS[0] - STREET) dashes(ground, { x: Math.max(EAST_RING.x0, Math.ceil(estuaryEast(cy)) + 1), y: cy }, { x: MALECON.x0, y: cy }); // arranca en tierra; al sur del distrito la ribera este es selva
@@ -323,7 +323,7 @@ function greenery(solids: Solid[], rng: Rng): void {
     if (x1 - x0 >= 2) jungleOnLand(solids, rng, { x0, x1, y0: y, y1: y + 6 }, rng.int(1, 2));
   }
   // ribera este del distrito: selva entre el estuario y el malecón, al sur de la avenida vieja
-  jungleOnLand(solids, rng, { x0: Math.ceil(estuaryEast(DISTRICT_ROWS[0])) + 2, x1: MALECON.x0 - 3, y0: DISTRICT_ROWS[0], y1: MALECON.y1 - 2 }, 10);
+  jungleOnLand(solids, rng, { x0: Math.ceil(estuaryEast(DISTRICT_ROWS[0])) + 2, x1: MALECON.x0 - 3, y0: DISTRICT_BANK_Y, y1: MALECON.y1 - 2 }, 10);
   for (const c of CRATERS) { // cuadrado inscripto (0.7·r): todo cono queda dentro del círculo
     const k = Math.floor(c.r * 0.7);
     jungle(solids, rng, { x0: c.x - k, x1: c.x + k, y0: c.y - k, y1: c.y + k }, rng.int(4, 6), 0.2);

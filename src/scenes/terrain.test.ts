@@ -48,6 +48,8 @@ describe("clasificación", () => {
     expect(terrainAt(-30, 290)).toBe("asphalt");
     expect(terrainAt(300, 300)).toBe("jungle");
     expect(terrainAt(338, 300)).toBe("asphalt");
+    expect(terrainAt(300, 267)).toBe("jungle");
+    expect(terrainAt(335, 300)).toBe("jungle");
   });
   it("en la zona cv solo hay asfalto, selva y agua", () => {
     const seen = new Set<string>();

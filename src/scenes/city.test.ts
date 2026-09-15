@@ -4,7 +4,7 @@ import { bounds, type Solid } from "../iso/solids";
 import { QUAY_X, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y } from "../map/geo";
 import { allIsoColors, type Material } from "../map/palette-iso";
 import { createRng } from "../map/seed";
-import { AVENUE, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, ROWS, CRATERS, DISTRICT_ROWS, EAST_RING, FALLEN_BLOCK, MALECON, PLAZA, TOWER, WEST_QUAY, blocks, estuaryEast, inBlock, inCrater } from "./city-grid";
+import { AVENUE, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, ROWS, CRATERS, DISTRICT_BANK_Y, DISTRICT_ROWS, EAST_RING, FALLEN_BLOCK, MALECON, PLAZA, TOWER, WEST_QUAY, blocks, estuaryEast, inBlock, inCrater } from "./city-grid";
 import { MAX_BUILDING_H, PLINTH_H, TOWER_H, city, type CityScene } from "./city";
 
 const scene = (): CityScene => city(createRng(7), createRng(8));
@@ -97,7 +97,7 @@ describe("city", () => {
     for (const c of s.solids) {
       if (c.kind !== "cone") continue;
       // al sur del distrito la ribera este es selva sin grilla (ya no hay manzanas del lado este)
-      const onCity = c.at.x >= CITY_EDGE.west && c.at.x < MALECON.x0 && c.at.y >= CITY_EDGE.north && c.at.y < CITY_EDGE.south && !(c.at.x > QUAY_X && c.at.x < EAST_RING.x0) && !(c.at.x > EAST_RING.x0 && c.at.y >= DISTRICT_ROWS[0]);
+      const onCity = c.at.x >= CITY_EDGE.west && c.at.x < MALECON.x0 && c.at.y >= CITY_EDGE.north && c.at.y < CITY_EDGE.south && !(c.at.x > QUAY_X && c.at.x < EAST_RING.x0) && !(c.at.x > EAST_RING.x0 && c.at.y >= DISTRICT_BANK_Y);
       if (onCity) expect(inBlock(c.at.x, c.at.y) || inCrater(c.at.x, c.at.y) || (c.at.y >= BOULEVARD.y0 && c.at.y <= BOULEVARD.y1)).toBe(true);
     }
     expect(s.accents.length).toBeGreaterThan(6);
