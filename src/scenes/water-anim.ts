@@ -8,6 +8,14 @@ import { WATER_MATS, type TerrainMesh, type WaterMat } from "./terrain";
  * que refleja el sol) solo sobrevive en un cuarto de los triángulos, así son
  * destellos y no una franja. La espuma de costa alterna. El agua entera se
  * reparte en BANDS bandas por x de pantalla y cada paso repinta una.
+ *
+ * `TONE_LADDER` (`palette-iso.ts`) es `["shade", "lit", "down", "top", "up"]`
+ * y la cara plana del agua parte de `top`: solo hay un escalón por encima
+ * (`up`). Por eso `waveTone` (la ola en −2..2, con su propio contrato y
+ * tests) no se escribe directamente como `toneOffset`: `waveOffset` la
+ * aplana para la escalera real, donde +1 se queda en `top` (no hay escalón
+ * intermedio que pintarlo de durazno) y solo el +2 filtrado por hash llega a
+ * `up`.
  */
 export const WATER_STEP_MS = 150, WAVE_T_MS = 4000, WAVE_LAMBDA = 10, ABYSS_T_MS = 8000, ABYSS_LAMBDA = 14, FOAM_STEP_MS = 500, BANDS = 4;
 const WAVE_AMP = 1.2, ABYSS_AMP = 0.6, RIPPLE_AMP = 0.35;
@@ -38,6 +46,9 @@ export function waveTone(t: Tri, mat: WaterMat, clockMs: number): number {
   return tone;
 }
 
+/** Aplana el −2..2 de `waveTone` a la escalera real: −2→lit, −1→down, 0 y 1→top, 2→up. */
+export const waveOffset = (v: number): number => (v === 2 ? 1 : Math.min(v, 0));
+
 export interface WaterChanges { bands: Set<number>; foam: boolean }
 export interface WaterAnim { band(k: number): Solid[]; foam(): Solid[]; tick(dtMs: number): WaterChanges }
 
@@ -53,7 +64,7 @@ export function createWaterAnim(terrain: TerrainMesh, opts: { reducedMotion: boo
   const foamTris = terrain.foam.kind === "ground" ? terrain.foam.tris : [];
 
   let clock = 0, step = 0, foamStep = 0;
-  const paintBand = (k: number): void => { for (const b of bands[k]!) for (const t of b.tris) t.toneOffset = waveTone(t, b.mat, clock); };
+  const paintBand = (k: number): void => { for (const b of bands[k]!) for (const t of b.tris) t.toneOffset = waveOffset(waveTone(t, b.mat, clock)); };
   const paintFoam = (): void => { for (const t of foamTris) t.toneOffset = foamStep % 2 === 0 ? 0 : -1; };
   for (let k = 0; k < BANDS; k++) paintBand(k);
   paintFoam();

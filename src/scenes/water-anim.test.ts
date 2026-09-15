@@ -3,7 +3,7 @@ import type { Tri } from "../iso/solids";
 import { v3 } from "../iso/geometry";
 import { createRng } from "../map/seed";
 import { buildTerrain } from "./terrain";
-import { BANDS, WATER_STEP_MS, WAVE_LAMBDA, WAVE_T_MS, createWaterAnim, triHash, waveTone } from "./water-anim";
+import { BANDS, WATER_STEP_MS, WAVE_LAMBDA, WAVE_T_MS, createWaterAnim, triHash, waveOffset, waveTone } from "./water-anim";
 
 const tri = (x: number, y: number, base = 0): Tri => ({ pts: [v3(x, y, -1), v3(x + 6, y, -1), v3(x + 6, y + 6, -1)], baseTone: base });
 const tris = (s: { kind: string; tris?: Tri[] }) => (s.kind === "ground" ? s.tris! : []);
@@ -61,6 +61,22 @@ describe("water-anim", () => {
       checked++;
     }
     expect(sameAsNeighbor).toBeLessThan(checked); // no todos iguales en la diagonal
+  });
+  it("waveOffset aplana −2..2 a la escalera real (un solo escalón sobre top)", () => {
+    expect(waveOffset(-2)).toBe(-2);
+    expect(waveOffset(-1)).toBe(-1);
+    expect(waveOffset(0)).toBe(0);
+    expect(waveOffset(1)).toBe(0);
+    expect(waveOffset(2)).toBe(1);
+  });
+  it("solo un puñado de triángulos llega a la cresta (toneOffset === 1) en el terreno real", () => {
+    const terrain = buildTerrain(createRng(7));
+    const a = createWaterAnim(terrain, { reducedMotion: false }); // pintado inicial, clock 0
+    const all = Array.from({ length: BANDS }, (_, k) => a.band(k)).flat().flatMap((s) => tris(s));
+    const crest = all.filter((t) => t.toneOffset === 1).length;
+    const share = crest / all.length;
+    expect(share).toBeLessThan(0.12);
+    expect(share).toBeGreaterThan(0.005);
   });
   it("con reduced-motion no cambia nada", () => {
     const a = createWaterAnim(buildTerrain(createRng(7)), { reducedMotion: true });
