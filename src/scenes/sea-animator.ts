@@ -1,17 +1,11 @@
 import type { AnimLayer, Animator } from "./animator";
 import type { SeaScene } from "./sea";
 import { SHIPS, createSeaAnim } from "./sea-anim";
-import type { TerrainMesh } from "./terrain";
 
-/** Adapta el mar al contrato `Animator`. Reclama mar, orilla y fosa del terreno: los dibuja partidos en bandas. */
-export function seaAnimator(scene: SeaScene, terrain: TerrainMesh, opts: { reducedMotion: boolean }): Animator {
-  const anim = createSeaAnim(scene, terrain, opts);
+/** Adapta el mar al contrato `Animator`: barcos, haz del faro y boyas. El agua queda estática (la reparte terrain.ts). */
+export function seaAnimator(scene: SeaScene, opts: { reducedMotion: boolean }): Animator {
+  const anim = createSeaAnim(scene, opts);
   const layers: Record<string, () => AnimLayer> = {
-    "sea.band0": () => ({ kind: "water", water: anim.band(0) }),
-    "sea.band1": () => ({ kind: "water", water: anim.band(1) }),
-    "sea.band2": () => ({ kind: "water", water: anim.band(2) }),
-    "sea.abyss": () => ({ kind: "water", water: anim.abyss() }),
-    "sea.foam": () => ({ kind: "water", water: anim.foam() }),
     "sea.beam": () => ({ kind: "accent", accents: anim.beam() }),
     "sea.buoys": () => ({ kind: "accent", accents: anim.buoys() }),
   };
@@ -22,14 +16,10 @@ export function seaAnimator(scene: SeaScene, terrain: TerrainMesh, opts: { reduc
   });
   return {
     ids: Object.keys(layers),
-    claims: [terrain.sea, terrain.shore, terrain.abyss],
     layer: (id) => layers[id]!(),
     tick(dtMs) {
       const c = anim.tick(dtMs);
       const out = new Set<string>();
-      for (const k of c.bands) out.add(`sea.band${k}`);
-      if (c.abyss) out.add("sea.abyss");
-      if (c.foam) out.add("sea.foam");
       if (c.ships) SHIPS.forEach((_, k) => { out.add(`sea.ship${k}`); out.add(`sea.wake${k}`); out.add(`sea.lights${k}`); });
       if (c.beam) out.add("sea.beam");
       if (c.buoys) out.add("sea.buoys");

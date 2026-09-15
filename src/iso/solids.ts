@@ -5,7 +5,7 @@ import { centroid, dot, polygonNormal, type Vec2, type Vec3, v3 } from "./geomet
 import { shadeTone } from "./light";
 import { VIEW_DIR } from "./project";
 
-export interface Tri { pts: [Vec3, Vec3, Vec3]; toneOffset?: number }
+export interface Tri { pts: [Vec3, Vec3, Vec3]; toneOffset?: number; baseTone?: number }
 
 export type Solid =
   | { kind: "prism"; at: Vec3; w: number; d: number; h: number; mat: Material; roof?: "flat" | "gable" | "step"; facade?: Facade }

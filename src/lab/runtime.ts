@@ -48,7 +48,7 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
   const animatedWater = new Set(animators.flatMap((a) => [...(a.claims ?? []), ...a.ids.flatMap((id) => { const l = a.layer(id); return l.kind === "water" ? l.water : []; })]));
   const staticWater = new Graphics();
   waterSlot.addChild(staticWater);
-  drawLayer(staticWater, buildRenderList([terrain.river, terrain.sea, terrain.shore, terrain.abyss].filter((w) => !animatedWater.has(w))), "ground");
+  drawLayer(staticWater, buildRenderList([...terrain.water, terrain.foam].filter((w) => !animatedWater.has(w))), "ground");
 
   // una Graphics (o par) por capa animada
   const redraw = new Map<string, () => void>();

@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { isBehind, overlaps, screenBounds } from "../iso/depth";
-import { bounds, type Solid, type Tri } from "../iso/solids";
+import { bounds } from "../iso/solids";
 import { WORLD } from "../map/geo";
-import { BEAM_PERIOD_MS, FADE_U, ROUTE, SEA_STEP_MS, SHIPS, createSeaAnim, routeAt, routeLength } from "./sea-anim";
+import { BEAM_PERIOD_MS, FADE_U, ROUTE, SHIPS, createSeaAnim, routeAt, routeLength } from "./sea-anim";
 import { ship } from "./ships";
 import { bleedTerrainAt, terrainAt } from "./terrain";
 import { world } from "./world";
 
 const WATER = new Set(["water", "sea", "shore", "abyss"]);
-const setup = (reducedMotion = false) => { const w = world(7); return { w, a: createSeaAnim(w.sea!, w.terrain, { reducedMotion }) }; };
-const tris = (s: Solid): Tri[] => (s.kind === "ground" ? s.tris : []);
+const setup = (reducedMotion = false) => { const w = world(7); return { w, a: createSeaAnim(w.sea!, { reducedMotion }) }; };
 
 describe("ruta", () => {
   it("nace en la bahía, rodea la punta por el este (x > 430 cerca de y 118), cruza la fosa y termina en el sangrado, siempre sobre agua", () => {
@@ -71,18 +70,6 @@ describe("barcos", () => {
 });
 
 describe("mar, haz y boyas", () => {
-  it("tres bandas de mar más la fosa cubren todo el mar del contenido; cada paso redibuja una sola banda", () => {
-    const { w, a } = setup();
-    const total = tris(w.terrain.sea).length + tris(w.terrain.shore).length;
-    const banded = [0, 1, 2].reduce((n, k) => n + a.band(k).filter((s) => s.mat !== "foam").reduce((m, s) => m + tris(s).length, 0), 0);
-    expect(banded).toBe(total);
-    expect(a.foam().some((s) => s.mat === "foam" && tris(s).length > 0)).toBe(true); // espuma junto al arrecife, en su propia capa
-    expect(a.band(0).every((s) => s.mat !== "foam")).toBe(true);
-    const c1 = a.tick(SEA_STEP_MS), c2 = a.tick(SEA_STEP_MS), c3 = a.tick(SEA_STEP_MS);
-    expect([c1.bands, c2.bands, c3.bands].map((b) => [...b])).toEqual([[1], [2], [0]]); // el paso 1 pinta la banda 1, y así en ronda
-    expect(a.band(0).some((s) => tris(s).some((t) => (t.toneOffset ?? 0) !== 0))).toBe(true);
-    expect(a.abyss().every((s) => tris(s).every((t) => Math.abs(t.toneOffset ?? 0) <= 1))).toBe(true);
-  });
   it("el haz da una vuelta cada 8 s y con reduced-motion apunta al este", () => {
     const { a } = setup();
     const angle = (acc: ReturnType<typeof a.beam>) => { const p = acc[0]!; if (p.kind !== "poly") throw new Error(); const apex = p.pts[0]!, tip = p.pts[1]!; return Math.atan2(tip.y - apex.y, tip.x - apex.x); };
@@ -94,7 +81,7 @@ describe("mar, haz y boyas", () => {
     expect(a.beam()).toHaveLength(2);
     const r = setup(true).a;
     expect(Math.abs(angle(r.beam()))).toBeLessThan(0.2);
-    expect(r.tick(500)).toEqual({ bands: new Set(), abyss: false, ships: false, beam: false, buoys: false, foam: false });
+    expect(r.tick(500)).toEqual({ ships: false, beam: false, buoys: false });
   });
   it("las boyas parpadean desfasadas: nunca las dos apagadas, cada una encendida la mitad del período", () => {
     const { a } = setup();

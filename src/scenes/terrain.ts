@@ -1,10 +1,11 @@
 import { v3 } from "../iso/geometry";
 import type { Solid, Tri } from "../iso/solids";
-import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, RIVER_HALF, SHORE_W, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, eastBank, inHeadland, inMouth, riverCenter, shoreWidth, worldZoneAt, type WorldZone } from "../map/geo";
+import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, RIVER_HALF, SHORE_W, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, eastBank, inCoverQuad, inHeadland, inMouth, riverCenter, shoreWidth, worldZoneAt, type WorldZone } from "../map/geo";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
 import { CITY_EDGE, DISTRICT_BANK_Y, EAST_RING, MALECON_STREET_X, estuaryEast, inCrater } from "./city-grid";
-import { bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
+import { depthAt } from "./depth-map";
+import { COVER_MARGIN, bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
 
 /**
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
@@ -24,7 +25,12 @@ export { CELL };
 const WATER_Z = -1;
 const REEF_W = 6;
 
-export interface TerrainMesh { ground: Solid[]; bleed: Solid[]; river: Solid; sea: Solid; shore: Solid; abyss: Solid }
+export type WaterMat = "shallow" | "water" | "waterDeep" | "abyss";
+export const WATER_MATS: readonly WaterMat[] = ["shallow", "water", "waterDeep", "abyss"];
+export const SHALLOW_D = 12, DEEP_D = 48, FOAM_W = 3, CELL_WATER = 9;
+const ABYSS_RAMP = 60;
+
+export interface TerrainMesh { ground: Solid[]; bleed: Solid[]; water: Solid[]; foam: Solid }
 
 export function shipyardTerrainAt(x: number, y: number): Terrain {
   if (x < 0) return y < 110 ? "slab" : "jungle"; // columna oeste: playa de vías y acopios, selva al sur
@@ -92,8 +98,9 @@ export const headlandZ = (x: number): number => {
 const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth, asphalt: 0, sea: WATER_Z, shore: WATER_Z, headland: HEADLAND_TOP_Z, reef: 0.5, abyss: WATER_Z };
 const JITTER: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0, asphalt: 0.1, sea: 0, shore: 0, headland: 1.5, reef: 0.3, abyss: 0 };
 const MAT: Record<Exclude<Terrain, "dock">, Material> = { slab: "slab", water: "water", east: "sand", jungle: "leafDark", asphalt: "asphalt", sea: "waterDeep", shore: "water", headland: "rock", reef: "rock", abyss: "abyss" };
-const FLAT = new Set<Terrain>(["water", "sea", "shore", "dock", "abyss"]);
-const BLEED_MAT: Record<BleedTerrain, Material> = { jungle: "leafDark", sea: "waterDeep", shore: "water", abyss: "abyss", river: "water", industrial: "slab", urban: "asphalt" };
+const FLAT = new Set<Terrain>(["dock"]);
+const BLEED_MAT: Record<Exclude<BleedTerrain, "sea" | "shore" | "abyss" | "river">, Material> = { jungle: "leafDark", industrial: "slab", urban: "asphalt" };
+const WATER_TERRAIN = new Set<Terrain>(["water", "sea", "shore", "abyss"]);
 const BLEED_WATER = new Set<BleedTerrain>(["sea", "shore", "abyss", "river"]);
 const BLEED_BUILT = new Set<BleedTerrain>(["industrial", "urban"]);
 
@@ -104,6 +111,43 @@ const contentBaseZ = (x: number, y: number): number => {
   return t === "headland" ? headlandZ(x) : BASE_Z[t];
 };
 
+/** Material del agua en un punto por profundidad (distancia a tierra); la fosa manda por geografía. Null en tierra. */
+export function waterBand(x: number, y: number): WaterMat | null {
+  const inside = x >= WORLD.x0 && x < WORLD.x1 && y >= WORLD.y0 && y < WORLD.y1;
+  const t = inside ? terrainAt(x, y) : bleedTerrainAt(x, y);
+  if (inside ? !WATER_TERRAIN.has(t as Terrain) : !BLEED_WATER.has(t as BleedTerrain)) return null;
+  if (t === "abyss") return "abyss";
+  const d = depthAt(x, y);
+  return d < SHALLOW_D ? "shallow" : d <= DEEP_D ? "water" : "waterDeep";
+}
+
+/** Posición dentro de la banda, −1 (borde somero) … +1 (borde profundo), en pasos enteros. */
+export function baseToneAt(x: number, y: number, mat: WaterMat): number {
+  const d = depthAt(x, y);
+  const frac = mat === "shallow" ? d / SHALLOW_D : mat === "water" ? (d - SHALLOW_D) / (DEEP_D - SHALLOW_D) : mat === "waterDeep" ? Math.min(1, (d - DEEP_D) / DEEP_D) : Math.min(1, Math.max(0, (x - abyssX(y)) / ABYSS_RAMP));
+  return Math.max(-1, Math.min(1, Math.round(1 - 2 * frac)));
+}
+
+type WaterTris = Record<WaterMat, Tri[]>;
+const newWaterTris = (): WaterTris => ({ shallow: [], water: [], waterDeep: [], abyss: [] });
+
+/** Dos triángulos de agua por celda, con `baseTone` por su centro, y copia en `foam` si están a menos de FOAM_W de tierra. */
+function waterCell(w: WaterTris, foam: Tri[], x0: number, y0: number, x1: number, y1: number, i: number, j: number): void {
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const mat = waterBand(cx, cy);
+  if (!mat) return;
+  const tmp: Tri[] = [];
+  cellTris(tmp, x0, y0, x1, y1, WATER_Z, WATER_Z, WATER_Z, WATER_Z, WATER_Z, i, j);
+  const base = baseToneAt(cx, cy, mat);
+  for (const t of tmp) {
+    t.baseTone = base;
+    w[mat].push(t);
+    if (depthAt(cx, cy) < FOAM_W * CELL) foam.push({ pts: t.pts });
+  }
+}
+
+const waterSolids = (w: WaterTris): Solid[] => WATER_MATS.filter((m) => w[m].length > 0).map((m): Solid => ({ kind: "ground", mat: m, tris: w[m] }));
+
 /** Dos triángulos por celda con diagonal alternada: el "papercraft" no se lee como una grilla de cuadrados. */
 function cellTris(out: Tri[], x0: number, y0: number, x1: number, y1: number, za: number, zb: number, zc: number, zd: number, flat: number | null, i: number, j: number): void {
   const p = (x: number, y: number, z: number) => v3(x, y, flat ?? z);
@@ -112,8 +156,8 @@ function cellTris(out: Tri[], x0: number, y0: number, x1: number, y1: number, za
   else out.push({ pts: [a, b, d] }, { pts: [b, c, d] });
 }
 
-/** Grilla de CELL_BLEED alrededor de WORLD. Comparte vértices con la de CELL en la costura (lados múltiplos de 18) y ahí no lleva jitter. */
-function buildBleed(rng: Rng): Solid[] {
+/** Grilla de CELL_BLEED alrededor de WORLD. Comparte vértices con la de CELL en la costura (lados múltiplos de 18) y ahí no lleva jitter. El agua se subdivide en celdas de CELL_WATER dentro del cover, de CELL_BLEED afuera. */
+function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
   const bx0 = WORLD.x0 - BLEED.x, by0 = WORLD.y0 - BLEED.y, bx1 = WORLD.x1 + BLEED.x, by1 = WORLD.y1 + BLEED.y;
   const cols = (bx1 - bx0) / CELL_BLEED, rows = (by1 - by0) / CELL_BLEED;
   const inside = (x: number, y: number) => x >= WORLD.x0 && x <= WORLD.x1 && y >= WORLD.y0 && y <= WORLD.y1;
@@ -131,14 +175,19 @@ function buildBleed(rng: Rng): Solid[] {
       z[j]!.push(base + r * (base > 0.6 ? HILL_JITTER : JITTER.jungle));
     }
   }
-  const tris: Partial<Record<Material, Tri[]>> = { leafDark: [], rock: [], waterDeep: [], water: [], abyss: [], slab: [], asphalt: [] };
+  const tris: Partial<Record<Material, Tri[]>> = { leafDark: [], rock: [], slab: [], asphalt: [] };
   for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
     const x0 = bx0 + i * CELL_BLEED, y0 = by0 + j * CELL_BLEED, x1 = x0 + CELL_BLEED, y1 = y0 + CELL_BLEED;
     const cx = x0 + CELL_BLEED / 2, cy = y0 + CELL_BLEED / 2;
     if (inside(cx, cy)) continue;
     const t = bleedTerrainAt(cx, cy);
-    const mat: Material = t === "jungle" ? (bleedZ(cx, cy) > ROCK_FROM_Z ? "rock" : "leafDark") : BLEED_MAT[t];
-    cellTris(tris[mat]!, x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, BLEED_WATER.has(t) ? WATER_Z : null, i, j);
+    if (BLEED_WATER.has(t)) {
+      if (inCoverQuad(cx, cy, 16 / 9, COVER_MARGIN)) { for (let sj = 0; sj < 2; sj++) for (let si = 0; si < 2; si++) waterCell(w, foam, x0 + si * CELL_WATER, y0 + sj * CELL_WATER, x0 + (si + 1) * CELL_WATER, y0 + (sj + 1) * CELL_WATER, i * 2 + si, j * 2 + sj); }
+      else waterCell(w, foam, x0, y0, x1, y1, i, j);
+      continue;
+    }
+    const mat: Material = t === "jungle" ? (bleedZ(cx, cy) > ROCK_FROM_Z ? "rock" : "leafDark") : BLEED_MAT[t as "industrial" | "urban"];
+    cellTris(tris[mat]!, x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, null, i, j);
   }
   return (Object.keys(tris) as Material[]).filter((m) => tris[m]!.length > 0).map((m): Solid => ({ kind: "ground", mat: m, tris: tris[m]! }));
 }
@@ -162,21 +211,21 @@ export function buildTerrain(rng: Rng, zones?: readonly WorldZone[]): TerrainMes
   }
   const tris = {} as Record<Terrain, Tri[]>;
   for (const t of Object.keys(BASE_Z) as Terrain[]) tris[t] = [];
+  const w = newWaterTris(), foam: Tri[] = [];
   for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
     const x0 = WORLD.x0 + i * CELL, y0 = WORLD.y0 + j * CELL, x1 = x0 + CELL, y1 = y0 + CELL;
     const cx = x0 + CELL / 2, cy = y0 + CELL / 2;
     if (zones && !zones.includes(worldZoneAt(cx, cy))) continue;
     const t = terrainAt(cx, cy);
     if (t === "dock") continue; // el pozo lo amuebla la escena del astillero
+    if (WATER_TERRAIN.has(t)) { waterCell(w, foam, x0, y0, x1, y1, i, j); continue; }
     cellTris(tris[t], x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, FLAT.has(t) ? BASE_Z[t] : null, i, j);
   }
-  const ground = (t: Exclude<Terrain, "dock">): Solid => ({ kind: "ground", mat: MAT[t], tris: tris[t] });
+  const ground = (t: Exclude<Terrain, "dock" | "water" | "sea" | "shore" | "abyss">): Solid => ({ kind: "ground", mat: MAT[t], tris: tris[t] });
   return {
     ground: [ground("slab"), ground("east"), ground("jungle"), ground("asphalt"), ground("headland"), ground("reef")],
-    bleed: zones ? [] : buildBleed(rng),
-    river: ground("water"),
-    sea: ground("sea"),
-    shore: ground("shore"),
-    abyss: ground("abyss"),
+    bleed: zones ? [] : buildBleed(rng, w, foam),
+    water: waterSolids(w),
+    foam: { kind: "ground", mat: "foam", tris: foam },
   };
 }
