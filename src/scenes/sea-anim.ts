@@ -33,15 +33,16 @@ export const BEAM_PERIOD_MS = 8000, BEAM_LEN = 24, BEAM_INNER = 12, BEAM_HALF = 
 export const BUOY_PERIOD_MS = 2000;
 
 // Lancha de la feria: hace la lanzadera entre la punta del futuro muelle de la feria (Task 17, bahía
-// norte) y la orilla de la bahía frente al muelle de graneles. Ambos extremos están en agua hoy
+// norte) y la orilla de la bahía frente al muelle de graneles. Los tres puntos están en agua hoy
 // (bayWater); la feria en sí todavía no existe.
 //
-// Corridos 42 u al este (7 pasos de 6, Step 4 de la brief) respecto del trazado original
-// ({ x: 248, y: -288 } / { x: 229, y: -84 }): la línea recta entre esos dos puntos cruza, cerca de
-// y ≈ -200/-233, la punta occidental de la bahía norte (donde el borde de agua de `bayWater` retrocede
-// hacia el este formando una ensenada) y queda sobre tierra en ese tramo (`depthAt` = 0, no solo
-// "detrás de un sólido"). Con el corrimiento la recta entera queda a ≥ 6 u de la costa.
-export const FERRY_ROUTE: readonly [Vec2, Vec2] = [{ x: 290, y: -288 }, { x: 271, y: -84 }];
+// Ruling del controller (Task 8, fix): una recta entre los dos muelles no sirve porque la costa oeste
+// de la bahía llega hasta x ≈ 277 cerca de y −204 (una saliente entre los dos muelles). Se agregó un
+// punto intermedio que la rodea por el este. El punto sur se corrió 6 u más al este que el propuesto
+// ((235, −84) → (241, −84)): entre el intermedio y el sur, cerca de (257, −126), la recta original
+// volvía a tocar la misma costa (una segunda entrada, más al sur) y quedaba a menos de 6 u de tierra.
+// Con el ajuste, `depthAt` mínimo a lo largo de toda la polilínea es exactamente 6 (en ese mismo punto).
+export const FERRY_ROUTE: readonly Vec2[] = [{ x: 248, y: -288 }, { x: 290, y: -212 }, { x: 241, y: -84 }];
 export const FERRY_SPEED = 3, FERRY_PAUSE_MS = 4000;
 
 const seg = ROUTE.slice(1).map((b, i) => { const a = ROUTE[i]!; const len = Math.hypot(b.x - a.x, b.y - a.y); return { a, b, len, heading: Math.atan2(b.y - a.y, b.x - a.x) }; });
@@ -80,11 +81,22 @@ export function createSeaAnim(scene: SeaScene, opts: { reducedMotion: boolean })
   const dists = SHIPS.map((s) => s.phase * L);
   const alphaAt = (d: number): number => Math.max(0, Math.min(1, d / FADE_U, (L - d) / FADE_U));
 
-  const [fa, fb] = FERRY_ROUTE, ferryLen = Math.hypot(fb.x - fa.x, fb.y - fa.y);
-  const ferryHeadings = [Math.atan2(fb.y - fa.y, fb.x - fa.x), Math.atan2(fa.y - fb.y, fa.x - fb.x)] as const;
+  // Camina la polilínea de FERRY_ROUTE igual que routeAt/routeLength caminan ROUTE, pero sin
+  // suavizado de giro en los vértices (la lancha, a diferencia de los barcos, dobla en el momento):
+  // el rumbo es el del tramo actual, invertido cuando vuelve.
+  const fseg = FERRY_ROUTE.slice(1).map((b, i) => { const a = FERRY_ROUTE[i]!; const len = Math.hypot(b.x - a.x, b.y - a.y); return { a, b, len, heading: Math.atan2(b.y - a.y, b.x - a.x) }; });
+  const fcum = fseg.reduce<number[]>((acc, s) => [...acc, (acc[acc.length - 1] ?? 0) + s.len], [0]);
+  const ferryLen = fcum[fcum.length - 1]!;
+  const ferryPointAt = (dist: number): { x: number; y: number; heading: number } => {
+    const d = Math.max(0, Math.min(ferryLen, dist));
+    let i = 0;
+    while (i < fseg.length - 1 && d > fcum[i + 1]!) i++;
+    const s = fseg[i]!, local = d - fcum[i]!, t = local / s.len;
+    return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, heading: s.heading };
+  };
   let ferryDist = 0, ferryDir = 1, ferryPause = FERRY_PAUSE_MS;
   const ferryFrame = (): ShipFrame => {
-    const t = ferryDist / ferryLen, p = { x: fa.x + (fb.x - fa.x) * t, y: fa.y + (fb.y - fa.y) * t }, heading = ferryDir > 0 ? ferryHeadings[0] : ferryHeadings[1];
+    const pt = ferryPointAt(ferryDist), p = { x: pt.x, y: pt.y }, heading = ferryDir > 0 ? pt.heading : pt.heading + Math.PI;
     const built = buildShip("ferry", p, heading);
     return { solids: built.solids, lights: built.lights, wake: [{ kind: "ground", mat: "foam", tris: wake("ferry", p, heading) }], alpha: 1 };
   };

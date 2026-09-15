@@ -74,7 +74,8 @@ describe("barcos", () => {
 describe("lancha de la feria", () => {
   it("la lancha va del muelle de la feria al de graneles y vuelve, parando 4 s en cada punta, siempre sobre agua y nunca detrás de un sólido estático", () => {
     const { a: anim } = setup(false);
-    const [fa, fb] = FERRY_ROUTE, L = Math.hypot(fb.x - fa.x, fb.y - fa.y);
+    const fpts = FERRY_ROUTE, fa = fpts[0]!, fb = fpts[fpts.length - 1]!;
+    const L = fpts.slice(1).reduce((acc, b, i) => acc + Math.hypot(b.x - fpts[i]!.x, b.y - fpts[i]!.y), 0);
     const f0 = anim.ferry();
     expect(f0.alpha).toBe(1);
     const hull0 = f0.solids.find((s) => s.kind === "hull")!;
@@ -86,10 +87,13 @@ describe("lancha de la feria", () => {
     expect(seen.some((p) => Math.hypot(p.x - fa.x, p.y - fa.y) < FERRY_SPEED)).toBe(true); // y volvió
     for (const p of seen) expect(depthAt(p.x, p.y)).toBeGreaterThanOrEqual(6);
     const statics = world(7).solids.filter((s) => !isFlat(s));
-    for (let t = 0; t <= 1; t += 0.05) {
-      const p = { x: fa.x + (fb.x - fa.x) * t, y: fa.y + (fb.y - fa.y) * t };
-      const box = bounds({ kind: "hull", at: v3(p.x, p.y, -1), len: 26, beam: 7, h: 3, mat: "hull" });
-      for (const s of statics) { const sb = bounds(s); if (overlaps(screenBounds(box), screenBounds(sb))) expect(isBehind(box, sb)).toBe(false); }
+    for (let i = 0; i < fpts.length - 1; i++) {
+      const a = fpts[i]!, b = fpts[i + 1]!;
+      for (let t = 0; t <= 1; t += 0.05) {
+        const p = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+        const box = bounds({ kind: "hull", at: v3(p.x, p.y, -1), len: 26, beam: 7, h: 3, mat: "hull" });
+        for (const s of statics) { const sb = bounds(s); if (overlaps(screenBounds(box), screenBounds(sb))) expect(isBehind(box, sb)).toBe(false); }
+      }
     }
   });
 });
