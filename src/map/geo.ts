@@ -39,11 +39,13 @@ export function isWater(x: number, y: number): boolean {
 export const WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 } as const;
 /**
  * Sangrado: terreno de relleno alrededor del contenido, para que la cámara
- * cover del sitio no muestre cielo. Múltiplos de CELL_BLEED. Dimensionado para
- * que el rectángulo 16:9 inscripto en el rombo contenga la caja del contenido
- * con la torre, que no está centrada (FRAME_H levanta solo la esquina NO).
+ * cover del sitio no muestre cielo. Múltiplos de CELL_BLEED. El contenido +
+ * sangrado proyecta como un paralelogramo (rombo solo si Wx = Wy), así que el
+ * rectángulo inscripto más grande queda acotado por el lado corto (y):
+ * Wy = 396 + 2·378 = 1152, ≥ 1128 que necesita la caja del contenido con la
+ * torre, que no está centrada (FRAME_H levanta solo la esquina NO).
  */
-export const BLEED = { x: 342, y: 288 } as const;
+export const BLEED = { x: 342, y: 378 } as const;
 export const CELL_BLEED = 18;
 /** Blog es todo lo que está al este de ZONE_SPLIT_X (visualmente); Resume, lo que está al sur de ZONE_SPLIT_Y del lado oeste. */
 export const ZONE_SPLIT_X = 344;
