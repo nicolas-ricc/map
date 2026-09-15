@@ -54,7 +54,7 @@ function sign(out: Solid[], x: number, y: number, z: number, w: number, h: numbe
 /** Torre de muro cortina en uno o dos cuerpos, con helipuerto o terraza verde y cartel de azotea. */
 function tower(out: Solid[], accents: Accent[], signs: Accent[], towers: Tower[], rng: Rng, b: SprawlBlock): void {
   out.push(prism(b.x, b.y, 0, b.w, b.d, PLINTH_H, "paving"));
-  const h = rng.int(12, MAX_TECH_H - 3), bw = rng.int(12, 16), bd = rng.int(10, 13);
+  const h = rng.int(12, MAX_TECH_H - 2), bw = rng.int(12, 16), bd = rng.int(10, 13);
   const bx = b.x + (b.w - bw) / 2, by = b.y + (b.d - bd) / 2;
   const th0Full = Math.round(h * 0.7); // el segundo cuerpo solo entra si el primero no queda por debajo del mínimo de 12
   const tiers = th0Full >= 12 && rng.chance(0.5) ? 2 : 1, th0 = tiers === 2 ? th0Full : h;
@@ -70,7 +70,7 @@ function tower(out: Solid[], accents: Accent[], signs: Accent[], towers: Tower[]
     z += th1 + 0.3;
   }
   if (rng.chance(0.5)) { out.push({ kind: "cylinder", at: v3(tx + tw / 2, ty + td / 2, z), r: 2.5, h: 0.3, mat: "paving", sides: 8 }); accents.push({ kind: "dot", at: v3(tx + tw / 2, ty + td / 2, z + 0.3), r: 0.6, color: "amberMid" }); }
-  else { out.push(prism(tx + 0.5, ty + 0.5, z, tw - 1, td - 1, 0.3, "leafDark")); for (let k = 0, n = rng.int(3, 5); k < n; k++) out.push({ kind: "cone", at: v3(tx + 1.5 + rng.next() * (tw - 3), ty + 1.5 + rng.next() * (td - 3), z + 0.3), r: 1, h: 2, mat: "leaf" }); }
+  else { out.push(prism(tx + 0.5, ty + 0.5, z, tw - 1, td - 1, 0.3, "leafDark")); for (let k = 0, n = rng.int(1, 3); k < n; k++) out.push({ kind: "cone", at: v3(tx + 1.5 + rng.next() * (tw - 3), ty + 1.5 + rng.next() * (td - 3), z + 0.3), r: 1, h: 2, mat: "leaf" }); }
   signs.push(sign(out, tx + tw / 2 - 3, ty + td - 0.4, z, 6, 1.6)); // cartel de azotea en el borde sur
   if (h >= 18) accents.push({ kind: "dot", at: v3(tx + tw, ty, z + 0.5), r: 0.5, color: "amberMid" });
   if (rng.chance(0.5)) lamp(out, accents, b.x + b.w - 1, b.y - 1.5, 0);
@@ -84,7 +84,7 @@ function atrium(out: Solid[], ground: Solid[], signs: Accent[], rng: Rng, b: Spr
   out.push(prism(ix, iy, 0.05, 9, 13, PLINTH_H, "paving"), prism(ix + 12, iy, 0.05, 9, 13, PLINTH_H, "paving"));
   out.push(prism(ix, iy, PLINTH_H, 9, 13, h, "curtain", { facade }), prism(ix + 12, iy, PLINTH_H, 9, 13, h, "curtain", { facade }));
   out.push(prism(ix + 9, iy + 1, PLINTH_H, 3, 11, 4, "glass", { facade: { floors: 1, cols: 1, base: "glass" } }));
-  for (const [dx, dy] of [[2, 15], [19, 15]] as const) out.push({ kind: "cone", at: v3(b.x + dx, b.y + dy, 0.05), r: 1.1, h: 2.5, mat: "leaf" });
+  for (const [dx, dy] of [[2, 15], [19, 15], [8, 16], [13, 16]] as const) out.push({ kind: "cone", at: v3(b.x + dx, b.y + dy, 0.05), r: 1.1, h: 2.5, mat: "leaf" });
   out.push(prism(b.x + b.w - 5, b.y + b.d - 3, 0.05, 0.4, 0.4, 2, "officeDark"));
   signs.push(sign(out, b.x + b.w - 6.3, b.y + b.d - 3, 2.05, 3, 1.2)); // cartel de pie
 }
@@ -94,9 +94,9 @@ function lab(out: Solid[], rng: Rng, b: SprawlBlock): void {
   out.push(prism(b.x, b.y, 0, b.w, b.d, PLINTH_H, "paving"));
   const ix = b.x + SIDEWALK, iy = b.y + SIDEWALK;
   out.push(prism(ix, iy, PLINTH_H, 20, 13, 5, "officeDark", { facade: LAB_FACADE }));
-  for (let k = 0, n = rng.int(2, 4); k < n; k++) out.push(prism(ix + 1 + k * 3.5, iy + 2 + (k % 2) * 6, PLINTH_H + 5, 1.5, 1.5, 1, "steel"));
-  for (let x = ix; x + 3 <= ix + 20; x += 4) for (let y = iy + 13.4; y + 1.6 <= b.y + b.d - SIDEWALK; y += 2.2) out.push({ kind: "ramp", at: v3(x, y, PLINTH_H), w: 3, d: 1.6, h: 0.5, mat: "glass", dir: "s" });
-  for (let k = 0, n = rng.int(3, 5); k < n; k++) out.push(prism(b.x + 1 + k * 3, b.y + b.d + 0.3, 0, 2.2, 1.4, 1.2, rng.chance(0.5) ? "steel" : "rust")); // autos en el cordón sur
+  for (let k = 0, n = rng.int(4, 6); k < n; k++) out.push(prism(ix + 1 + k * 3.5, iy + 2 + (k % 2) * 6, PLINTH_H + 5, 1.5, 1.5, 1, "steel"));
+  for (let x = ix; x + 3 <= ix + 20; x += 6) for (let y = iy + 13.4; y + 1.6 <= b.y + b.d - SIDEWALK; y += 2.2) out.push({ kind: "ramp", at: v3(x, y, PLINTH_H), w: 3, d: 1.6, h: 0.5, mat: "glass", dir: "s" });
+  for (let k = 0, n = rng.int(6, 8); k < n; k++) out.push(prism(b.x + 1 + k * 3, b.y + b.d + 0.3, 0, 2.2, 1.4, 1.2, rng.chance(0.5) ? "steel" : "rust")); // autos en el cordón sur
 }
 
 /** Plaza de barrio: suelo de selva facetado, senderos en cruz y conos (igual que en el suburbio). */
@@ -104,7 +104,7 @@ function park(out: Solid[], ground: Solid[], rng: Rng, b: SprawlBlock): void {
   ground.push(tiles(rng, b, 0.05, "leafDark", brokenTone));
   ground.push(strip([{ x: b.x + b.w / 2, y: b.y }, { x: b.x + b.w / 2, y: b.y + b.d }], 1, 0.08, "paving"));
   ground.push(strip([{ x: b.x, y: b.y + b.d / 2 }, { x: b.x + b.w, y: b.y + b.d / 2 }], 1, 0.08, "paving"));
-  jungle(out, rng, { x0: b.x + 2, x1: b.x + b.w - 2, y0: b.y + 2, y1: b.y + b.d - 2 }, rng.int(5, 8), 0.05);
+  jungle(out, rng, { x0: b.x + 2, x1: b.x + b.w - 2, y0: b.y + 2, y1: b.y + b.d - 2 }, rng.int(4, 6), 0.05);
 }
 
 /** Torre de telecomunicaciones: base de hormigón, mástil esbelto, tres platos y luz en la punta. */
@@ -147,7 +147,7 @@ function avenue(ground: Solid[], solids: Solid[], accents: Accent[]): void {
   for (const y of [BOULEVARD.y0 - 0.3, BOULEVARD.y1 + 0.3]) ground.push(strip([{ x: x0, y }, { x: x1, y }], 0.4, 0.05, "paving"));
   for (const x of SUBURB_COLS) {
     solids.push(prism(x, BOULEVARD.y0, 0, BLOCK_W, BOULEVARD.y1 - BOULEVARD.y0, 0.3, "leafDark"));
-    for (const dx of [4, 12, 20]) solids.push({ kind: "cone", at: v3(x + dx, BOULEVARD.y0 + 2, 0.3), r: 1.5, h: 4, mat: "leaf" });
+    for (const dx of [12]) solids.push({ kind: "cone", at: v3(x + dx, BOULEVARD.y0 + 2, 0.3), r: 1.5, h: 4, mat: "leaf" });
     lamp(solids, accents, x + 12, BOULEVARD.y0 - 5.3, 0);
   }
 }
@@ -156,7 +156,7 @@ function avenue(ground: Solid[], solids: Solid[], accents: Accent[]): void {
 function quay(solids: Solid[]): void {
   const { x0, x1 } = WEST_QUAY;
   solids.push(prism(x0, CITY_EDGE.south, -1, x1 - x0, WORLD.y1 + REACH.s - CITY_EDGE.south, 1.6, "plaza"));
-  for (let y = CITY_EDGE.south + 8; y < WORLD.y1 + REACH.s; y += 16) solids.push({ kind: "cylinder", at: v3(x0 + 3, y, 0.6), r: 0.4, h: 0.8, mat: "rust", sides: 6 });
+  for (let y = CITY_EDGE.south + 8; y < WORLD.y1 + REACH.s; y += 24) solids.push({ kind: "cylinder", at: v3(x0 + 3, y, 0.6), r: 0.4, h: 0.8, mat: "rust", sides: 6 });
 }
 
 export function tech(rng: Rng): TechScene {
@@ -176,6 +176,6 @@ export function tech(rng: Rng): TechScene {
   }
   avenue(ground, solids, accents);
   quay(solids);
-  jungle(solids, rng, { x0: -238, x1: WORLD.x0 - 2, y0: ZONE_SPLIT_Y + 2, y1: GREEN_BELT.y1 - 2 }, 10);
+  jungle(solids, rng, { x0: -238, x1: WORLD.x0 - 2, y0: ZONE_SPLIT_Y + 2, y1: GREEN_BELT.y1 - 2 }, 2);
   return { ground, solids, accents, towers, signs, telecom: telecomTop };
 }

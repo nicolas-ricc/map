@@ -47,6 +47,8 @@ describe("tech", () => {
     expect(near.length).toBeGreaterThan(5); expect(far.length).toBeGreaterThan(5);
     expect(s.towers.length).toBeGreaterThanOrEqual(near.length * 0.6);
     for (const t of s.towers) { expect(t.box.mat).toBe("curtain"); expect(t.box.h).toBeGreaterThanOrEqual(12); expect(t.box.h).toBeLessThanOrEqual(MAX_TECH_H); }
+    // baliza de las torres más altas (h >= 18): con la semilla 7 ya aparece; si alguna vez no rondara, alcanza con que aparezca en alguna semilla.
+    expect(s.accents.some((a) => a.kind === "dot" && a.color === "amberMid" && a.at.z > 18)).toBe(true);
     expect(s.solids.filter((x) => x.kind === "ramp" && x.mat === "glass").length).toBeGreaterThan(40); // paneles solares
     expect(s.solids.filter((x) => x.kind === "prism" && x.mat === "officeDark" && x.h === 5 && x.w === 20).length).toBeGreaterThan(3); // naves de laboratorio
     expect(s.ground.filter((g) => g.kind === "ground" && g.mat === "leafDark").length).toBeGreaterThan(5); // parques y campus
