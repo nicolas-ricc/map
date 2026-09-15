@@ -77,7 +77,8 @@ describe("mar, haz y boyas", () => {
     const total = tris(w.terrain.sea).length + tris(w.terrain.shore).length;
     const banded = [0, 1, 2].reduce((n, k) => n + a.band(k).filter((s) => s.mat !== "foam").reduce((m, s) => m + tris(s).length, 0), 0);
     expect(banded).toBe(total);
-    expect(a.band(0).some((s) => s.mat === "foam")).toBe(true); // espuma junto al arrecife, en la banda del oeste
+    expect(a.foam().some((s) => s.mat === "foam" && tris(s).length > 0)).toBe(true); // espuma junto al arrecife, en su propia capa
+    expect(a.band(0).every((s) => s.mat !== "foam")).toBe(true);
     const c1 = a.tick(SEA_STEP_MS), c2 = a.tick(SEA_STEP_MS), c3 = a.tick(SEA_STEP_MS);
     expect([c1.bands, c2.bands, c3.bands].map((b) => [...b])).toEqual([[1], [2], [0]]); // el paso 1 pinta la banda 1, y así en ronda
     expect(a.band(0).some((s) => tris(s).some((t) => (t.toneOffset ?? 0) !== 0))).toBe(true);
@@ -94,7 +95,7 @@ describe("mar, haz y boyas", () => {
     expect(a.beam()).toHaveLength(2);
     const r = setup(true).a;
     expect(Math.abs(angle(r.beam()))).toBeLessThan(0.2);
-    expect(r.tick(500)).toEqual({ bands: new Set(), abyss: false, ships: false, beam: false, buoys: false });
+    expect(r.tick(500)).toEqual({ bands: new Set(), abyss: false, ships: false, beam: false, buoys: false, foam: false });
   });
   it("las boyas parpadean desfasadas: nunca las dos apagadas, cada una encendida la mitad del período", () => {
     const { a } = setup();
