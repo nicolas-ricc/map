@@ -9,11 +9,11 @@ export interface Tri { pts: [Vec3, Vec3, Vec3]; toneOffset?: number; baseTone?: 
 
 export type Solid =
   | { kind: "prism"; at: Vec3; w: number; d: number; h: number; mat: Material; roof?: "flat" | "gable" | "step"; facade?: Facade }
-  | { kind: "poly"; footprint: Vec2[]; z: number; h: number; mat: Material }
+  | { kind: "poly"; footprint: Vec2[]; z: number; h: number; mat: Material; facade?: Facade }
   | { kind: "ramp"; at: Vec3; w: number; d: number; h: number; mat: Material; dir: RampDir }
   | { kind: "cylinder"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
   | { kind: "cone"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
-  | { kind: "hull"; at: Vec3; len: number; beam: number; h: number; mat: Material; heading?: number }
+  | { kind: "hull"; at: Vec3; len: number; beam: number; h: number; mat: Material; topMat?: Material; heading?: number; sheer?: number }
   | { kind: "strip"; path: Vec2[]; width: number; z: number; mat: Material }
   | { kind: "ground"; tris: Tri[]; mat: Material };
 
@@ -128,12 +128,39 @@ function cone(at: Vec3, r: number, h: number, sides: number, mat: Material): Fac
   return out;
 }
 
-/** Huella del casco: popa en `at`, proa a `len` en la dirección `heading` (0 = este), hombros al 70 %. */
-function hullFootprint(at: Vec3, len: number, beam: number, heading = 0): Vec2[] {
-  const half = beam / 2, shoulder = len * 0.7;
-  const local = [{ x: 0, y: -half }, { x: shoulder, y: -half }, { x: len, y: 0 }, { x: shoulder, y: half }, { x: 0, y: half }];
-  const c = Math.cos(heading), s = Math.sin(heading);
-  return local.map((p) => ({ x: at.x + p.x * c - p.y * s, y: at.y + p.x * s + p.y * c }));
+export const HULL_WATERLINE = 0.2, HULL_SHEER = 0.25, KEEL_BEAM = 0.7;
+/** Anillo de cubierta en fracciones de eslora/manga: popa redondeada, manga máxima al 57 %, proa en punta. Sentido horario visto desde arriba. */
+export const DECK_RING: readonly Vec2[] = [
+  { x: 0.04, y: -0.3 }, { x: 0, y: 0 }, { x: 0.04, y: 0.3 }, { x: 0.18, y: 0.5 }, { x: 0.57, y: 0.5 },
+  { x: 0.86, y: 0.3 }, { x: 1, y: 0 }, { x: 0.86, y: -0.3 }, { x: 0.57, y: -0.5 }, { x: 0.18, y: -0.5 },
+];
+/** Arrufo: cuánto sube la cubierta sobre `h` en cada punto (proa cuadrática, popa lineal más corta). */
+const sheerAt = (x: number): number => Math.max(0, (x - 0.55) / 0.45) ** 2 + 0.4 * Math.max(0, (0.18 - x) / 0.18);
+
+/** Anillos de cubierta y quilla en coordenadas de mundo (popa en `at`, proa a `len` según `heading`). */
+export function hullRings(s: Solid & { kind: "hull" }): { deck: Vec3[]; keel: Vec3[] } {
+  const c = Math.cos(s.heading ?? 0), sn = Math.sin(s.heading ?? 0), sheer = s.sheer ?? HULL_SHEER;
+  const world = (fx: number, fy: number, z: number): Vec3 => { const x = fx * s.len, y = fy * s.beam; return v3(s.at.x + x * c - y * sn, s.at.y + x * sn + y * c, z); };
+  const deck = DECK_RING.map((p) => world(p.x, p.y, s.at.z + s.h * (1 + sheer * sheerAt(p.x))));
+  const keel = DECK_RING.map((p) => world(0.06 + 0.84 * p.x, p.y * KEEL_BEAM, s.at.z));
+  return { deck, keel };
+}
+
+/** Casco lofteado entre quilla y cubierta: cada lado son dos cuadriláteros (obra viva en `mat`, obra muerta en `topMat`) partidos en triángulos. */
+function hull(s: Solid & { kind: "hull" }): Face[] {
+  const { deck, keel } = hullRings(s);
+  const c = centroid([...deck, ...keel]);
+  const top = s.topMat ?? s.mat, deckMat: Material = s.topMat ? "deck" : s.mat;
+  const out = [face(deck, deckMat, c), face(keel, s.mat, c)];
+  const lerp = (a: Vec3, b: Vec3, t: number): Vec3 => v3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+  const n = deck.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const k0 = keel[i]!, k1 = keel[j]!, d0 = deck[i]!, d1 = deck[j]!, m0 = lerp(k0, d0, HULL_WATERLINE), m1 = lerp(k1, d1, HULL_WATERLINE);
+    out.push(face([k0, k1, m1], s.mat, c), face([k0, m1, m0], s.mat, c));
+    out.push(face([m0, m1, d1], top, c), face([m0, d1, d0], top, c));
+  }
+  return out;
 }
 
 function strip(path: Vec2[], width: number, z: number, mat: Material): Face[] {
@@ -167,11 +194,11 @@ export function tessellateAll(s: Solid): Face[] {
       const ix = s.w * STEP_INSET, iy = s.d * STEP_INSET;
       return [...box, ...extrude(rect(s.at.x + ix, s.at.y + iy, s.w - 2 * ix, s.d - 2 * iy), s.at.z + s.h, s.h * STEP_RATIO, s.mat)];
     }
-    case "poly": return extrude(s.footprint, s.z, s.h, s.mat);
+    case "poly": { const raw = extrude(s.footprint, s.z, s.h, s.mat); return s.facade ? raw.flatMap((f) => (isWall(f) ? [f, ...facadeFaces(f, s.facade!)] : [f])) : raw; }
     case "ramp": return ramp(s.at, s.w, s.d, s.h, s.dir, s.mat);
     case "cylinder": return extrude(regular(s.at.x, s.at.y, s.r, s.sides ?? 8), s.at.z, s.h, s.mat);
     case "cone": return cone(s.at, s.r, s.h, s.sides ?? 6, s.mat);
-    case "hull": return extrude(hullFootprint(s.at, s.len, s.beam, s.heading), s.at.z, s.h, s.mat);
+    case "hull": return hull(s);
     case "strip": return strip(s.path, s.width, s.z, s.mat);
     case "ground": return ground(s.tris, s.mat);
   }
