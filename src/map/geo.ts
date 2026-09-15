@@ -30,18 +30,46 @@ export function isWater(x: number, y: number): boolean {
 
 // ---------------------------------------------------------------- mundo isométrico
 
-/** El mundo iso es más ancho que el lienzo viejo: el mar merece espacio. Mismas unidades. */
-export const WORLD_W = 560;
-export const WORLD_H = 270;
-/** Blog es todo lo que está al este de ZONE_SPLIT_X; Resume, lo que está al sur de ZONE_SPLIT_Y del lado oeste. */
+/**
+ * Contenido del mundo iso: las tres zonas. Origen negativo porque la fábrica
+ * (norte y oeste del astillero) y el distrito (oeste y sur de la ciudad)
+ * crecieron hacia afuera sin mover lo ya hecho. Lados múltiplos de 18 para que
+ * la grilla del sangrado (CELL_BLEED) comparta vértices con la del contenido.
+ */
+export const WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 } as const;
+/**
+ * Sangrado: terreno de relleno alrededor del contenido, para que la cámara
+ * cover del sitio no muestre cielo. Múltiplos de CELL_BLEED. El contenido +
+ * sangrado proyecta como un paralelogramo (rombo solo si Wx = Wy), así que el
+ * rectángulo inscripto más grande queda acotado por el lado corto (y):
+ * Wy = 396 + 2·378 = 1152, ≥ 1128 que necesita la caja del contenido con la
+ * torre, que no está centrada (FRAME_H levanta solo la esquina NO).
+ */
+export const BLEED = { x: 342, y: 378 } as const;
+export const CELL_BLEED = 18;
+/** Blog es todo lo que está al este de ZONE_SPLIT_X (visualmente); Resume, lo que está al sur de ZONE_SPLIT_Y del lado oeste. */
 export const ZONE_SPLIT_X = 344;
 export const ZONE_SPLIT_Y = 146;
+/** Agua clara a esta distancia de la tierra. */
+export const SHORE_W = 12;
+const SHORE_WOBBLE = 5;
+/** Ancho de la orilla frente a la costa del corte x = 344, ondulado y determinístico. Mínimo 5. */
+export const shoreWidth = (y: number): number => SHORE_W + SHORE_WOBBLE * Math.sin(y / 11) + 2 * Math.sin(y / 4.3);
+/** x donde empieza la fosa (agua profunda): talud diagonal NE-SO que se abre hacia el este. */
+export const abyssX = (y: number): number => 392 + 0.25 * (y + 60) + 6 * Math.sin(y / 17);
 
 export type WorldZone = "portfolio" | "cv" | "blog";
 
+/**
+ * Zona clickeable (hover y click del sitio), por geografía y no por corte:
+ * la punta, el arrecife y su orilla son Portfolio (el faro remata el
+ * astillero), la orilla del malecón es Resume y Blog es solo el mar abierto.
+ * El terreno visual (terrain.ts) no usa esto para clasificar el mar.
+ */
 export function worldZoneAt(x: number, y: number): WorldZone {
-  if (x >= ZONE_SPLIT_X) return "blog";
-  return y >= ZONE_SPLIT_Y ? "cv" : "portfolio";
+  if (inHeadland(x, y) || distToHeadland(x, y) < SHORE_W) return "portfolio";
+  if (x < ZONE_SPLIT_X + shoreWidth(y)) return y >= ZONE_SPLIT_Y ? "cv" : "portfolio";
+  return "blog";
 }
 
 /**

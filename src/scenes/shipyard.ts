@@ -1,7 +1,7 @@
 import type { Accent } from "../iso/accent";
 import { v3, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid } from "../iso/solids";
-import { BOTTOM, DOCK, MOUTH_Y, QUAY_W, QUAY_X, eastBank } from "../map/geo";
+import { BOTTOM, DOCK, MOUTH_Y, QUAY_W, QUAY_X, WORLD, eastBank } from "../map/geo";
 import type { Rng } from "../map/seed";
 import { jungle as flora } from "./flora";
 
@@ -43,8 +43,8 @@ const prism = (x: number, y: number, z: number, w: number, d: number, h: number,
 const strip = (path: Vec2[], width: number, z: number, mat: Solid["mat"]): Solid => ({ kind: "strip", path, width, z, mat });
 
 function quay(out: Solid[]): void {
-  out.push(prism(QUAY_X, 0, WATER_Z, QUAY_W, BOTTOM, 1.5, "concrete"));
-  for (let y = 6; y < BOTTOM; y += 12) out.push({ kind: "cylinder", at: v3(QUAY_X + 2, y, 0.5), r: 0.7, h: 1, mat: "steel", sides: 6 });
+  out.push(prism(QUAY_X, WORLD.y0, WATER_Z, QUAY_W, BOTTOM - WORLD.y0, 1.5, "concrete"));
+  for (let y = WORLD.y0 + 6; y < BOTTOM; y += 12) out.push({ kind: "cylinder", at: v3(QUAY_X + 2, y, 0.5), r: 0.7, h: 1, mat: "steel", sides: 6 });
 }
 
 function halls(out: Solid[]): void {
@@ -213,7 +213,7 @@ function jungle(out: Solid[], rng: Rng): void {
   const cluster = (x0: number, x1: number, y0: number, y1: number, n: number) => flora(out, rng, { x0, x1, y0, y1 }, n);
   cluster(3, 39, 102, 125, 10);   // SO, al norte de las vías (r ≤ 4: nunca las pisa)
   cluster(3, 39, 139, 143, 4);    // SO, al sur de las vías
-  cluster(332, 340, 26, 94, 6);   // borde este, entre la bahía y la punta
+  cluster(332, 340, 50, 94, 6);   // borde este, entre la bahía y la punta (y0 50, Task 6: deja fuera del alcance diagonal del carguero que sale de la bahía)
   cluster(332, 340, 136, 143, 2); // al sur de la punta
   cluster(301, 328, 127, 143, 6); // al sur de los galpones, sin pisar la base de la punta (x ≥ 330)
 }

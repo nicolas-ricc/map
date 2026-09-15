@@ -1,7 +1,8 @@
 # Mundo isométrico: Resume, Blog y unión de las tres zonas — diseño
 
 **Fecha:** 2026-09-14
-**Estado:** partes 1 y 2 implementadas; Blog pendiente (plan 3)
+**Estado:** partes 1 y 2 implementadas; Blog implementado en
+`2026-09-14-mundo-2-fabrica-distrito-blog-design.md`
 **Antecede:** `2026-09-13-portfolio-isometrico-design.md` (astillero en el laboratorio)
 y `2026-09-09-mapa-rpg-sitio-personal-design.md` (plan urbano original de las tres zonas)
 

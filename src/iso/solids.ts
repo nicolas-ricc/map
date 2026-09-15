@@ -13,7 +13,7 @@ export type Solid =
   | { kind: "ramp"; at: Vec3; w: number; d: number; h: number; mat: Material; dir: RampDir }
   | { kind: "cylinder"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
   | { kind: "cone"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
-  | { kind: "hull"; at: Vec3; len: number; beam: number; h: number; mat: Material }
+  | { kind: "hull"; at: Vec3; len: number; beam: number; h: number; mat: Material; heading?: number }
   | { kind: "strip"; path: Vec2[]; width: number; z: number; mat: Material }
   | { kind: "ground"; tris: Tri[]; mat: Material };
 
@@ -128,9 +128,12 @@ function cone(at: Vec3, r: number, h: number, sides: number, mat: Material): Fac
   return out;
 }
 
-function hullFootprint(at: Vec3, len: number, beam: number): Vec2[] {
-  const half = beam / 2, shoulder = at.x + len * 0.7;
-  return [{ x: at.x, y: at.y - half }, { x: shoulder, y: at.y - half }, { x: at.x + len, y: at.y }, { x: shoulder, y: at.y + half }, { x: at.x, y: at.y + half }];
+/** Huella del casco: popa en `at`, proa a `len` en la dirección `heading` (0 = este), hombros al 70 %. */
+function hullFootprint(at: Vec3, len: number, beam: number, heading = 0): Vec2[] {
+  const half = beam / 2, shoulder = len * 0.7;
+  const local = [{ x: 0, y: -half }, { x: shoulder, y: -half }, { x: len, y: 0 }, { x: shoulder, y: half }, { x: 0, y: half }];
+  const c = Math.cos(heading), s = Math.sin(heading);
+  return local.map((p) => ({ x: at.x + p.x * c - p.y * s, y: at.y + p.x * s + p.y * c }));
 }
 
 function strip(path: Vec2[], width: number, z: number, mat: Material): Face[] {
@@ -168,7 +171,7 @@ export function tessellateAll(s: Solid): Face[] {
     case "ramp": return ramp(s.at, s.w, s.d, s.h, s.dir, s.mat);
     case "cylinder": return extrude(regular(s.at.x, s.at.y, s.r, s.sides ?? 8), s.at.z, s.h, s.mat);
     case "cone": return cone(s.at, s.r, s.h, s.sides ?? 6, s.mat);
-    case "hull": return extrude(hullFootprint(s.at, s.len, s.beam), s.at.z, s.h, s.mat);
+    case "hull": return extrude(hullFootprint(s.at, s.len, s.beam, s.heading), s.at.z, s.h, s.mat);
     case "strip": return strip(s.path, s.width, s.z, s.mat);
     case "ground": return ground(s.tris, s.mat);
   }

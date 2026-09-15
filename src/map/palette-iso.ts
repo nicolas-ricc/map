@@ -24,6 +24,7 @@ export const ISO_TONES = {
   sand:      { top: 0xa88f6a, lit: 0x8c6d45, shade: 0x444046, up: 0xc8a471, down: 0x8e7e65 },
   hull:      { top: 0x6e3323, lit: 0x60270f, shade: 0x2a1726, up: 0x873d21, down: 0x5b2d27 },
   deck:      { top: 0x9c7f5a, lit: 0x836138, shade: 0x3e393f, up: 0xbb925f, down: 0x837057 },
+  brick:     { top: 0x8a4a3a, lit: 0x713724, shade: 0x371f23, up: 0xa0533b, down: 0x774137 }, // fábrica: ladrillo cálido
   // Resume: ciudad de oficinas (gris violeta frío contra el ocre cálido del astillero)
   office:    { top: 0x8a8296, lit: 0x71605d, shade: 0x37375a, up: 0xa09299, down: 0x77728d },
   officeDark:{ top: 0x5e586c, lit: 0x4d4143, shade: 0x262541, up: 0x6d636e, down: 0x514d66 },
@@ -31,13 +32,18 @@ export const ISO_TONES = {
   asphalt:   { top: 0x45434d, lit: 0x393230, shade: 0x1c1c2e, up: 0x504b4f, down: 0x3b3b48 },
   paving:    { top: 0x8f8a84, lit: 0x756652, shade: 0x393a4f, up: 0xa69b87, down: 0x7b797c },
   plaza:     { top: 0x7c767e, lit: 0x66574e, shade: 0x32324c, up: 0x908481, down: 0x6b6876 },
+  // Resume, distrito moderno: muro cortina, piedra clásica, cobre de cubierta
+  curtain:   { top: 0x3d6b7a, lit: 0x324f4c, shade: 0x182d49, up: 0x47787c, down: 0x345e73 },
+  stone:     { top: 0xb5a48a, lit: 0x947956, shade: 0x484553, up: 0xd2b88d, down: 0x9c9082 },
+  copper:    { top: 0x4f8a78, lit: 0x41664a, shade: 0x203a48, up: 0x5c9b7a, down: 0x447971 },
   // Blog: faro y espuma
   whitewash: { top: 0xd6cfbf, lit: 0xaf9976, shade: 0x565773, up: 0xf8e8c3, down: 0xb8b6b4 },
   foam:      { top: 0xc4d3d6, lit: 0xa19c85, shade: 0x4e5980, up: 0xe3ecda, down: 0xa9bac9 },
+  abyss:     { top: 0x12303e, lit: 0x0f2426, shade: 0x071425, up: 0x15363f, down: 0x0f2a3a },
 } as const;
 
 export const ISO_COLORS = {
-  shadow: 0x1a1830,
+  shadow: 0x2a1a3a,
   sky: 0x171423,
   cyan: 0x7cf5ff,
   cyanMid: 0x27b3c9,

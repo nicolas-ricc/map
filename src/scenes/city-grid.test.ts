@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { QUAY_X, ZONE_SPLIT_X, ZONE_SPLIT_Y } from "../map/geo";
-import { AVENUE, BLOCK_D, BLOCK_W, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_RING, MALECON, PLAZA, ROWS, STREET, TOWER, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inBlock, inCrater } from "./city-grid";
+import { AVENUE, BLOCK_D, BLOCK_W, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, DISTRICT_COLS, DISTRICT_ROWS, EAST_RING, MALECON, PLAZA, ROWS, STREET, TOWER, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inBlock, inCrater } from "./city-grid";
 
 const overlaps = (a: { x: number; y: number; w: number; d: number }, b: { x: number; y: number; w: number; d: number }) =>
   a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.d && b.y < a.y + a.d;
@@ -74,5 +74,17 @@ describe("city-grid", () => {
     expect(estuaryReaches(estuaryEast(240))).toBeCloseTo(240, 6);            // inversa
     expect(estuaryReaches(EAST_RING.x0 + STREET / 2)).toBeGreaterThan(AVENUE.y1); // el eje del anillo pisa agua recién al sur de la avenida
     expect(BLOCK_W).toBe(24);
+  });
+
+  it("distrito: dos columnas al oeste y dos filas al sur, solo ribera oeste, 24 manzanas con una obra; el malecón llega a 326", () => {
+    const d = blocks().filter((b) => b.kind === "district" || b.kind === "site");
+    expect(d).toHaveLength(24);
+    expect(d.filter((b) => b.kind === "site")).toHaveLength(1);
+    expect(d.every((b) => b.bank === "west")).toBe(true);
+    expect(d.every((b) => (DISTRICT_COLS as readonly number[]).includes(b.x) || (DISTRICT_ROWS as readonly number[]).includes(b.y))).toBe(true);
+    expect(blocks().filter((b) => b.bank === "east").every((b) => b.y < DISTRICT_ROWS[0])).toBe(true);
+    expect(blocks().filter((b) => b.kind === "block")).toHaveLength(29); // las 30 manzanas viejas menos la derrumbada: nada viejo cambió de tipo
+    expect(CITY_EDGE).toEqual({ west: -54, north: 158, south: 324 });
+    expect(MALECON.y1).toBe(326);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRenderList } from "../iso/render-list";
 import { bounds, type Solid } from "../iso/solids";
+import { WORLD } from "../map/geo";
 import { allIsoColors } from "../map/palette-iso";
 import { createRng } from "../map/seed";
 import { AREA_H, AREA_W, STREET_EDGE, shipyard, type Scene } from "./shipyard";
@@ -17,8 +18,8 @@ describe("shipyard", () => {
   it("todo cae dentro del área", () => {
     for (const s of all(scene())) {
       const b = bounds(s);
-      expect(b.min.x).toBeGreaterThanOrEqual(-1);
-      expect(b.min.y).toBeGreaterThanOrEqual(-1);
+      expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - 1);
+      expect(b.min.y).toBeGreaterThanOrEqual(WORLD.y0 - 1);
       expect(b.max.x).toBeLessThanOrEqual(AREA_W + 1);
       expect(b.max.y).toBeLessThanOrEqual(AREA_H + 1);
     }

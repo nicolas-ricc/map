@@ -7,12 +7,14 @@ import type { Solid } from "../iso/solids";
  * agua) y `tick` dice cuáles hay que redibujar.
  */
 export type AnimLayer =
-  | { kind: "solid"; solids: Solid[] }
-  | { kind: "accent"; accents: Accent[] }
-  | { kind: "water"; water: Solid[] };
+  | { kind: "solid"; solids: Solid[]; alpha?: number }
+  | { kind: "accent"; accents: Accent[]; alpha?: number }
+  | { kind: "water"; water: Solid[]; alpha?: number };
 
 export interface Animator {
   readonly ids: readonly string[];
+  /** Cuerpos de agua del terreno que este animador dibuja por su cuenta (partidos en bandas, por ejemplo): el runtime no los pinta estáticos. */
+  readonly claims?: readonly Solid[];
   layer(id: string): AnimLayer;
   tick(dtMs: number): ReadonlySet<string>;
 }

@@ -5,7 +5,7 @@ import { city } from "./city";
 import { ANTENNA_STEP_MS, PAPER_RANGE, createCityAnim } from "./city-anim";
 
 const setup = (reducedMotion = false) => {
-  const tower = city(createRng(7)).tower;
+  const tower = city(createRng(7), createRng(8)).tower;
   return { tower, anim: createCityAnim(tower, createRng(3), { reducedMotion }) };
 };
 const dot = (a: Accent): Extract<Accent, { kind: "dot" }> => { if (a.kind !== "dot") throw new Error("se esperaba dot"); return a; };

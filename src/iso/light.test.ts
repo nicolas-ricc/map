@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { v3 } from "./geometry";
-import { SHADOW_DIR, SHADOW_MAX_H, SHADOW_PER_UNIT, TO_SUN, shadeTone, shadowPoint, shadowPolygon } from "./light";
+import { SHADOW_CORE_H, SHADOW_DIR, SHADOW_MAX_H, SHADOW_PER_UNIT, TO_SUN, shadeTone, shadowPoint, shadowPolygon } from "./light";
 import type { Solid } from "./solids";
 
 describe("light", () => {
@@ -61,5 +61,14 @@ describe("shadowPolygon", () => {
   it("un cono proyecta la base más el ápice desplazado", () => {
     const poly = shadowPolygon({ kind: "cone", at: v3(0, 0, 0), r: 1, h: 3, mat: "leaf" })!;
     expect(Math.max(...poly.map((p) => p.x))).toBeCloseTo(SHADOW_DIR.x * SHADOW_PER_UNIT * 3, 6);
+  });
+
+  it("el núcleo recorta la sombra a SHADOW_CORE_H y cabe dentro de la completa", () => {
+    const s: Solid = { kind: "prism", at: v3(0, 0, 0), w: 1, d: 1, h: 20, mat: "steel" };
+    const full = shadowPolygon(s)!, core = shadowPolygon(s, SHADOW_CORE_H)!;
+    expect(SHADOW_CORE_H).toBe(9);
+    expect(Math.max(...core.map((p) => p.x))).toBeCloseTo(1 + SHADOW_DIR.x * SHADOW_PER_UNIT * SHADOW_CORE_H, 6);
+    expect(Math.max(...full.map((p) => p.x))).toBeCloseTo(1 + SHADOW_DIR.x * SHADOW_PER_UNIT * SHADOW_MAX_H, 6);
+    expect(shadowPoint(v3(0, 0, 20), SHADOW_CORE_H)).toEqual(shadowPoint(v3(0, 0, 9)));
   });
 });

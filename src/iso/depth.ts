@@ -16,7 +16,7 @@ export function screenBounds(b: Bounds): ScreenBounds {
   return out;
 }
 
-const overlaps = (a: ScreenBounds, b: ScreenBounds): boolean =>
+export const overlaps = (a: ScreenBounds, b: ScreenBounds): boolean =>
   a.minX < b.maxX && b.minX < a.maxX && a.minY < b.maxY && b.minY < a.maxY;
 
 /** `a` está detrás de `b` si hay un eje que los separa con `a` del lado lejano (oeste, norte o abajo). */

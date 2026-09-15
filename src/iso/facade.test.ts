@@ -70,6 +70,16 @@ describe("fachada", () => {
     expect(step.filter((x) => x.mat === "glass")).toHaveLength(4 * 6);
   });
 
+  it("window ancha y alta: muro cortina", () => {
+    const wall = tessellateAll(tower).find((f) => isWall(f) && f.pts.every((p) => p.y === 4))!;
+    const wide = windowPatches(wall, { floors: 3, cols: 2, window: { w: 0.85, h: 0.8 } }, 1)[0]!;
+    const normal = windowPatches(wall, { floors: 3, cols: 2 }, 1)[0]!;
+    const width = (p: typeof wide) => Math.abs(p[1]!.x - p[0]!.x), height = (p: typeof wide) => p[2]!.z - p[0]!.z;
+    expect(width(wide)).toBeCloseTo(0.85 * 2, 6);
+    expect(width(normal)).toBeCloseTo(0.5 * 2, 6);
+    expect(height(wide)).toBeCloseTo(0.8 * 2, 6);
+  });
+
   it("isWall: normal horizontal", () => {
     const wall: Face = { pts: [], normal: v3(0, 1, 0), mat: "office", tone: "lit", toneOffset: 0 };
     expect(isWall(wall)).toBe(true);

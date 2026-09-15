@@ -46,6 +46,8 @@ las Tasks 4..7):
 
 **Lo que queda para el plan 3 (Blog):**
 
+Hecho en el plan Mundo 2 (2026-09-14).
+
 - El mar sigue estático (sin onda ni mareas): el malecón ya deja la costura
   con Resume lista, y el sendero del faro usa `rock` (ruling de la spec de
   Resume: `paving` queda exclusivo de la ciudad).

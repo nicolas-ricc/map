@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRenderList } from "../iso/render-list";
-import { bounds } from "../iso/solids";
-import { WORLD_H, WORLD_W, worldZoneAt } from "../map/geo";
+import { bounds, isFlat, type Solid } from "../iso/solids";
+import { WORLD, worldZoneAt } from "../map/geo";
 import { allIsoColors } from "../map/palette-iso";
 import { LANDMARKS, world, zoneRng } from "./world";
 
@@ -15,12 +15,13 @@ describe("world", () => {
   it("con todas las zonas trae el astillero y el terreno completo", () => {
     const w = world(7);
     expect(w.shipyard).not.toBeNull();
-    expect(w.solids.length).toBeGreaterThan(550);
-    expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris.length).toBeGreaterThan(600);
+    expect(w.factory).not.toBeNull();
+    expect(w.solids.length).toBeGreaterThan(700);
+    expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris.length).toBeGreaterThan(300);
     for (const s of w.solids) {
       const b = bounds(s);
-      expect(b.min.x).toBeGreaterThanOrEqual(-1); expect(b.max.x).toBeLessThanOrEqual(WORLD_W + 1);
-      expect(b.min.y).toBeGreaterThanOrEqual(-1); expect(b.max.y).toBeLessThanOrEqual(WORLD_H + 1);
+      expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - 2); expect(b.max.x).toBeLessThanOrEqual(WORLD.x1 + 1); // el distrito crece hasta el borde oeste del mundo
+      expect(b.min.y).toBeGreaterThanOrEqual(WORLD.y0 - 1); expect(b.max.y).toBeLessThanOrEqual(WORLD.y1 + 1);
     }
   });
 
@@ -32,24 +33,28 @@ describe("world", () => {
     expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris).toEqual([]);
     const b = world(7, { zones: ["blog"] });
     expect(b.city).toBeNull();
-    expect(b.solids).toEqual([]);
+    expect(b.sea).not.toBeNull();
+    expect(b.solids.length).toBeGreaterThanOrEqual(80);
   });
 
   it("el mundo entero trae astillero y ciudad, y el landmark de Resume cae en la torre", () => {
     const w = world(7);
     expect(w.city).not.toBeNull();
-    expect(w.solids.length).toBeGreaterThan(550);
+    expect(w.solids.length).toBeGreaterThan(900);
+    expect(w.solids.filter((s) => !isFlat(s) && worldZoneAt(bounds(s).min.x, bounds(s).min.y) === "cv").length).toBeGreaterThan(450);
     const tower = w.solids.find((s) => s.kind === "prism" && s.h === 30)!;
     const b = bounds(tower);
     expect(LANDMARKS.cv.x).toBeGreaterThan(b.min.x); expect(LANDMARKS.cv.x).toBeLessThan(b.max.x);
     expect(LANDMARKS.cv.y).toBeGreaterThan(b.min.y); expect(LANDMARKS.cv.y).toBeLessThan(b.max.y);
   });
 
-  it("la ciudad y el astillero no comparten materiales de construcción", () => {
+  it("astillero + fábrica, ciudad + distrito y Blog no comparten materiales de construcción, salvo los compartidos por regla", () => {
     const w = world(7);
-    const mats = (zone: "portfolio" | "cv") => new Set(w.solids.filter((s) => worldZoneAt(bounds(s).min.x, Math.max(bounds(s).min.y, 0)) === zone && s.kind !== "cone").map((s) => s.mat));
-    const shared = [...mats("portfolio")].filter((m) => mats("cv").has(m));
-    expect(shared.sort()).toEqual(["rust", "steel"]);
+    const mats = (solids: Solid[]) => new Set(solids.filter((s) => s.kind !== "cone").map((s) => s.mat));
+    const portfolio = mats([...w.shipyard!.solids, ...w.factory!.solids]), cv = mats(w.city!.solids), blog = mats(w.sea!.solids);
+    expect([...portfolio].filter((m) => cv.has(m)).sort()).toEqual(["rust", "steel"]);
+    const sharedWithBlog = ["steel", "rust", "hull", "rock", "glass"]; // glass: la linterna del faro (spec §7)
+    for (const other of [portfolio, cv]) for (const m of blog) if (other.has(m)) expect(sharedWithBlog).toContain(m);
   });
 
   it("los landmarks caen en su zona", () => {
@@ -59,6 +64,19 @@ describe("world", () => {
   it("todo el render usa colores del atlas", () => {
     const w = world(7);
     const colors = allIsoColors();
-    for (const i of buildRenderList([...w.terrain.ground, w.terrain.river, w.terrain.sea, w.terrain.shore, ...w.ground, ...w.solids])) expect(colors.has(i.color)).toBe(true);
+    for (const i of buildRenderList([...w.terrain.ground, w.terrain.river, w.terrain.sea, w.terrain.shore, w.terrain.abyss, ...w.terrain.bleed, ...w.ground, ...w.solids])) expect(colors.has(i.color)).toBe(true);
+  });
+
+  it("el landmark del Blog cae en la fosa y el sangrado existe solo con el mundo entero", () => {
+    expect(worldZoneAt(LANDMARKS.blog.x, LANDMARKS.blog.y)).toBe("blog");
+    expect(world(7).terrain.bleed.length).toBeGreaterThan(0);
+    expect(world(7, { zones: ["portfolio"] }).terrain.bleed).toEqual([]);
+  });
+
+  it("Portfolio con fábrica supera 400 sólidos elevados y la fábrica queda al norte y al oeste del astillero", () => {
+    const w = world(7);
+    const raised = w.solids.filter((s) => !isFlat(s) && worldZoneAt(bounds(s).min.x, bounds(s).min.y) === "portfolio");
+    expect(raised.length).toBeGreaterThan(400);
+    expect(w.factory!.solids.every((s) => bounds(s).max.y <= 4 || bounds(s).max.x <= 0)).toBe(true); // y ≤ 4: la cinta y sus caballetes bajan hasta el patio de material (y 1..3)
   });
 });
