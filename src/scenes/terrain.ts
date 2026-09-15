@@ -4,6 +4,7 @@ import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, RIVER_HALF, SHORE_W, WOR
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
 import { CITY_EDGE, DISTRICT_BANK_Y, EAST_RING, MALECON_STREET_X, estuaryEast, inCrater } from "./city-grid";
+import { bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
 
 /**
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
@@ -16,7 +17,8 @@ import { CITY_EDGE, DISTRICT_BANK_Y, EAST_RING, MALECON_STREET_X, estuaryEast, i
  * deja de ser un valor puro después de un `tick`.
  */
 export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "asphalt" | "sea" | "shore" | "headland" | "reef" | "abyss";
-export type BleedTerrain = "jungle" | "sea" | "abyss";
+/** Sangrado: selva y lomas, agua (mar, orilla, fosa, estuario) y tierra construida (industrial de Portfolio, urbana de Resume). */
+export type BleedTerrain = "jungle" | "sea" | "shore" | "abyss" | "river" | "industrial" | "urban";
 
 export { CELL };
 const WATER_Z = -1;
@@ -34,8 +36,9 @@ export function shipyardTerrainAt(x: number, y: number): Terrain {
 
 export function cityTerrainAt(x: number, y: number): Terrain {
   if (x >= QUAY_X && x <= estuaryEast(y)) return "water";
-  if (y < CITY_EDGE.north || y >= CITY_EDGE.south || x < CITY_EDGE.west) return "jungle";
+  if (y < CITY_EDGE.north) return "jungle"; // cinturón de costura con el astillero
   if (y >= DISTRICT_BANK_Y && x > QUAY_X) return x >= MALECON_STREET_X ? "asphalt" : "jungle"; // ribera este del distrito: selva, y la calle del malecón
+  if (y >= CITY_EDGE.south || x < CITY_EDGE.west) return "asphalt"; // bordes oeste y sur: el suburbio del sangrado sigue derecho desde el distrito
   if (x > QUAY_X && x < EAST_RING.x0) return "jungle";
   if (inCrater(x, y)) return "jungle";
   return "asphalt";
@@ -56,20 +59,25 @@ export function terrainAt(x: number, y: number): Terrain {
   return y >= ZONE_SPLIT_Y ? cityTerrainAt(x, y) : shipyardTerrainAt(x, y);
 }
 
-/** Sangrado: selva al oeste y al sur, selva y bahía al norte (partidas por el río), mar y fosa al este. */
+/**
+ * Sangrado: mar y fosa al este; al sur, el estuario y el mar siguen hasta
+ * juntarse (`seaTerrainAt` clasifica orilla, mar y fosa al este de 344); al
+ * norte, la bahía sigue al este del río. La tierra restante es construida
+ * (industrial o urbana, `builtAt`) hasta `REACH` y selva con lomas más allá.
+ */
 export function bleedTerrainAt(x: number, y: number): BleedTerrain {
   if (x > WORLD.x1) return x >= abyssX(y) ? "abyss" : "sea";
-  if (y < WORLD.y0) return x < riverCenter(y) - RIVER_HALF ? "jungle" : "sea";
-  return "jungle";
+  if (y > WORLD.y1 && x >= ZONE_SPLIT_X) { const t = seaTerrainAt(x, y); return t === "abyss" || t === "shore" ? t : "sea"; }
+  if (estuaryWater(x, y)) return "river";
+  if (bayWater(x, y)) return "sea";
+  return builtAt(x, y) ?? "jungle";
 }
 
-const HILL_H = 12, HILL_REACH = 200, HILL_JITTER = 3, ROCK_FROM_Z = 9;
+const HILL_H = 12, HILL_REACH = 180, HILL_JITTER = 3, ROCK_FROM_Z = 9;
 const HILL_TAPER = 72; // las lomas del norte bajan a 0 en las 4 celdas antes del corte selva/bahía, así la selva llega al agua a 0.6 y no hay acantilado sin cara
-/** Cuánto se aleja el punto del contenido hacia el norte o el oeste (los lados que quedan detrás de la cámara). */
-const behindDist = (x: number, y: number): number => Math.max(0, WORLD.x0 - x, WORLD.y0 - y);
-/** Altura base de la selva del sangrado: lomas que suben con la distancia, solo detrás del contenido. Al sur y al este queda chato. */
+/** Altura base de la selva del sangrado: lomas que suben con la distancia más allá de la tierra construida, solo detrás de ella (norte y oeste). Al sur y al este queda chato. */
 export function bleedZ(x: number, y: number): number {
-  let hill = Math.min(1, behindDist(x, y) / HILL_REACH);
+  let hill = Math.min(1, beyondBuilt(x, y) / HILL_REACH);
   if (y < WORLD.y0) hill *= Math.min(1, Math.max(0, (riverCenter(y) - RIVER_HALF - x) / HILL_TAPER));
   return 0.6 + HILL_H * hill;
 }
@@ -85,7 +93,9 @@ const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jung
 const JITTER: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0, asphalt: 0.1, sea: 0, shore: 0, headland: 1.5, reef: 0.3, abyss: 0 };
 const MAT: Record<Exclude<Terrain, "dock">, Material> = { slab: "slab", water: "water", east: "sand", jungle: "leafDark", asphalt: "asphalt", sea: "waterDeep", shore: "water", headland: "rock", reef: "rock", abyss: "abyss" };
 const FLAT = new Set<Terrain>(["water", "sea", "shore", "dock", "abyss"]);
-const BLEED_MAT: Record<BleedTerrain, Material> = { jungle: "leafDark", sea: "waterDeep", abyss: "abyss" };
+const BLEED_MAT: Record<BleedTerrain, Material> = { jungle: "leafDark", sea: "waterDeep", shore: "water", abyss: "abyss", river: "water", industrial: "slab", urban: "asphalt" };
+const BLEED_WATER = new Set<BleedTerrain>(["sea", "shore", "abyss", "river"]);
+const BLEED_BUILT = new Set<BleedTerrain>(["industrial", "urban"]);
 
 const onSeam = (x: number, y: number): boolean => x === WORLD.x0 || x === WORLD.x1 || y === WORLD.y0 || y === WORLD.y1;
 /** z base del contenido en un punto (sin jitter); en la costura las dos grillas usan esto. */
@@ -115,19 +125,20 @@ function buildBleed(rng: Rng): Solid[] {
       const r = rng.next() * 2 - 1;
       if (inside(x, y)) { z[j]!.push(onSeam(x, y) ? contentBaseZ(x, y) : 0); continue; } // interior: no se usa; costura: z del contenido
       const t = bleedTerrainAt(x, y);
-      if (t !== "jungle") { z[j]!.push(WATER_Z); continue; }
+      if (BLEED_WATER.has(t)) { z[j]!.push(WATER_Z); continue; }
+      if (BLEED_BUILT.has(t)) { z[j]!.push(r * JITTER.asphalt); continue; } // tierra construida: plana como el asfalto del contenido
       const base = bleedZ(x, y);
       z[j]!.push(base + r * (base > 0.6 ? HILL_JITTER : JITTER.jungle));
     }
   }
-  const tris: Partial<Record<Material, Tri[]>> = { leafDark: [], rock: [], waterDeep: [], abyss: [] };
+  const tris: Partial<Record<Material, Tri[]>> = { leafDark: [], rock: [], waterDeep: [], water: [], abyss: [], slab: [], asphalt: [] };
   for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
     const x0 = bx0 + i * CELL_BLEED, y0 = by0 + j * CELL_BLEED, x1 = x0 + CELL_BLEED, y1 = y0 + CELL_BLEED;
     const cx = x0 + CELL_BLEED / 2, cy = y0 + CELL_BLEED / 2;
     if (inside(cx, cy)) continue;
     const t = bleedTerrainAt(cx, cy);
     const mat: Material = t === "jungle" ? (bleedZ(cx, cy) > ROCK_FROM_Z ? "rock" : "leafDark") : BLEED_MAT[t];
-    cellTris(tris[mat]!, x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, t === "jungle" ? null : WATER_Z, i, j);
+    cellTris(tris[mat]!, x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, BLEED_WATER.has(t) ? WATER_Z : null, i, j);
   }
   return (Object.keys(tris) as Material[]).filter((m) => tris[m]!.length > 0).map((m): Solid => ({ kind: "ground", mat: m, tris: tris[m]! }));
 }

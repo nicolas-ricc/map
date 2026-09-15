@@ -36,8 +36,8 @@ describe("clasificación", () => {
   });
   it("ciudad: cinturón de selva, estuario, ribera este de selva, cráteres y asfalto", () => {
     expect(terrainAt(50, ZONE_SPLIT_Y + 4)).toBe("jungle");   // cinturón
-    expect(terrainAt(-56, 200)).toBe("jungle");                // borde oeste (crecido con el distrito)
-    expect(terrainAt(100, 330)).toBe("jungle");                // borde sur (crecido con el distrito)
+    expect(terrainAt(-56, 200)).toBe("asphalt");               // borde oeste: el suburbio sigue derecho desde el distrito
+    expect(terrainAt(100, 330)).toBe("asphalt");               // borde sur, ídem
     expect(terrainAt(255, 200)).toBe("water");                 // estuario
     expect(terrainAt(268, 200)).toBe("jungle");                // ribera este, antes del anillo
     expect(terrainAt(290, 200)).toBe("asphalt");               // ciudad del este
@@ -74,17 +74,32 @@ describe("clasificación", () => {
       if (t === "abyss") expect(z).toBe("blog");
     }
   });
-  it("sangrado: selva al oeste y sur, selva y bahía al norte, mar y fosa al este; lomas solo detrás", () => {
-    expect(bleedTerrainAt(-100, 100)).toBe("jungle");
-    expect(bleedTerrainAt(100, 400)).toBe("jungle");
-    expect(bleedTerrainAt(100, -100)).toBe("jungle");
+  it("sangrado: tierra construida cerca del contenido, selva y lomas más allá; el estuario y el mar siguen al sur, la bahía al norte", () => {
+    expect(bleedTerrainAt(-100, 100)).toBe("industrial");   // oeste de Portfolio
+    expect(bleedTerrainAt(-100, 200)).toBe("urban");        // oeste de Resume
+    expect(bleedTerrainAt(100, 400)).toBe("urban");         // sur de Resume
+    expect(bleedTerrainAt(100, -100)).toBe("industrial");   // norte de la fábrica
+    expect(bleedTerrainAt(-100, -100)).toBe("industrial");  // esquina NO
+    expect(bleedTerrainAt(-100, 400)).toBe("urban");        // esquina SO
+    expect(bleedTerrainAt(-300, 100)).toBe("jungle");       // más allá del alcance oeste
+    expect(bleedTerrainAt(100, -300)).toBe("jungle");       // más allá del alcance norte
+    expect(bleedTerrainAt(100, 700)).toBe("jungle");        // más allá del alcance sur
+    expect(bleedTerrainAt(250, 400)).toBe("river");         // el estuario sigue
+    expect(bleedTerrainAt(330, 340)).toBe("jungle");        // la punta de la lengua entre el estuario y el mar
+    expect(bleedTerrainAt(338, 400)).toBe("river");         // la lengua termina en dos celdas; después el estuario es todo agua hasta el mar
+    expect(bleedTerrainAt(346, 400)).toBe("shore");         // orilla frente a la costa de Resume
+    expect(bleedTerrainAt(400, 400)).toBe("sea");
+    expect(bleedTerrainAt(560, 500)).toBe("abyss");
+    expect(bleedTerrainAt(250, 460)).toBe("river");         // en y 460 el estuario ya llegó a 344: agua continua hasta el mar
+    expect(bleedTerrainAt(343, 460)).toBe("river");
     expect(bleedTerrainAt(400, -100)).toBe("sea");
     expect(bleedTerrainAt(600, 100)).toBe("abyss");
-    expect(bleedZ(-250, 100)).toBeGreaterThan(9);   // loma al oeste
-    expect(bleedZ(100, -250)).toBeGreaterThan(9);   // loma al norte
-    expect(bleedZ(100, 500)).toBe(0.6);              // chato al sur
-    expect(bleedZ(-60, 100)).toBe(0.6);              // en la costura no sube
-    expect(bleedZ(riverCenter(-200) - RIVER_HALF - 10, -200)).toBeLessThan(3); // la loma baja antes del corte con la bahía: sin acantilado
+    expect(bleedZ(-380, 100)).toBeGreaterThan(9);   // loma al oeste, más allá de la tierra construida
+    expect(bleedZ(100, -400)).toBeGreaterThan(9);   // loma al norte
+    expect(bleedZ(-100, 100)).toBe(0.6);            // sobre la tierra construida no sube
+    expect(bleedZ(100, 500)).toBe(0.6);             // chato al sur
+    expect(bleedZ(-60, 100)).toBe(0.6);             // en la costura no sube
+    expect(bleedZ(riverCenter(-300) - RIVER_HALF - 10, -300)).toBeLessThan(3); // la loma baja antes del corte con la bahía: sin acantilado
   });
 });
 
@@ -145,13 +160,14 @@ describe("buildTerrain", () => {
     const bt = m.bleed.flatMap(tris);
     expect(bt.length).toBeGreaterThan(3000);
     const mats = new Set(m.bleed.map((s) => s.kind === "ground" && s.mat));
-    for (const mt of mats) expect(["leafDark", "rock", "waterDeep", "abyss"]).toContain(mt);
+    for (const mt of mats) expect(["leafDark", "rock", "waterDeep", "water", "abyss", "slab", "asphalt"]).toContain(mt);
     for (const t of bt) for (const p of t.pts) {
       expect(p.x).toBeGreaterThanOrEqual(WORLD.x0 - BLEED.x); expect(p.x).toBeLessThanOrEqual(WORLD.x1 + BLEED.x);
       expect(p.y).toBeGreaterThanOrEqual(WORLD.y0 - BLEED.y); expect(p.y).toBeLessThanOrEqual(WORLD.y1 + BLEED.y);
       if ((p.y > WORLD.y1 && p.x >= WORLD.x0) || p.x > WORLD.x1) expect(p.z).toBeLessThanOrEqual(1.4); // al sur (salvo la esquina SO, que queda detrás) y al este, chato
     }
-    expect(bt.some((t) => t.pts.every((p) => p.y < WORLD.y0 - 150 && p.x < 100 && p.z > 6))).toBe(true); // lomas al norte
+    expect(bt.some((t) => t.pts.every((p) => p.y < WORLD.y0 - 250 && p.x < 100 && p.z > 6))).toBe(true); // lomas al norte, más allá de la tierra construida
+    expect(bt.some((t) => t.pts.every((p) => p.y > WORLD.y1 && p.x > QUAY_X && p.x < 300 && p.z === -1))).toBe(true); // el estuario sigue al sur
     // costura: los vértices del sangrado sobre el borde del contenido tienen la z base del contenido, sin jitter.
     // Solo el tramo del borde que toca el contenido: un vértice en x = WORLD.x0 pero y = 400 es selva común del sangrado.
     const onSeam = (p: { x: number; y: number }) =>
