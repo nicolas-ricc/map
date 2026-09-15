@@ -30,6 +30,9 @@ const depthKey = (b: Bounds): number => b.min.x + b.max.x + b.min.y + b.max.y + 
  * Orden painter topológico: para cada par que se superpone en pantalla, el que
  * está detrás se dibuja antes. Si los dos se ven "detrás" del otro (esquinas
  * diagonales), decide la suma de coordenadas. Ciclos: se cortan y siguen.
+ * Los pares se buscan con un barrido por x de pantalla (solo se comparan cajas
+ * cuyos rangos en x se cruzan) y cada lista `before` se ordena ascendente:
+ * el resultado es el mismo que comparando todos los pares en orden de índice.
  */
 export function sortByDepth(solids: Solid[]): Solid[] {
   const n = solids.length;
@@ -37,13 +40,21 @@ export function sortByDepth(solids: Solid[]): Solid[] {
   const sbs = bs.map(screenBounds);
   const keys = bs.map(depthKey);
   const before: number[][] = Array.from({ length: n }, () => []); // before[i] = índices que van antes de i
-  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-    if (!overlaps(sbs[i]!, sbs[j]!)) continue;
-    const ij = isBehind(bs[i]!, bs[j]!), ji = isBehind(bs[j]!, bs[i]!);
-    if (ij === ji) { if (keys[i]! <= keys[j]!) before[j]!.push(i); else before[i]!.push(j); }
-    else if (ij) before[j]!.push(i);
-    else before[i]!.push(j);
+  const byX = solids.map((_, i) => i).sort((a, b) => sbs[a]!.minX - sbs[b]!.minX);
+  for (let a = 0; a < n; a++) {
+    const p = byX[a]!, sp = sbs[p]!;
+    for (let b = a + 1; b < n; b++) {
+      const q = byX[b]!, sq = sbs[q]!;
+      if (sq.minX >= sp.maxX) break;
+      if (!(sp.minY < sq.maxY && sq.minY < sp.maxY)) continue;
+      const i = Math.min(p, q), j = Math.max(p, q);
+      const ij = isBehind(bs[i]!, bs[j]!), ji = isBehind(bs[j]!, bs[i]!);
+      if (ij === ji) { if (keys[i]! <= keys[j]!) before[j]!.push(i); else before[i]!.push(j); }
+      else if (ij) before[j]!.push(i);
+      else before[i]!.push(j);
+    }
   }
+  for (const list of before) list.sort((a, b) => a - b);
   const state = new Uint8Array(n); // 0 sin visitar, 1 en curso, 2 listo
   const out: Solid[] = [];
   const visit = (i: number): void => {

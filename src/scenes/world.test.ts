@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRenderList } from "../iso/render-list";
 import { bounds, isFlat, type Solid } from "../iso/solids";
-import { WORLD, worldZoneAt } from "../map/geo";
+import { BLEED, WORLD, worldZoneAt } from "../map/geo";
 import { allIsoColors } from "../map/palette-iso";
 import { LANDMARKS, world, zoneRng } from "./world";
 
@@ -18,11 +18,18 @@ describe("world", () => {
     expect(w.factory).not.toBeNull();
     expect(w.solids.length).toBeGreaterThan(700);
     expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris.length).toBeGreaterThan(300);
-    for (const s of w.solids) {
+    for (const s of [...w.shipyard!.solids, ...w.factory!.solids, ...w.city!.solids, ...w.sea!.solids]) {
       const b = bounds(s);
       expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - 2); expect(b.max.x).toBeLessThanOrEqual(WORLD.x1 + 1); // el distrito crece hasta el borde oeste del mundo
       expect(b.min.y).toBeGreaterThanOrEqual(WORLD.y0 - 1); expect(b.max.y).toBeLessThanOrEqual(WORLD.y1 + 1);
     }
+    for (const s of w.solids) { // los márgenes construidos viven sobre el sangrado
+      const b = bounds(s);
+      expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - BLEED.x); expect(b.max.x).toBeLessThanOrEqual(WORLD.x1 + BLEED.x);
+      expect(b.min.y).toBeGreaterThanOrEqual(WORLD.y0 - BLEED.y); expect(b.max.y).toBeLessThanOrEqual(WORLD.y1 + BLEED.y);
+    }
+    expect(w.hinterland).not.toBeNull(); expect(w.suburb).not.toBeNull();
+    expect(world(7, { zones: ["portfolio", "cv", "blog"] }).suburb).toBeNull(); // con filtro explícito no hay sangrado ni márgenes
   });
 
   it("filtrar por zona deja fuera lo demás", () => {

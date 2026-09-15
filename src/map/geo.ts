@@ -47,6 +47,33 @@ export const WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 } as const;
  */
 export const BLEED = { x: 342, y: 378 } as const;
 export const CELL_BLEED = 18;
+export const COVER_INSET = 3; // el borde del terreno está a z −1 (agua) o 0.6 ± 0.8 (selva), ±1.4 px respecto del paralelogramo a z 0
+
+/**
+ * Rectángulo de pantalla de aspecto `aspect` inscripto en el terreno con
+ * sangrado proyectado (`sx = x − y`, `sy = (x + y)/2`), devuelto como sus
+ * cuatro esquinas en coordenadas de mundo a z 0: lo que la cámara cover del
+ * sitio podrá mostrar sin cielo. Un rectángulo Wx×Wy se proyecta como
+ * paralelogramo de lados con pendiente ±1/2 (rombo solo si Wx = Wy); el
+ * rectángulo inscripto más grande cumple h + w/2 = min(Wx, Wy), se centra en
+ * x y queda apoyado en el borde inferior del rango factible. Se retrae
+ * `inset` hacia el centro para no exponer cielo donde es tangente al borde.
+ */
+export function coverQuad(aspect: number, inset = COVER_INSET): [number, number][] {
+  const x0 = WORLD.x0 - BLEED.x, y0 = WORLD.y0 - BLEED.y, x1 = WORLD.x1 + BLEED.x, y1 = WORLD.y1 + BLEED.y;
+  const wx = x1 - x0, wy = y1 - y0;
+  const h = (2 * Math.min(wx, wy)) / (aspect + 2), w = aspect * h;
+  const topX = x0 - y0, topY = (x0 + y0) / 2;
+  const u0 = topX + (wx - wy) / 2 - w / 2, v0 = topY + Math.abs(wx - wy) / 4 + w / 4;
+  const h2 = h - 2 * inset, w2 = aspect * h2, u = u0 + (w - w2) / 2, v = v0 + inset;
+  const world = (sx: number, sy: number): [number, number] => [sx / 2 + sy, sy - sx / 2];
+  return [world(u, v), world(u + w2, v), world(u + w2, v + h2), world(u, v + h2)];
+}
+
+/** El punto cae dentro del cuadrilátero del cover (ensanchado `margin` unidades hacia afuera en cada eje de pantalla). */
+export function inCoverQuad(x: number, y: number, aspect = 16 / 9, margin = 0): boolean {
+  return pointInPolygon(x, y, coverQuad(aspect, COVER_INSET - margin).flat());
+}
 /** Blog es todo lo que está al este de ZONE_SPLIT_X (visualmente); Resume, lo que está al sur de ZONE_SPLIT_Y del lado oeste. */
 export const ZONE_SPLIT_X = 344;
 export const ZONE_SPLIT_Y = 146;
