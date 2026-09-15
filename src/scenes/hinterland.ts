@@ -1,12 +1,12 @@
 import type { Accent } from "../iso/accent";
-import { v3, type Vec2 } from "../iso/geometry";
+import { v3, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid } from "../iso/solids";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { WORLD, ZONE_SPLIT_Y } from "../map/geo";
+import { WORLD, ZONE_SPLIT_Y, inCoverQuad } from "../map/geo";
 import { jungle } from "./flora";
 import { towerCrane } from "./pieces";
-import { GREEN_BELT, builtAt } from "./sprawl-grid";
+import { COVER_MARGIN, GREEN_BELT, builtAt } from "./sprawl-grid";
 
 /**
  * Hinterland industrial de Portfolio, sobre el sangrado al norte y al oeste
@@ -16,7 +16,7 @@ import { GREEN_BELT, builtAt } from "./sprawl-grid";
  * verde que separa la industria de la ciudad. Solo existe con el mundo entero.
  * Spec: docs/superpowers/specs/2026-09-15-margenes-urbanos-design.md §5.
  */
-export interface HinterlandScene { ground: Solid[]; solids: Solid[]; accents: Accent[] }
+export interface HinterlandScene { ground: Solid[]; solids: Solid[]; accents: Accent[]; stacks: Vec3[] }
 
 export const YARD_TRACKS_Y = [-72, -76, -80, -84, -88] as const;
 export const YARD_X = { x0: -200, x1: 140 } as const;
@@ -154,8 +154,39 @@ function westHalls(out: Solid[], accents: Accent[], rng: Rng): void {
   jungle(out, rng, { x0: -238, x1: WORLD.x0 - 2, y0: GREEN_BELT.y0 + 2, y1: ZONE_SPLIT_Y - 5 }, 30); // la mitad de Portfolio del cinturón verde (r ≤ 4: ningún cono cruza la costura y = 146)
 }
 
+export const POWER = { x: 34, y: -276, w: 40, d: 16 } as const;
+export const STACKS_N = [{ x: 78, y: -270 }, { x: 78, y: -260 }] as const;
+export const COOLING = { x: 20, y: -236, r: 8 } as const;
+export const PARKING = { x: 50, y: -236, w: 34, d: 24 } as const;
+export const ROAD_Y = -212;
+const inCover = (x: number, y: number): boolean => inCoverQuad(x, y, 16 / 9, COVER_MARGIN);
+
+/** Central térmica: sala de turbinas, dos chimeneas (las puntas van a `stacks`), torre de refrigeración, carbón con cinta, transformadores. */
+function powerPlant(out: Solid[], accents: Accent[], stacks: Vec3[], rng: Rng): void {
+  const { x, y, w, d } = POWER;
+  if (onIndustrial(x, y, w, d) && inCover(x + w / 2, y + d / 2)) out.push({ kind: "prism", at: v3(x, y, 0), w, d, h: 12, mat: "concrete", facade: { floors: 1, cols: 5 } });
+  for (const s of STACKS_N) { out.push(prism(s.x - 2.5, s.y - 2.5, 0, 5, 5, 2, "concrete")); out.push({ kind: "cylinder", at: v3(s.x, s.y, 2), r: 2, h: 26, mat: "concrete", sides: 10 }); stacks.push(v3(s.x, s.y, 28)); }
+  out.push({ kind: "cylinder", at: v3(COOLING.x, COOLING.y, 0), r: COOLING.r, h: 12, mat: "concrete", sides: 14 }, { kind: "cylinder", at: v3(COOLING.x, COOLING.y, 12), r: COOLING.r - 1.5, h: 4, mat: "concrete", sides: 14 });
+  for (let i = 0; i < 3; i++) out.push({ kind: "cone", at: v3(10 + i * 9, -252 + (i % 2) * 4, 0), r: rng.int(5, 6), h: 3, mat: "rust", sides: 7 }); // carbón
+  for (let cx = 14; cx <= 34; cx += 8) out.push(prism(cx - 0.2, -255.2, 0, 0.4, 0.4, 4, "steel")); // postes de la cinta
+  out.push(strip([{ x: 12, y: -255 }, { x: 36, y: -255 }], 0.8, 4, "steel")); // la cinta es plana: `strip` a z 4 (se pinta en el suelo; los postes la sostienen visualmente)
+  for (let i = 0; i < 6; i++) { const tx = 40 + (i % 3) * 10, ty = -252 + Math.floor(i / 3) * 6; out.push(prism(tx, ty, 0, 3, 2, 3, "steel")); for (const dx of [0.5, 1.5, 2.5]) out.push({ kind: "cylinder", at: v3(tx + dx, ty + 1, 3), r: 0.4, h: 1, mat: "rust", sides: 6 }); }
+  for (const [fx, fy, fw, fd] of [[38, -254, 32, 0.3], [38, -240, 32, 0.3], [38, -254, 0.3, 14], [70, -254, 0.3, 14]] as const) out.push(prism(fx, fy, 0, fw, fd, 1.2, "steel")); // cerco
+  for (const [lx, ly] of [[38, -256], [72, -238]] as const) lamp(out, accents, lx, ly);
+}
+
+/** Calle de la central a la feria, camiones esperando y el estacionamiento de la feria del lado industrial. */
+function fairRoad(out: Solid[], accents: Accent[], rng: Rng): void {
+  out.push(strip([{ x: 0, y: ROAD_Y }, { x: 84, y: ROAD_Y }], 6, 0.1, "road"));
+  for (const x of [4, 32, 60]) lamp(out, accents, x, ROAD_Y - 4);
+  for (const x of [8, 18, 28]) { out.push(prism(x, ROAD_Y + 3.5, 0, 6, 2.4, 2.8, "rust")); out.push(prism(x + 6, ROAD_Y + 3.5, 0, 2, 2.4, 2.2, "steel")); }
+  const { x, y, w, d } = PARKING;
+  out.push(prism(x, y, 0, w, d, 0.3, "paving"));
+  for (let i = 0; i < 12; i++) { const px = x + 2 + (i % 6) * 5, py = y + 3 + Math.floor(i / 6) * 10; out.push(prism(px, py, 0.3, 2.2, 1.4, 1.2, rng.chance(0.5) ? "steel" : "rust")); }
+}
+
 export function hinterland(rng: Rng): HinterlandScene {
-  const solids: Solid[] = [], accents: Accent[] = [];
+  const solids: Solid[] = [], accents: Accent[] = [], stacks: Vec3[] = [];
   marshallingYard(solids, rng);
   halls(solids);
   tankFarm(solids, rng);
@@ -166,5 +197,7 @@ export function hinterland(rng: Rng): HinterlandScene {
   pier(solids, accents);
   containerYard(solids, rng);
   westHalls(solids, accents, rng);
-  return { ground: solids.filter((s) => s.kind === "strip"), solids: solids.filter((s) => s.kind !== "strip"), accents };
+  powerPlant(solids, accents, stacks, rng);
+  fairRoad(solids, accents, rng);
+  return { ground: solids.filter((s) => s.kind === "strip"), solids: solids.filter((s) => s.kind !== "strip"), accents, stacks };
 }
