@@ -3,7 +3,7 @@ import type { Solid, Tri } from "../iso/solids";
 import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, RIVER_HALF, SHORE_W, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, eastBank, inHeadland, inMouth, riverCenter, shoreWidth, worldZoneAt, type WorldZone } from "../map/geo";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { CITY_EDGE, EAST_RING, estuaryEast, inCrater } from "./city-grid";
+import { CITY_EDGE, DISTRICT_ROWS, EAST_RING, MALECON, estuaryEast, inCrater } from "./city-grid";
 
 /**
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
@@ -31,6 +31,7 @@ export function shipyardTerrainAt(x: number, y: number): Terrain {
 export function cityTerrainAt(x: number, y: number): Terrain {
   if (x >= QUAY_X && x <= estuaryEast(y)) return "water";
   if (y < CITY_EDGE.north || y >= CITY_EDGE.south || x < CITY_EDGE.west) return "jungle";
+  if (y >= DISTRICT_ROWS[0] && x > QUAY_X) return x >= MALECON.x0 ? "asphalt" : "jungle"; // ribera este del distrito: selva, y la calle del malecón
   if (x > QUAY_X && x < EAST_RING.x0) return "jungle";
   if (inCrater(x, y)) return "jungle";
   return "asphalt";

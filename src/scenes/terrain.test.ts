@@ -36,8 +36,8 @@ describe("clasificación", () => {
   });
   it("ciudad: cinturón de selva, estuario, ribera este de selva, cráteres y asfalto", () => {
     expect(terrainAt(50, ZONE_SPLIT_Y + 4)).toBe("jungle");   // cinturón
-    expect(terrainAt(5, 200)).toBe("jungle");                  // borde oeste
-    expect(terrainAt(100, 268)).toBe("jungle");                // borde sur
+    expect(terrainAt(-56, 200)).toBe("jungle");                // borde oeste (crecido con el distrito)
+    expect(terrainAt(100, 330)).toBe("jungle");                // borde sur (crecido con el distrito)
     expect(terrainAt(255, 200)).toBe("water");                 // estuario
     expect(terrainAt(268, 200)).toBe("jungle");                // ribera este, antes del anillo
     expect(terrainAt(290, 200)).toBe("asphalt");               // ciudad del este
@@ -45,6 +45,9 @@ describe("clasificación", () => {
     expect(terrainAt(50, 200)).toBe("asphalt");
     expect(terrainAt(340, 200)).toBe("asphalt");               // bajo el malecón
     expect(terrainAt(ZONE_SPLIT_X, 200)).toBe("shore");        // la costura este sigue siendo mar
+    expect(terrainAt(-30, 290)).toBe("asphalt");
+    expect(terrainAt(300, 300)).toBe("jungle");
+    expect(terrainAt(338, 300)).toBe("asphalt");
   });
   it("en la zona cv solo hay asfalto, selva y agua", () => {
     const seen = new Set<string>();

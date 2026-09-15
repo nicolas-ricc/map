@@ -4,15 +4,18 @@ import { bounds, type Solid } from "../iso/solids";
 import { QUAY_X, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y } from "../map/geo";
 import { allIsoColors, type Material } from "../map/palette-iso";
 import { createRng } from "../map/seed";
-import { AVENUE, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, ROWS, CRATERS, EAST_RING, FALLEN_BLOCK, MALECON, PLAZA, TOWER, WEST_QUAY, blocks, estuaryEast, inBlock, inCrater } from "./city-grid";
+import { AVENUE, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, ROWS, CRATERS, DISTRICT_ROWS, EAST_RING, FALLEN_BLOCK, MALECON, PLAZA, TOWER, WEST_QUAY, blocks, estuaryEast, inBlock, inCrater } from "./city-grid";
 import { MAX_BUILDING_H, PLINTH_H, TOWER_H, city, type CityScene } from "./city";
 
-const scene = (): CityScene => city(createRng(7));
+const scene = (): CityScene => city(createRng(7), createRng(8));
 const all = (s: CityScene): Solid[] => [...s.ground, ...s.solids];
 const inRect = (b: { min: { x: number; y: number }; max: { x: number; y: number } }, r: { x: number; y: number; w: number; d: number }) =>
   b.min.x >= r.x - 1e-6 && b.max.x <= r.x + r.w + 1e-6 && b.min.y >= r.y - 1e-6 && b.max.y <= r.y + r.d + 1e-6;
 /** Interior estricto de la plaza: una senda que termina justo sobre el borde (y = PLAZA.y) no la pisa. */
 const inPlaza = (x: number, y: number) => x > PLAZA.x && x < PLAZA.x + PLAZA.w && y > PLAZA.y && y < PLAZA.y + PLAZA.d;
+const DISTRICT = blocks().filter((b) => b.kind === "district" || b.kind === "site");
+const inDistrict = (s: Solid) => DISTRICT.some((b) => inRect(bounds(s), b));
+const inDistrictXY = (x: number, y: number) => DISTRICT.some((b) => x >= b.x - 1 && x <= b.x + b.w + 1 && y >= b.y - 1 && y <= b.y + b.d + 1);
 /** Las cuatro piezas que pueden pasar de 21: el prisma de la torre, su cornisa, la sala de máquinas y el mástil. Los conos y las enredaderas de la base no quedan exentos. */
 const isTowerPiece = (s: Solid) => {
   const b = bounds(s);
@@ -22,18 +25,18 @@ const isTowerPiece = (s: Solid) => {
 // la fila sur frente a la torre: PLAZA.x - 6 .. PLAZA.x + PLAZA.w + 6, la banda que el ruling del controller topa en 10
 const ROW_SOUTH = ROWS[3], FRONT_X0 = PLAZA.x - 6, FRONT_X1 = PLAZA.x + PLAZA.w + 6;
 
-const CITY_MATS: readonly Material[] = ["office", "officeDark", "glass", "asphalt", "paving", "plaza", "leaf", "leafDark", "water", "steel", "rust"];
+const CITY_MATS: readonly Material[] = ["office", "officeDark", "glass", "asphalt", "paving", "plaza", "curtain", "stone", "copper", "leaf", "leafDark", "water", "steel", "rust"];
 
 describe("city", () => {
   it("es determinística por seed", () => {
-    expect(JSON.stringify(city(createRng(7)))).toBe(JSON.stringify(city(createRng(7))));
-    expect(JSON.stringify(city(createRng(7)))).not.toBe(JSON.stringify(city(createRng(8))));
+    expect(JSON.stringify(city(createRng(7), createRng(8)))).toBe(JSON.stringify(city(createRng(7), createRng(8))));
+    expect(JSON.stringify(city(createRng(7), createRng(8)))).not.toBe(JSON.stringify(city(createRng(8), createRng(8))));
   });
 
   it("todo cae en la zona Resume salvo la selva del cinturón, y usa solo materiales de la ciudad", () => {
     for (const s of all(scene())) {
       const b = bounds(s);
-      expect(b.min.x).toBeGreaterThanOrEqual(-1); expect(b.max.x).toBeLessThanOrEqual(ZONE_SPLIT_X + 1);
+      expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - 3); expect(b.max.x).toBeLessThanOrEqual(ZONE_SPLIT_X + 1); // el distrito crece hasta el borde oeste del mundo
       expect(b.max.y).toBeLessThanOrEqual(WORLD.y1 + 1);
       if (s.kind !== "cone") expect(b.min.y).toBeGreaterThanOrEqual(ZONE_SPLIT_Y - 1);
       expect(CITY_MATS).toContain(s.mat);
@@ -48,7 +51,7 @@ describe("city", () => {
     const buildings = s.solids.filter((x): x is Solid & { kind: "prism" } => x.kind === "prism" && x.facade !== undefined);
     expect(buildings.length).toBeGreaterThanOrEqual(25);
     for (const b of buildings) {
-      if (isTowerPiece(b)) continue;
+      if (isTowerPiece(b) || inDistrict(b)) continue; // las torres de vidrio superan 18, sus cuerpos altos no apoyan en PLINTH_H y una corona puede medir 3
       expect(b.at.z).toBe(PLINTH_H);
       expect(b.h).toBeLessThanOrEqual(MAX_BUILDING_H);
       expect(b.h).toBeGreaterThanOrEqual(4);
@@ -67,13 +70,13 @@ describe("city", () => {
     expect(s.tower.litWindows.every((a) => a.kind === "poly" && a.color === "amber")).toBe(true);
     expect(s.tower.antenna.z).toBeGreaterThan(TOWER_H + 5);
     expect(s.tower.paperWindow.x).toBeCloseTo(TOWER.x + TOWER.w, 6); // pared este
-    for (const x of s.solids) if (!isTowerPiece(x)) expect(bounds(x).max.z).toBeLessThanOrEqual(21);
+    for (const x of s.solids) if (!isTowerPiece(x) && !inDistrict(x)) expect(bounds(x).max.z).toBeLessThanOrEqual(21);
   });
 
   it("frente a la torre ningún edificio supera 10 ni nada llega a 15 (las ventanas encendidas se pintan arriba de todo)", () => {
     for (const x of scene().solids) {
       const b = bounds(x);
-      if (!(b.min.y >= ROW_SOUTH && b.min.x >= FRONT_X0 && b.max.x <= FRONT_X1)) continue;
+      if (!(b.min.y >= ROW_SOUTH && b.min.y < DISTRICT_ROWS[0] && b.min.x >= FRONT_X0 && b.max.x <= FRONT_X1)) continue; // solo la fila vieja frente a la torre, no el distrito
       if (x.kind === "prism" && x.facade) expect(x.h).toBeLessThanOrEqual(10);
       expect(b.max.z).toBeLessThanOrEqual(15);
     }
@@ -93,7 +96,8 @@ describe("city", () => {
     const s = scene();
     for (const c of s.solids) {
       if (c.kind !== "cone") continue;
-      const onCity = c.at.x >= CITY_EDGE.west && c.at.x < MALECON.x0 && c.at.y >= CITY_EDGE.north && c.at.y < CITY_EDGE.south && !(c.at.x > QUAY_X && c.at.x < EAST_RING.x0);
+      // al sur del distrito la ribera este es selva sin grilla (ya no hay manzanas del lado este)
+      const onCity = c.at.x >= CITY_EDGE.west && c.at.x < MALECON.x0 && c.at.y >= CITY_EDGE.north && c.at.y < CITY_EDGE.south && !(c.at.x > QUAY_X && c.at.x < EAST_RING.x0) && !(c.at.x > EAST_RING.x0 && c.at.y >= DISTRICT_ROWS[0]);
       if (onCity) expect(inBlock(c.at.x, c.at.y) || inCrater(c.at.x, c.at.y) || (c.at.y >= BOULEVARD.y0 && c.at.y <= BOULEVARD.y1)).toBe(true);
     }
     expect(s.accents.length).toBeGreaterThan(6);
@@ -115,11 +119,11 @@ describe("city", () => {
     for (const g of strips) if (g.kind === "strip") for (const p of g.path) expect(p.x <= QUAY_X || p.x > estuaryEast(p.y)).toBe(true);
     // ninguna raya cae sobre la plaza: el suelo se dibuja en orden de inserción y la taparía
     for (const g of strips) if (g.kind === "strip") for (const p of g.path) expect(inPlaza(p.x, p.y)).toBe(false);
-    // los dos charcos de luz sí caen enteros dentro de la plaza
-    const spills = s.accents.filter((a) => a.kind === "poly" && a.color === "amberBleed");
+    // los dos charcos de luz sí caen enteros dentro de la plaza (alpha 0.25: el reloj y el cartel del distrito también son amberBleed, con otro alpha)
+    const spills = s.accents.filter((a) => a.kind === "poly" && a.color === "amberBleed" && a.alpha === 0.25);
     expect(spills.length).toBeGreaterThanOrEqual(2);
     for (const sp of spills) if (sp.kind === "poly") for (const p of sp.pts) expect(inPlaza(p.x, p.y)).toBe(true);
-    const boulevard = s.solids.filter((x) => x.kind === "prism" && x.mat === "leafDark");
+    const boulevard = s.solids.filter((x) => x.kind === "prism" && x.mat === "leafDark" && x.at.z === 0); // no la terraza verde de una torre de vidrio del distrito
     expect(boulevard.length).toBeGreaterThanOrEqual(8);
     expect(boulevard.every((x) => bounds(x).min.y >= BOULEVARD.y0 && bounds(x).max.y <= BOULEVARD.y1)).toBe(true);
     const lamps = s.accents.filter((a) => a.kind === "dot" && a.color === "amber");
@@ -127,7 +131,7 @@ describe("city", () => {
     for (const l of lamps) {
       if (l.kind !== "dot") continue;
       const onAvenue = l.at.y >= AVENUE.y0 - 3 && l.at.y <= AVENUE.y1 + 3, onMalecon = l.at.x >= MALECON.x0, onPlaza = inRect({ min: l.at, max: l.at }, PLAZA);
-      expect(onAvenue || onMalecon || onPlaza).toBe(true);
+      expect(onAvenue || onMalecon || onPlaza || inDistrictXY(l.at.x, l.at.y)).toBe(true); // el distrito tiene sus propias luces (obra, helipuerto, baliza)
     }
   });
 
@@ -189,5 +193,11 @@ describe("city", () => {
     expect(cones.some((c) => c.kind === "cone" && c.at.x < CITY_EDGE.west)).toBe(true);         // borde oeste
     expect(cones.some((c) => c.kind === "cone" && c.at.x > QUAY_X && c.at.x < EAST_RING.x0)).toBe(true); // ribera este
     for (const cr of CRATERS) expect(cones.some((c) => c.kind === "cone" && inCrater(c.at.x, c.at.y) && Math.hypot(c.at.x - cr.x, c.at.y - cr.y) <= cr.r)).toBe(true);
+  });
+
+  it("la avenida llega al borde oeste nuevo y el malecón baja hasta 326", () => {
+    const s = scene();
+    expect(s.ground.some((g) => g.kind === "strip" && g.mat === "paving" && g.path[0]!.x <= CITY_EDGE.west && Math.abs(g.path[0]!.y - (BOULEVARD.y0 - 0.3)) < 0.01)).toBe(true);
+    expect(s.solids.some((x) => x.kind === "prism" && x.mat === "paving" && x.at.x === MALECON.x0 && x.at.y + x.d >= MALECON.y1)).toBe(true);
   });
 });

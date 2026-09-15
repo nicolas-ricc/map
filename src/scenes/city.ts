@@ -1,12 +1,14 @@
 import type { Accent } from "../iso/accent";
 import { facadeAccents, isWall, windowPatches, type Facade } from "../iso/facade";
 import { centroid, v3, type Vec2, type Vec3 } from "../iso/geometry";
-import { STEP_INSET, STEP_RATIO, tessellate, type Solid, type Tri } from "../iso/solids";
+import { STEP_INSET, STEP_RATIO, tessellate, type Solid } from "../iso/solids";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { QUAY_X, ZONE_SPLIT_Y } from "../map/geo";
-import { AVENUE, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, EAST_COLS, EAST_RING, FALLEN_BLOCK, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, WEST_COLS, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inBlock, inCrater, type Block, type Rect } from "./city-grid";
+import { QUAY_X, WORLD, ZONE_SPLIT_Y } from "../map/geo";
+import { AVENUE, BLOCK_W, BOULEVARD, BRIDGE, CITY_EDGE, COLLAPSED, CRATERS, DISTRICT_ROWS, EAST_COLS, EAST_RING, FALLEN_BLOCK, LIT_FLOOR, MALECON, PLAZA, ROWS, SIDEWALK, STREET, TOWER, TOWER_FLOORS, TOWER_H, WEST_COLS, WEST_QUAY, blocks, estuaryEast, estuaryReaches, inBlock, inCrater, type Block } from "./city-grid";
 import { jungle } from "./flora";
+import { PLINTH_H, brokenTone, lamp, plazaTone, prism, tiles } from "./city-pieces";
+import { districtBlock, maxDistrictHeight } from "./district";
 
 /**
  * Resume: ciudad de oficinas en grilla, tragada por la selva, partida por el
@@ -15,52 +17,17 @@ import { jungle } from "./flora";
  * y después (segunda tanda) avenida, puente, malecón, derrumbe, autos y selva.
  * Spec: docs/superpowers/specs/2026-09-14-resume-ciudad-design.md.
  */
-export const PLINTH_H = 0.3;
-export const TOWER_H = 30;
+export { PLINTH_H } from "./city-pieces";
+export { TOWER_H } from "./city-grid";
 export const MAX_BUILDING_H = 18;
 export const TALL_H = 17; // desde acá el edificio solo admite sala de máquinas en el techo
 const FLOOR_H = 3;
-const TILE = 6; // baldosa de la plaza y del suelo devorado
 
 export interface CityScene {
   ground: Solid[];   // baldosas de la plaza, suelo de manzanas devoradas, carriles
   solids: Solid[];
   accents: Accent[]; // faroles y derrame de luz; las ventanas encendidas y la antena las anima city-anim
   tower: { litWindows: Accent[]; antenna: Vec3; paperWindow: Vec3 };
-}
-
-type Prism = Solid & { kind: "prism" };
-type Extra = { roof?: "flat" | "gable" | "step"; facade?: Facade };
-
-// ---------------------------------------------------------------- piezas
-
-const prism = (x: number, y: number, z: number, w: number, d: number, h: number, mat: Material, extra: Extra = {}): Prism => {
-  const p: Prism = { kind: "prism", at: v3(x, y, z), w, d, h, mat };
-  if (extra.roof) p.roof = extra.roof;
-  if (extra.facade) p.facade = extra.facade;
-  return p;
-};
-
-/** Baldosa rota del suelo devorado: un tercio con ±1. */
-const brokenTone = (rng: Rng): number => (rng.chance(1 / 3) ? rng.pick([-1, 1]) : 0);
-/** Baldosa de la plaza: la mitad más clara y un quinto más oscura, para que la plaza se lea como un claro y no como asfalto. */
-const plazaTone = (rng: Rng): number => { const r = rng.next(); return r < 0.5 ? 1 : r < 0.7 ? -1 : 0; };
-
-/** Suelo facetado de baldosas `TILE`×`TILE`, con el tono de cada una según `tone`. */
-function tiles(rng: Rng, r: Rect, z: number, mat: Material, tone: (rng: Rng) => number = brokenTone): Solid {
-  const tris: Tri[] = [];
-  const off = (): number => tone(rng);
-  for (let x = r.x; x < r.x + r.w; x += TILE) for (let y = r.y; y < r.y + r.d; y += TILE) {
-    const w = Math.min(TILE, r.x + r.w - x), d = Math.min(TILE, r.y + r.d - y);
-    const a = v3(x, y, z), b = v3(x + w, y, z), c = v3(x + w, y + d, z), dd = v3(x, y + d, z);
-    tris.push({ pts: [a, b, c], toneOffset: off() }, { pts: [a, c, dd], toneOffset: off() });
-  }
-  return { kind: "ground", mat, tris };
-}
-
-function lamp(solids: Solid[], accents: Accent[], x: number, y: number, z: number): void {
-  solids.push(prism(x, y, z, 0.6, 0.6, 5, "steel"));
-  accents.push({ kind: "dot", at: v3(x + 0.3, y + 0.3, z + 5), r: 0.6, color: "amber" });
 }
 
 // ---------------------------------------------------------------- edificios
@@ -180,7 +147,7 @@ function plazaAndTower(solids: Solid[], ground: Solid[], accents: Accent[], rng:
   solids.push(prism(PLAZA.x, PLAZA.y, 0, PLAZA.w, curb, PLINTH_H, "paving"), prism(PLAZA.x, PLAZA.y + PLAZA.d - curb, 0, PLAZA.w, curb, PLINTH_H, "paving"));
   solids.push(prism(PLAZA.x, PLAZA.y, 0, curb, PLAZA.d, PLINTH_H, "paving"), prism(PLAZA.x + PLAZA.w - curb, PLAZA.y, 0, curb, PLAZA.d, PLINTH_H, "paving"));
 
-  const facade: Facade = { floors: 8, cols: 4, litFloor: 5, base: "portico" };
+  const facade: Facade = { floors: TOWER_FLOORS, cols: 4, litFloor: LIT_FLOOR, base: "portico" };
   const tower = prism(TOWER.x, TOWER.y, 0, TOWER.w, TOWER.d, TOWER_H, "officeDark", { facade });
   solids.push(tower);
   solids.push(prism(TOWER.x - 0.5, TOWER.y - 0.5, TOWER_H, TOWER.w + 1, TOWER.d + 1, 0.4, "office"));       // cornisa
@@ -241,14 +208,14 @@ const LANE_X = [...WEST_LANE_X, ...EAST_LANE_X];
 function lanes(ground: Solid[]): void {
   for (const cx of LANE_X) {
     dashes(ground, { x: cx, y: CITY_EDGE.north }, { x: cx, y: AVENUE.y0 });
-    // al sur de la avenida el anillo este se corta donde entra el estuario: el suelo se dibuja encima del agua
-    const yEnd = cx > QUAY_X ? Math.min(CITY_EDGE.south, estuaryReaches(cx) - 1) : CITY_EDGE.south;
+    // al sur de la avenida el anillo este se corta donde entra el estuario, y la ribera este no pasa del distrito: el suelo se dibuja encima del agua
+    const yEnd = cx > QUAY_X ? Math.min(DISTRICT_ROWS[0] - STREET, estuaryReaches(cx) - 1) : CITY_EDGE.south;
     if (yEnd > AVENUE.y1 + 3) dashes(ground, { x: cx, y: AVENUE.y1 }, { x: cx, y: yEnd });
   }
   const rowsY = [CITY_EDGE.north + STREET / 2, ...ROWS.slice(1).map((y) => y - STREET / 2), CITY_EDGE.south - 2].filter((y) => y < AVENUE.y0 || y > AVENUE.y1); // 161, 185, 239, 262 (la calle sur es de 4)
   for (const cy of rowsY) {
     dashes(ground, { x: CITY_EDGE.west, y: cy }, { x: WEST_QUAY.x0, y: cy });
-    dashes(ground, { x: Math.max(EAST_RING.x0, Math.ceil(estuaryEast(cy)) + 1), y: cy }, { x: MALECON.x0, y: cy }); // arranca en tierra
+    if (cy < DISTRICT_ROWS[0] - STREET) dashes(ground, { x: Math.max(EAST_RING.x0, Math.ceil(estuaryEast(cy)) + 1), y: cy }, { x: MALECON.x0, y: cy }); // arranca en tierra; al sur del distrito la ribera este es selva
   }
 }
 
@@ -316,7 +283,8 @@ function malecon(solids: Solid[], accents: Accent[]): void {
   solids.push(prism(x0, stairsY, -1, w - 6, 6, z + 1, "paving"));
   solids.push(prism(x1 - 1.5, y0, z, 1.5, stairsY - y0, 0.8, "paving"), prism(x1 - 1.5, stairsY + 6, z, 1.5, y1 - stairsY - 6, 0.8, "paving")); // parapeto
   for (const y of [170, 200, 245, 258]) solids.push(prism(x0 + 2, y, z, 2, 0.6, 0.5, "paving")); // bancos
-  for (const y of [180, 210, 250]) lamp(solids, accents, x1 - 3, y, z);
+  // faroles cada 12 u; el tramo nuevo del distrito (266..326) no comparte ninguno con el viejo
+  for (const y of [180, 210, 250, 272, 284, 296, 308, 320]) lamp(solids, accents, x1 - 3, y, z);
   for (const y of [stairsY - 1.5, stairsY + 6.5]) solids.push({ kind: "cylinder", at: v3(x1 - 3, y, z), r: 0.4, h: 0.8, mat: "rust", sides: 6 });
 }
 
@@ -347,13 +315,15 @@ function jungleOnLand(out: Solid[], rng: Rng, rect: { x0: number; x1: number; y0
 }
 
 function greenery(solids: Solid[], rng: Rng): void {
-  jungleOnLand(solids, rng, { x0: 3, x1: 340, y0: ZONE_SPLIT_Y + 1, y1: CITY_EDGE.north - 2 }, 30);      // cinturón de costura, sin pisar el estuario
-  jungle(solids, rng, { x0: 3, x1: CITY_EDGE.west - 3, y0: CITY_EDGE.north, y1: CITY_EDGE.south }, 12);  // borde oeste (ruling: x0 3, no 2, para no salir de la zona)
-  jungleOnLand(solids, rng, { x0: CITY_EDGE.west, x1: 330, y0: CITY_EDGE.south, y1: 267 }, 14);           // borde sur, sin pisar el estuario
-  for (let y = ROWS[0]; y < COLLAPSED.y; y += 8) {                                                        // ribera este del estuario
+  jungleOnLand(solids, rng, { x0: WORLD.x0 + 3, x1: 340, y0: ZONE_SPLIT_Y + 1, y1: CITY_EDGE.north - 2 }, 30);      // cinturón de costura, sin pisar el estuario
+  jungle(solids, rng, { x0: WORLD.x0 + 2, x1: CITY_EDGE.west - 2, y0: CITY_EDGE.north, y1: CITY_EDGE.south }, 12); // borde oeste, crecido con el distrito
+  jungleOnLand(solids, rng, { x0: CITY_EDGE.west, x1: 330, y0: CITY_EDGE.south, y1: WORLD.y1 - 5 }, 14);           // borde sur, crecido con el distrito, sin pisar el estuario
+  for (let y = ROWS[0]; y < COLLAPSED.y; y += 8) {                                                        // ribera este del estuario, ciudad vieja
     const x0 = Math.ceil(estuaryEast(y + 6)) + 2, x1 = EAST_RING.x0 - 3;
     if (x1 - x0 >= 2) jungleOnLand(solids, rng, { x0, x1, y0: y, y1: y + 6 }, rng.int(1, 2));
   }
+  // ribera este del distrito: selva entre el estuario y el malecón, al sur de la avenida vieja
+  jungleOnLand(solids, rng, { x0: Math.ceil(estuaryEast(DISTRICT_ROWS[0])) + 2, x1: MALECON.x0 - 3, y0: DISTRICT_ROWS[0], y1: MALECON.y1 - 2 }, 10);
   for (const c of CRATERS) { // cuadrado inscripto (0.7·r): todo cono queda dentro del círculo
     const k = Math.floor(c.r * 0.7);
     jungle(solids, rng, { x0: c.x - k, x1: c.x + k, y0: c.y - k, y1: c.y + k }, rng.int(4, 6), 0.2);
@@ -386,11 +356,12 @@ function cars(solids: Solid[], rng: Rng): void {
 
 // ---------------------------------------------------------------- escena
 
-export function city(rng: Rng): CityScene {
+export function city(rng: Rng, districtRng: Rng): CityScene {
   const ground: Solid[] = [], solids: Solid[] = [], accents: Accent[] = [];
   const tallPending = new Set<Block["bank"]>(["west", "east"]);
   for (const b of blocks()) if (b.kind === "block") block(solids, ground, rng, b, maxHeightFor(b), tallPending);
   const tower = plazaAndTower(solids, ground, accents, rng);
+  for (const b of blocks()) if (b.kind === "district" || b.kind === "site") districtBlock(solids, ground, accents, districtRng, b, maxDistrictHeight(b));
   lanes(ground);
   avenue(ground, solids);
   streetFurniture(solids, accents);

@@ -51,7 +51,7 @@ export function world(seed: number, opts: { zones?: readonly WorldZone[] } = {})
     for (const sc of [sy, fa]) { ground.push(...sc.ground); solids.push(...sc.solids); accents.push(...sc.accents); }
   }
   if (zones.includes("cv")) {
-    ct = city(zoneRng(seed, "cv"));
+    ct = city(zoneRng(seed, "cv"), zoneRng(seed, "cv", 1));
     ground.push(...ct.ground); solids.push(...ct.solids); accents.push(...ct.accents);
   }
   return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct, factory: fa };

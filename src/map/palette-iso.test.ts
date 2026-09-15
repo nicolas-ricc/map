@@ -40,7 +40,7 @@ describe("paleta isométrica", () => {
   });
 
   it("materiales exclusivos de ciudad y costa", () => {
-    for (const m of ["office", "officeDark", "glass", "asphalt", "paving", "plaza", "whitewash", "foam", "abyss"] as const) {
+    for (const m of ["office", "officeDark", "glass", "asphalt", "paving", "plaza", "curtain", "stone", "copper", "whitewash", "foam", "abyss"] as const) {
       expect(Object.keys(ISO_TONES[m]).sort()).toEqual(["down", "lit", "shade", "top", "up"]);
     }
   });

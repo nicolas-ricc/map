@@ -9,7 +9,7 @@ import type { Face } from "./solids";
  * (una banda de vidrio) o pórtico (banda muy oscura). Las caras salen
  * coplanares a la pared, después de ella, así se pintan encima.
  */
-export interface Facade { floors: number; cols: number; litFloor?: number; base?: "glass" | "portico" }
+export interface Facade { floors: number; cols: number; litFloor?: number; base?: "glass" | "portico"; window?: { w: number; h: number } }
 
 export const SLAB_H = 0.3;
 const WINDOW_W = 0.5; // fracción del ancho de columna
@@ -33,10 +33,11 @@ export function windowPatches(wall: Face, f: Facade, floor: number): Vec3[][] {
   const fh = floorHeight(wall, f), z0 = wall.pts[0]!.z + floor * fh;
   if (floor === 0 && f.base === "glass") return [patch(wall, 0.08, 0.92, z0 + fh * 0.15, z0 + fh * 0.8)];
   if (floor === 0 && f.base === "portico") return [];
+  const ww = f.window?.w ?? WINDOW_W, wh = f.window?.h ?? WINDOW_H;
   const out: Vec3[][] = [];
   for (let k = 0; k < f.cols; k++) {
     const c0 = k / f.cols, cw = 1 / f.cols;
-    out.push(patch(wall, c0 + cw * (1 - WINDOW_W) / 2, c0 + cw * (1 + WINDOW_W) / 2, z0 + fh * (1 - WINDOW_H) / 2, z0 + fh * (1 + WINDOW_H) / 2));
+    out.push(patch(wall, c0 + cw * (1 - ww) / 2, c0 + cw * (1 + ww) / 2, z0 + fh * (1 - wh) / 2, z0 + fh * (1 + wh) / 2));
   }
   return out;
 }
