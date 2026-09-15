@@ -1,7 +1,7 @@
 import type { Accent } from "../iso/accent";
 import { v3, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid } from "../iso/solids";
-import { BOTTOM, DOCK, MOUTH_Y, QUAY_W, QUAY_X, eastBank } from "../map/geo";
+import { BOTTOM, DOCK, MOUTH_Y, QUAY_W, QUAY_X, WORLD, eastBank } from "../map/geo";
 import type { Rng } from "../map/seed";
 import { jungle as flora } from "./flora";
 
@@ -43,8 +43,8 @@ const prism = (x: number, y: number, z: number, w: number, d: number, h: number,
 const strip = (path: Vec2[], width: number, z: number, mat: Solid["mat"]): Solid => ({ kind: "strip", path, width, z, mat });
 
 function quay(out: Solid[]): void {
-  out.push(prism(QUAY_X, 0, WATER_Z, QUAY_W, BOTTOM, 1.5, "concrete"));
-  for (let y = 6; y < BOTTOM; y += 12) out.push({ kind: "cylinder", at: v3(QUAY_X + 2, y, 0.5), r: 0.7, h: 1, mat: "steel", sides: 6 });
+  out.push(prism(QUAY_X, WORLD.y0, WATER_Z, QUAY_W, BOTTOM - WORLD.y0, 1.5, "concrete"));
+  for (let y = WORLD.y0 + 6; y < BOTTOM; y += 12) out.push({ kind: "cylinder", at: v3(QUAY_X + 2, y, 0.5), r: 0.7, h: 1, mat: "steel", sides: 6 });
 }
 
 function halls(out: Solid[]): void {

@@ -2,6 +2,7 @@ import type { WorldZone } from "../map/geo";
 import { createRng } from "../map/seed";
 import type { Animator } from "../scenes/animator";
 import { cityAnimator } from "../scenes/city-animator";
+import { factoryAnimator } from "../scenes/factory-animator";
 import { shipyardAnimator } from "../scenes/shipyard-animator";
 import { world } from "../scenes/world";
 import type { LabFrame } from "./draw";
@@ -17,5 +18,6 @@ export function bootWorldPage(zones: readonly WorldZone[] | undefined, frame: La
   const animators: Animator[] = [];
   if (scene.shipyard) animators.push(shipyardAnimator(scene.shipyard, [scene.terrain.river], createRng(SEED + 1), { reducedMotion }));
   if (scene.city) animators.push(cityAnimator(scene.city, createRng(SEED + 2), { reducedMotion }));
+  if (scene.factory) animators.push(factoryAnimator(scene.factory, createRng(SEED + 4), { reducedMotion }));
   void bootLab(host, scene, animators, { reducedMotion, log: import.meta.env.DEV, frame });
 }

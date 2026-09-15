@@ -4,6 +4,7 @@ import type { Solid } from "../iso/solids";
 import type { WorldZone } from "../map/geo";
 import { createRng, type Rng } from "../map/seed";
 import { city, type CityScene } from "./city";
+import { factory, type FactoryScene } from "./factory";
 import { shipyard, type Scene } from "./shipyard";
 import { buildTerrain, type TerrainMesh } from "./terrain";
 
@@ -20,6 +21,7 @@ export interface WorldScene {
   landmarks: Record<WorldZone, Vec3>;
   shipyard: Scene | null;
   city: CityScene | null;
+  factory: FactoryScene | null;
 }
 
 const ALL_ZONES: readonly WorldZone[] = ["portfolio", "cv", "blog"];
@@ -42,14 +44,15 @@ export function world(seed: number, opts: { zones?: readonly WorldZone[] } = {})
   // sin filtro explícito de zonas, buildTerrain recibe `undefined`: solo entonces construye el sangrado.
   const terrain = buildTerrain(createRng(seed), opts.zones);
   const ground: Solid[] = [], solids: Solid[] = [], accents: Accent[] = [];
-  let sy: Scene | null = null, ct: CityScene | null = null;
+  let sy: Scene | null = null, ct: CityScene | null = null, fa: FactoryScene | null = null;
   if (zones.includes("portfolio")) {
     sy = shipyard(zoneRng(seed, "portfolio"));
-    ground.push(...sy.ground); solids.push(...sy.solids); accents.push(...sy.accents);
+    fa = factory(zoneRng(seed, "portfolio", 1));
+    for (const sc of [sy, fa]) { ground.push(...sc.ground); solids.push(...sc.solids); accents.push(...sc.accents); }
   }
   if (zones.includes("cv")) {
     ct = city(zoneRng(seed, "cv"));
     ground.push(...ct.ground); solids.push(...ct.solids); accents.push(...ct.accents);
   }
-  return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct };
+  return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct, factory: fa };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildRenderList } from "../iso/render-list";
-import { bounds } from "../iso/solids";
+import { bounds, isFlat } from "../iso/solids";
 import { WORLD, worldZoneAt } from "../map/geo";
 import { allIsoColors } from "../map/palette-iso";
 import { LANDMARKS, world, zoneRng } from "./world";
@@ -15,7 +15,8 @@ describe("world", () => {
   it("con todas las zonas trae el astillero y el terreno completo", () => {
     const w = world(7);
     expect(w.shipyard).not.toBeNull();
-    expect(w.solids.length).toBeGreaterThan(550);
+    expect(w.factory).not.toBeNull();
+    expect(w.solids.length).toBeGreaterThan(700);
     expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris.length).toBeGreaterThan(300);
     for (const s of w.solids) {
       const b = bounds(s);
@@ -66,5 +67,12 @@ describe("world", () => {
     expect(worldZoneAt(LANDMARKS.blog.x, LANDMARKS.blog.y)).toBe("blog");
     expect(world(7).terrain.bleed.length).toBeGreaterThan(0);
     expect(world(7, { zones: ["portfolio"] }).terrain.bleed).toEqual([]);
+  });
+
+  it("Portfolio con fábrica supera 400 sólidos elevados y la fábrica queda al norte y al oeste del astillero", () => {
+    const w = world(7);
+    const raised = w.solids.filter((s) => !isFlat(s) && worldZoneAt(bounds(s).min.x, bounds(s).min.y) === "portfolio");
+    expect(raised.length).toBeGreaterThan(400);
+    expect(w.factory!.solids.every((s) => bounds(s).max.y <= 4 || bounds(s).max.x <= 0)).toBe(true); // y ≤ 4: la cinta y sus caballetes bajan hasta el patio de material (y 1..3)
   });
 });
