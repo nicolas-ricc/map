@@ -56,10 +56,14 @@
 
 **Desvíos respecto de la spec, decididos al planificar** (se documentan en la Task 7):
 
-- `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }` (no 560/330) y `BLEED = { x: 324, y: 270 }` (no 320/260): el sangrado es una grilla de 18 anclada en la esquina del contenido, así que el ancho y el alto del contenido tienen que ser múltiplos de 18 (630 = 35·18, 396 = 22·18) y los sangrados también. Blog gana 10 al este y Resume 6 al sur (selva). `Wx + Wy = 1278 + 936 = 2214 ≥ 2182`, que es lo que pide la caja `1026 × 555` del contenido con la torre.
+- `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }` (no 560/330) y `BLEED = { x: 342, y: 288 }` (no 320/260): el sangrado es una grilla de 18 anclada en la esquina del contenido, así que el ancho y el alto del contenido tienen que ser múltiplos de 18 (630 = 35·18, 396 = 22·18) y los sangrados también. Blog gana 10 al este y Resume 6 al sur (selva). La caja del contenido con la torre (`zoneFrame("all")`, `1026 × 555`) **no está centrada** en el rombo: `FRAME_H` levanta solo la esquina NO 42 px, así que el semialto que hace falta es `277.5 + 21 = 298.5`, o sea `a ≥ 1128` y `Wx + Wy ≥ 2256`. Con este sangrado `Wx + Wy = 1314 + 972 = 2286`, `a = 1143`, semialto 302.6 y semiancho 538.
 - El vértice de sangrado que cae sobre la costura toma la **z base del terreno del contenido** en ese punto (no 0.6): al norte del astillero el borde es losa de fábrica (z 0). Entre dos vértices de sangrado (18 u) el borde del contenido puede cambiar de tierra a agua: queda una grieta de ≤ 1.6 u en esos pocos puntos, aceptada.
 - Piso de calidad Blog: **≥ 110 sólidos elevados** (no 250), contando arrecife (hasta 40 conos), pedruscos (20), roca (6 `poly`), faro, casa, boyas, pecio (≥ 80 estáticos) y los tres barcos (~30). La spec heredó 250 de la spec del mundo; el usuario pidió que el Blog sea agua.
-- Ruta de barcos: `(290, -6) → (350, 10) → (405, 50) → (436, 78) → (444, 118) → (470, 172) → (530, 224) → (600, 260)`. La de la spec pisaba la selva del muelle de alistamiento (x 330..344, y ≥ 24) y no cumplía `x > 430` con `|y − 118| < 40`.
+- Ruta de barcos: `(326, -24) → (350, 10) → (405, 50) → (436, 78) → (444, 118) → (470, 172) → (530, 224) → (600, 260)`. La de la spec pisaba la selva del muelle de alistamiento (x 330..344, y ≥ 24) y no cumplía `x > 430` con `|y − 118| < 40`. El inicio va en `(326, -24)` y no en `(290, -6)`: un barco en la bahía con `max.y < 24` que se superponga en pantalla con los galpones del muelle de alistamiento (x 304..324, y 24..116) o con la selva de `cluster(332, 340, 26, 94)` queda **detrás** de ellos (`isBehind` por y) y se pintaría encima. Desde `(326, -24)` la caja de pantalla del carguero (`min.x − max.y ≥ 328`) no toca la de esos sólidos (`max.x − min.y ≤ 322`).
+- `glass` es compartido entre Blog y Resume: la linterna del faro es `glass` por spec §7. El test de materiales por zona lo lista junto a `steel`/`rust`/`hull`.
+- Espuma del arrecife: alterna `toneOffset 0 / -1` sobre material `foam` cada 500 ms (la spec decía +2 / +1 sobre `shore`: con material propio el salto ya es visible). El cerco de la obra son cuatro prismas `officeDark` de 1.2 (no un `strip`: un strip a z 0.3 se pintaría debajo del zócalo). `sea.foam` va dentro de `sea.band0`, no como capa propia.
+- Grúa de la obra: mástil en `x + w − 8` y pluma de 14 (la spec decía 20). La huella útil mide 21 (`SIDEWALK = 1.5`) y pluma + contrapluma (8) no pueden superarla sin salir de la manzana.
+- `TOWER_H`, `TOWER_FLOORS` y `LIT_FLOOR` se mudan a `city-grid.ts` (sin rng) para que `district.ts` calcule la caja del piso encendido sin importar `city.ts` (ciclo).
 - Pecio en `(462, 150)` con heading 30° (la spec decía 466, 156): separado 12 u de la ruta. La boya del pecio sigue en `(470, 160)`, que es `LANDMARKS.blog`.
 - Terraza verde de las torres de vidrio: prisma fino de `leafDark` (0.3) más conos, no `ground` (un `ground` no puede pintarse sobre un techo). Losas de la obra en `paving` y núcleo en `officeDark` (`concrete` es del astillero). Contrapeso de la grúa en `steel`.
 - Boyas: parpadeo 1 s encendida / 1 s apagada, desfasadas 1 s. El test verifica que en un período de 2 s cada boya está encendida ≥ 1 s y que nunca están las dos apagadas a la vez (la frase "nunca dos ticks apagadas seguidas" de la spec era del parpadeo de la torre).
@@ -265,6 +269,8 @@ magick /tmp/sombras.png -crop 900x600+1050+600 +repage -resize 200% /tmp/sombras
 
 Leer el PNG: ninguna mancha más oscura donde se cruzan sombras (zócalo + edificio, edificio + vecino); la sombra es más densa junto al edificio y más suave en la punta; tono violeta cálido. Si hay manchas, revisar que las `Graphics` de sombra estén dentro de los slots filtrados y no en `solidSlot`.
 
+**Presupuesto, ahora y no en la Task 7:** los dos `AlphaFilter` son dos pasadas de render-texture del viewport entero por frame (a DPR 2, 3200×1800 cada una) y las sombras animadas dentro invalidan el filtro en cada tick. Dejar `resume.html` 20 s y anotar `peor redibujo en 5 s` en el commit. Si supera 4 ms ya acá (el mar de la Task 6 suma lo suyo), pasar las sombras estáticas a una `RenderTexture` dibujada una vez (`app.renderer.render({ container: shadowSlot, target: tex })` en un `Sprite` con alpha) y dejar el filtro solo para el contenedor de sombras animadas.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -283,7 +289,7 @@ git commit -m "feat(iso): sombras en dos bandas unidas por AlphaFilter, color de
 - Modify: `src/lab/draw.ts`, `src/lab/draw.test.ts`, `src/lab/runtime.ts`
 
 **Interfaces:**
-- Produces (`geo.ts`): `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }`, `BLEED = { x: 324, y: 270 }`, `CELL_BLEED = 18`, `SHORE_W = 12`, `shoreWidth(y)`, `abyssX(y)`, `worldZoneAt(x, y)` geográfico. `WORLD_W`/`WORLD_H` desaparecen.
+- Produces (`geo.ts`): `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }`, `BLEED = { x: 342, y: 288 }`, `CELL_BLEED = 18`, `SHORE_W = 12`, `shoreWidth(y)`, `abyssX(y)`, `worldZoneAt(x, y)` geográfico. `WORLD_W`/`WORLD_H` desaparecen.
 - Produces (`terrain.ts`): `Terrain` suma `"abyss"`; `TerrainMesh` suma `abyss: Solid` y `bleed: Solid[]`; `bleedTerrainAt(x, y): "jungle" | "sea" | "abyss"`; `bleedZ(x, y)`; `headlandZ(x)` exportado; `buildTerrain(rng, zones?)` construye el sangrado solo cuando `zones` es `undefined`.
 - Produces (`draw.ts`): `type LabFrame = WorldZone | "all" | "cover"`, `coverFrame(aspect): RenderItem[]`, `zoneFrame(frame)` sobre `WORLD`.
 - Produces (`world.ts`): `LANDMARKS.blog = (470, 160, 0)`; `zoneRng(seed, zone, part = 0)`.
@@ -338,8 +344,13 @@ Reemplazar en `src/map/geo.ts` desde el comentario `// ---- mundo isométrico` h
  * la grilla del sangrado (CELL_BLEED) comparta vértices con la del contenido.
  */
 export const WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 } as const;
-/** Sangrado: terreno de relleno alrededor del contenido, para que la cámara cover del sitio no muestre cielo. Múltiplos de CELL_BLEED. */
-export const BLEED = { x: 324, y: 270 } as const;
+/**
+ * Sangrado: terreno de relleno alrededor del contenido, para que la cámara
+ * cover del sitio no muestre cielo. Múltiplos de CELL_BLEED. Dimensionado para
+ * que el rectángulo 16:9 inscripto en el rombo contenga la caja del contenido
+ * con la torre, que no está centrada (FRAME_H levanta solo la esquina NO).
+ */
+export const BLEED = { x: 342, y: 288 } as const;
 export const CELL_BLEED = 18;
 /** Blog es todo lo que está al este de ZONE_SPLIT_X (visualmente); Resume, lo que está al sur de ZONE_SPLIT_Y del lado oeste. */
 export const ZONE_SPLIT_X = 344;
@@ -440,10 +451,15 @@ y en `describe("buildTerrain")`:
       if ((p.y > WORLD.y1 && p.x >= WORLD.x0) || p.x > WORLD.x1) expect(p.z).toBeLessThanOrEqual(1.4); // al sur (salvo la esquina SO, que queda detrás) y al este, chato
     }
     expect(bt.some((t) => t.pts.every((p) => p.y < WORLD.y0 - 150 && p.x < 100 && p.z > 6))).toBe(true); // lomas al norte
-    // costura: los vértices del sangrado sobre el borde del contenido tienen la z base del contenido, sin jitter
-    const seamZ = new Set(bt.flatMap((t) => t.pts).filter((p) => p.x === WORLD.x0 || p.x === WORLD.x1 || p.y === WORLD.y0 || p.y === WORLD.y1).map((p) => p.z));
+    // costura: los vértices del sangrado sobre el borde del contenido tienen la z base del contenido, sin jitter.
+    // Solo el tramo del borde que toca el contenido: un vértice en x = WORLD.x0 pero y = 400 es selva común del sangrado.
+    const onSeam = (p: { x: number; y: number }) =>
+      ((p.x === WORLD.x0 || p.x === WORLD.x1) && p.y >= WORLD.y0 && p.y <= WORLD.y1) ||
+      ((p.y === WORLD.y0 || p.y === WORLD.y1) && p.x >= WORLD.x0 && p.x <= WORLD.x1);
+    const seamZ = new Set(bt.flatMap((t) => t.pts).filter(onSeam).map((p) => p.z));
+    expect(seamZ.size).toBeGreaterThan(0);
     for (const z of seamZ) expect([0, 0.6, -1]).toContain(z);
-    const contentSeamZ = new Set(allTris(m).flatMap((t) => t.pts).filter((p) => p.x === WORLD.x0 || p.x === WORLD.x1 || p.y === WORLD.y0 || p.y === WORLD.y1).map((p) => p.z));
+    const contentSeamZ = new Set(allTris(m).flatMap((t) => t.pts).filter(onSeam).map((p) => p.z));
     for (const z of contentSeamZ) expect([0, 0.6, -1]).toContain(z);
     // con filtro por zona no hay sangrado
     expect(buildTerrain(createRng(7), ["cv"]).bleed).toEqual([]);
@@ -735,7 +751,8 @@ git commit -m "feat(world): origen negativo, sangrado con lomas, zonas clickeabl
 **Interfaces:**
 - Produces (`pieces.ts`): `towerCrane(out: Solid[], accents: Accent[], c: { at: Vec2; z?: number; mastH: number; jibLen: number; dir: "e" | "w"; light: AccentColor }): void`. Materiales `steel`/`rust` solamente (compartidos). La Task 4 la reutiliza en la obra.
 - Produces (`factory.ts`): `interface FactoryScene { ground: Solid[]; solids: Solid[]; accents: Accent[]; stacks: Vec3[] }`, `factory(rng: Rng): FactoryScene`, constantes `PLANT`, `STACKS`, `STACK_BASE_H`, `SIDING_Y`, `RAIL_YARD_X`.
-- Produces (`factory-anim.ts`): `createFactoryAnim(stacks: readonly Vec3[], rng, opts): { puffs(k: number): Solid[]; tick(dtMs): boolean }`; `factoryAnimator(scene, rng, opts): Animator` con ids `factory.smoke0..2` (capas `solid`).
+- Produces (`factory-anim.ts`): `createFactoryAnim(stacks: readonly Vec3[], rng, opts): { puffs(k: number): Solid[]; tick(dtMs): boolean }`.
+- Produces (`factory-animator.ts`): `factoryAnimator(scene, rng, opts): Animator` con ids `factory.smoke0..2` (capas `solid`).
 - `WorldScene.factory: FactoryScene | null`; `world()` lo crea con `zoneRng(seed, "portfolio", 1)` cuando `zones` incluye `portfolio`.
 
 - [ ] **Step 1: Material `brick` y test de la grúa**
@@ -945,8 +962,8 @@ function plant(out: Solid[]): void {
   const { x, y, w, d, h } = PLANT;
   out.push(prism(x, y, 0, w, d, h, "brick"));
   for (let i = 0; i < 5; i++) out.push({ kind: "ramp", at: v3(x + i * 20, y, h), w: 20, d, h: 4, mat: "brick", dir: "w" }); // dientes de sierra: cara vertical al este
-  out.push(prism(x - 0.6, y - 0.6, h, w + 1.2, d + 1.2, 0.8, "concrete"));                                            // cornisa
-  for (const px of [x + 20, x + 60]) out.push(prism(px, y + d - 0.5, 0, 6, 0.5, 8, "concrete"));                       // portones en la cara sur
+  out.push(prism(x - 0.6, y - 0.6, h - 0.8, w + 1.2, d + 1.2, 0.8, "concrete"));                                      // cornisa, bajo el techo: no pisa la huella de los dientes
+  for (const px of [x + 20, x + 60]) out.push(prism(px, y + d - 0.2, 0, 6, 0.5, 8, "concrete"));                       // portones en la cara sur, sobresalen 0.3 (no coplanares con el muro)
 }
 
 function chimneys(out: Solid[]): Vec3[] {
@@ -1000,7 +1017,7 @@ function railYard(out: Solid[], rng: Rng): void {
     const big = i < 4;
     out.push({ kind: "cone", at: v3(rng.int(-25, -13), rng.int(44, 96), 0), r: big ? rng.int(6, 9) : 5, h: big ? rng.int(4, 6) : 3, mat: big ? "rust" : "sand", sides: 7 });
   }
-  for (let i = 0; i < 8; i++) out.push(prism(RAIL_YARD_X[i % 3]! - 1.1, -40 + i * 14, 0, 2.2, 7, 2.8, i % 2 === 0 ? "rust" : "steel")); // vagones estacionados N-S sobre las vías
+  for (let i = 0; i < 8; i++) out.push(prism(RAIL_YARD_X[i % 3]! - 1.1, -46 + i * 14, 0, 2.2, 7, 2.8, i % 2 === 0 ? "rust" : "steel")); // vagones estacionados N-S sobre las vías; -46: el tercero termina en y -11, sin tocar el desvío E-O (y -9.2..-6.8)
   jungle(out, rng, { x0: -58, x1: -6, y0: 110, y1: 140 }, 14, 0.4); // y1 140: un cono de r 4 no puede cruzar la costura y = 146
 }
 
@@ -1169,7 +1186,7 @@ y `factory: fa` en el retorno. `src/lab/page.ts`: `if (scene.factory) animators.
     const w = world(7);
     const raised = w.solids.filter((s) => !isFlat(s) && worldZoneAt(bounds(s).min.x, bounds(s).min.y) === "portfolio");
     expect(raised.length).toBeGreaterThan(400);
-    expect(w.factory!.solids.every((s) => bounds(s).max.y <= 0 || bounds(s).max.x <= 0)).toBe(true);
+    expect(w.factory!.solids.every((s) => bounds(s).max.y <= 4 || bounds(s).max.x <= 0)).toBe(true); // y ≤ 4: la cinta y sus caballetes bajan hasta el patio de material (y 1..3)
   });
 ```
 
@@ -1247,7 +1264,7 @@ Sumar `"curtain", "stone", "copper"` a la lista del test "materiales exclusivos"
     expect(d).toHaveLength(24);
     expect(d.filter((b) => b.kind === "site")).toHaveLength(1);
     expect(d.every((b) => b.bank === "west")).toBe(true);
-    expect(d.every((b) => DISTRICT_COLS.includes(b.x as 0) || DISTRICT_ROWS.includes(b.y as 0))).toBe(true);
+    expect(d.every((b) => (DISTRICT_COLS as readonly number[]).includes(b.x) || (DISTRICT_ROWS as readonly number[]).includes(b.y))).toBe(true);
     expect(blocks().filter((b) => b.bank === "east").every((b) => b.y < DISTRICT_ROWS[0])).toBe(true);
     expect(blocks().filter((b) => b.kind === "block")).toHaveLength(29); // las 30 manzanas viejas menos la derrumbada: nada viejo cambió de tipo
     expect(CITY_EDGE).toEqual({ west: -54, north: 158, south: 324 });
@@ -1267,6 +1284,8 @@ export const ROWS = [164, 188, 218, 242, 272, 302] as const;
 export const DISTRICT_COLS = [-48, -18] as const;
 export const DISTRICT_ROWS = [272, 302] as const;
 export const SITE: Rect = { x: -18, y: 272, w: 24, d: 18 }; // la obra en construcción
+/** La torre del piso encendido: acá (sin rng) para que district.ts calcule su caja sin importar city.ts. */
+export const TOWER_H = 30, TOWER_FLOORS = 8, LIT_FLOOR = 5;
 ...
 export const MALECON = { x0: 334, x1: 344, y0: 158, y1: 326, z: 0.6 } as const;
 export const CITY_EDGE = { west: -54, north: 158, south: 324 } as const;
@@ -1290,7 +1309,9 @@ export function blocks(): Block[] {
 }
 ```
 
-`cityTerrainAt` (terrain.ts): agregar antes de `if (x > QUAY_X && x < EAST_RING.x0)`: `if (y >= DISTRICT_ROWS[0] && x > QUAY_X) return x >= MALECON.x0 ? "asphalt" : "jungle";` (import `DISTRICT_ROWS, MALECON`). En `terrain.test.ts` "ciudad", agregar `expect(terrainAt(-30, 290)).toBe("asphalt")` y `expect(terrainAt(300, 300)).toBe("jungle")`.
+`cityTerrainAt` (terrain.ts): agregar **después** de la línea de los bordes (`if (y < CITY_EDGE.north || y >= CITY_EDGE.south || x < CITY_EDGE.west) return "jungle";`, así al sur de 324 sigue siendo selva también frente al malecón) y antes de `if (x > QUAY_X && x < EAST_RING.x0)`: `if (y >= DISTRICT_ROWS[0] && x > QUAY_X) return x >= MALECON.x0 ? "asphalt" : "jungle"; // ribera este del distrito: selva, y la calle del malecón` (import `DISTRICT_ROWS, MALECON`). En `terrain.test.ts` "ciudad", agregar `expect(terrainAt(-30, 290)).toBe("asphalt")`, `expect(terrainAt(300, 300)).toBe("jungle")` y `expect(terrainAt(338, 300)).toBe("asphalt")`.
+
+`city.ts`: borrar `export const TOWER_H = 30;` y poner `export { TOWER_H } from "./city-grid";` (los tests viejos lo importan de `./city`); importar `LIT_FLOOR, TOWER_FLOORS` de `./city-grid` y en `plazaAndTower` la fachada pasa a `{ floors: TOWER_FLOORS, cols: 4, litFloor: LIT_FLOOR, base: "portico" }`.
 
 Run: `npx vitest run src/scenes/city-grid.test.ts src/scenes/terrain.test.ts` → PASS (los tests viejos de city-grid, como "toda manzana cae en tierra", siguen valiendo con los bordes nuevos).
 
@@ -1310,9 +1331,9 @@ import { bounds, isFlat, type Solid } from "../iso/solids";
 import { allIsoColors, type Material } from "../map/palette-iso";
 import { createRng } from "../map/seed";
 import { buildRenderList } from "../iso/render-list";
-import { DISTRICT_COLS, DISTRICT_ROWS, SITE, TOWER, blocks, type Block } from "./city-grid";
+import { DISTRICT_COLS, DISTRICT_ROWS, LIT_FLOOR, SITE, TOWER, TOWER_FLOORS, TOWER_H, blocks, type Block } from "./city-grid";
+import { PLINTH_H } from "./city-pieces";
 import { MAX_DISTRICT_H, districtBlock, maxDistrictHeight } from "./district";
-import { TOWER_H } from "./city";
 
 const DISTRICT: Block[] = blocks().filter((b) => b.kind === "district" || b.kind === "site");
 const inRect = (s: Solid, r: { x: number; y: number; w: number; d: number }) => { const b = bounds(s); return b.min.x >= r.x - 1 && b.max.x <= r.x + r.w + 1 && b.min.y >= r.y - 1 && b.max.y <= r.y + r.d + 1; };
@@ -1338,7 +1359,7 @@ describe("district", () => {
   it("mezcla: ≥ 4 torres de vidrio en cuerpos, ≥ 2 clásicos de piedra, ≥ 2 campus con patio verde y una obra con grúa", () => {
     const { solids, ground } = build();
     const curtain = solids.filter((s) => s.kind === "prism" && s.mat === "curtain" && s.facade);
-    expect(new Set(curtain.map((s) => `${bounds(s).min.x},${bounds(s).min.y}`)).size).toBeGreaterThanOrEqual(4); // por lo menos 4 torres (varios cuerpos cada una)
+    expect(curtain.filter((s) => s.at.z === PLINTH_H).length).toBeGreaterThanOrEqual(4); // un cuerpo base por torre: por lo menos 4 torres
     expect(curtain.every((s) => s.kind === "prism" && s.facade!.window?.w === 0.85)).toBe(true);
     expect(solids.filter((s) => s.kind === "prism" && s.mat === "stone" && s.facade).length).toBeGreaterThanOrEqual(2);
     expect(ground.filter((g) => g.kind === "ground" && g.mat === "leafDark").length).toBeGreaterThanOrEqual(2); // patios
@@ -1346,13 +1367,13 @@ describe("district", () => {
     expect(solids.filter((s) => s.kind === "prism" && s.mat === "paving" && s.h === 0.3 && s.at.z > 1 && inRect(s, SITE)).length).toBe(5); // losas
   });
 
-  it("alturas: edificios ≤ 24, remates ≤ 27.5, y nada delante del piso encendido supera 10", () => {
+  it("alturas: edificios ≤ 24, remates ≤ 28, y nada delante del piso encendido supera 10", () => {
     const { solids } = build();
-    const lit = { min: v3(TOWER.x, TOWER.y, 5 * (TOWER_H / 8)), max: v3(TOWER.x + TOWER.w, TOWER.y + TOWER.d, 6 * (TOWER_H / 8)) };
+    const lit = { min: v3(TOWER.x, TOWER.y, LIT_FLOOR * (TOWER_H / TOWER_FLOORS)), max: v3(TOWER.x + TOWER.w, TOWER.y + TOWER.d, (LIT_FLOOR + 1) * (TOWER_H / TOWER_FLOORS)) };
     for (const s of solids) {
       const b = bounds(s);
       if (s.kind === "prism" && s.facade) expect(s.h).toBeLessThanOrEqual(MAX_DISTRICT_H);
-      expect(b.max.z).toBeLessThanOrEqual(27.5);
+      expect(b.max.z).toBeLessThanOrEqual(28); // 0.3 + 24 + 3 losas de 0.3 + terraza 0.3 + cono 2 = 27.5, con margen para la suma en coma flotante
       if (s.kind === "prism" && s.facade && overlaps(screenBounds(b), screenBounds(lit)) && isBehind(lit, b)) expect(s.h).toBeLessThanOrEqual(10);
     }
     expect(maxDistrictHeight({ x: TOWER.x + 20, y: TOWER.y + 20, w: 24, d: 18 })).toBe(10); // una manzana que en pantalla pisa el piso encendido y queda delante
@@ -1379,7 +1400,7 @@ import { v3 } from "../iso/geometry";
 import type { Bounds, Solid } from "../iso/solids";
 import type { Rng } from "../map/seed";
 import { PLINTH_H, prism, tiles } from "./city-pieces";
-import { SIDEWALK, TOWER, type Block, type Rect } from "./city-grid";
+import { LIT_FLOOR, SIDEWALK, TOWER, TOWER_FLOORS, TOWER_H, type Block, type Rect } from "./city-grid";
 import { towerCrane } from "./pieces";
 
 /**
@@ -1390,7 +1411,6 @@ import { towerCrane } from "./pieces";
 export const MAX_DISTRICT_H = 24;
 export const MAX_CLASSIC_H = 18;
 const FRONT_CAP_H = 10;
-const TOWER_H = 30, TOWER_FLOORS = 8, LIT_FLOOR = 5;
 const CURTAIN_WINDOW = { w: 0.85, h: 0.8 } as const;
 
 /** Caja del piso encendido de la torre (city.ts pone la torre; acá solo hace falta dónde queda). */
@@ -1476,7 +1496,8 @@ function constructionSite(out: Solid[], accents: Accent[], x: number, y: number,
   for (let k = 1; k <= 5; k++) out.push(prism(sx, sy, PLINTH_H + 3 * k - 0.3, k === 5 ? 8 : sw, sd, 0.3, "paving")); // losas; la última a medio hacer
   for (const [cx, cy] of [[0, 0], [8, 0], [16, 0], [0, 12], [8, 12], [16, 12]] as const) out.push(prism(sx + cx - 0.3, sy + cy - 0.3, PLINTH_H, 0.6, 0.6, 15, "steel"));
   out.push(prism(sx + 6, sy + 4, PLINTH_H, 4, 4, 16, "officeDark")); // núcleo
-  towerCrane(out, accents, { at: { x: x + w - 2, y: y + d - 2 }, z: PLINTH_H, mastH: 22, jibLen: 20, dir: "w", light: "amber" });
+  // mástil a 8 del borde este: la contrapluma (8) termina justo en el borde de la huella útil; pluma 14 hacia el oeste (huella útil 21, SIDEWALK 1.5)
+  towerCrane(out, accents, { at: { x: x + w - 8, y: y + d - 2 }, z: PLINTH_H, mastH: 22, jibLen: 14, dir: "w", light: "amber" });
   for (const dx of [2, 6, 10]) accents.push({ kind: "dot", at: v3(sx + dx, sy + 6, PLINTH_H + 15.3), r: 0.5, color: "amber" }); // luces de obra
   for (const [fx, fy, fw, fd] of [[x, y, w, 0.3], [x, y + d - 0.3, w, 0.3], [x, y, 0.3, d], [x + w - 0.3, y, 0.3, d]] as const) out.push(prism(fx, fy, PLINTH_H, fw, fd, 1.2, "officeDark")); // cerco
   out.push(prism(x + 0.5, y + d - 3, PLINTH_H, 6, 2.4, 2.4, "rust"), prism(x + 7, y + d - 3, PLINTH_H, 6, 2.4, 2.4, "rust")); // contenedores de obra
@@ -1513,7 +1534,7 @@ Run: `npx vitest run src/scenes/district.test.ts` → PASS. Si "≥ 4 torres / �
 
 `src/scenes/world.ts`: `ct = city(zoneRng(seed, "cv"), zoneRng(seed, "cv", 1));`.
 
-`src/scenes/city.test.ts`: `scene()` pasa a `city(createRng(7), createRng(8))`; `CITY_MATS` suma `"curtain", "stone", "copper"`; el test "hay un zócalo por manzana construida" itera `blocks().filter((b) => b.kind === "block")` (los campus no llevan zócalo entero); "la torre mide 30 … nada más supera 21" excluye las manzanas de distrito: `if (!isTowerPiece(x) && !DISTRICT.some((b) => inRect(bounds(x), b))) expect(bounds(x).max.z).toBeLessThanOrEqual(21);` con `const DISTRICT = blocks().filter((b) => b.kind === "district" || b.kind === "site")`. Agregar:
+`src/scenes/city.test.ts`: `scene()` pasa a `city(createRng(7), createRng(8))`; `CITY_MATS` suma `"curtain", "stone", "copper"`; definir `const DISTRICT = blocks().filter((b) => b.kind === "district" || b.kind === "site")` y `const inDistrict = (s: Solid) => DISTRICT.some((b) => inRect(bounds(s), b))`. En "hay un zócalo por manzana construida" el bucle de `buildings` salta los del distrito (`if (isTowerPiece(b) || inDistrict(b)) continue;`): las torres de vidrio superan 18, sus cuerpos altos no apoyan en `PLINTH_H` y una corona puede medir 3. En "la torre mide 30 … nada más supera 21": `if (!isTowerPiece(x) && !inDistrict(x)) expect(bounds(x).max.z).toBeLessThanOrEqual(21);`. Agregar:
 
 ```ts
   it("la avenida llega al borde oeste nuevo y el malecón baja hasta 326", () => {
@@ -1727,7 +1748,11 @@ function rocks(out: Solid[], rng: Rng): void {
   const cells: Vec2[] = [];
   for (let y = 87; y < 147; y += 6) for (let x = 327; x < 417; x += 6) if (terrainAt(x, y) === "reef") cells.push({ x, y });
   for (let i = cells.length - 1; i > 0; i--) { const j = rng.int(0, i); [cells[i], cells[j]] = [cells[j]!, cells[i]!]; } // barajar
-  for (const c of cells.slice(0, REEF_CELLS)) for (let k = 0; k < 2; k++) out.push({ kind: "cone", at: v3(c.x + (rng.next() - 0.5) * 2, c.y + (rng.next() - 0.5) * 2, 0.5), r: 1.5, h: 1, mat: "rock", sides: 5 });
+  for (const c of cells.slice(0, REEF_CELLS)) for (let k = 0; k < 2; k++) {
+    const x = c.x + (rng.next() - 0.5) * 2, y = c.y + (rng.next() - 0.5) * 2;
+    const p = terrainAt(x, y) === "reef" ? { x, y } : c; // el anillo mide 6: un desplazamiento puede caer en orilla o roca; entonces va al centro
+    out.push({ kind: "cone", at: v3(p.x, p.y, 0.5), r: 1.5, h: 1, mat: "rock", sides: 5 });
+  }
 }
 
 function buoysAndWreck(out: Solid[], ground: Solid[], accents: Accent[]): Vec3[] {
@@ -1770,18 +1795,20 @@ Run: `npx vitest run src/scenes/sea.test.ts` → PASS. Si el conteo de `reef` no
   }
 ```
 
-`world.test.ts`: "filtrar por zona": `const b = world(7, { zones: ["blog"] }); expect(b.city).toBeNull(); expect(b.sea).not.toBeNull(); expect(b.solids.length).toBeGreaterThan(100);`. "el mundo entero": `> 1000`. "no comparten materiales": el filtro por zona ya excluye Blog (compara portfolio y cv); agregar:
+`world.test.ts`: "filtrar por zona": `const b = world(7, { zones: ["blog"] }); expect(b.city).toBeNull(); expect(b.sea).not.toBeNull(); expect(b.solids.length).toBeGreaterThanOrEqual(80);` (la escena del mar trae 89 sólidos como máximo: 17 del faro, 1 casa, 6 + 20 + 40 de roca, 5 de boyas y pecio). "el mundo entero": `> 1000`. **Reemplazar** el test "la ciudad y el astillero no comparten materiales de construcción" por uno que clasifique por escena y no por `worldZoneAt`: el faro clickea Portfolio por geografía, así que por zona su linterna de `glass` aparecería como compartida entre astillero y ciudad.
 
 ```ts
-  it("el Blog no comparte materiales de construcción con el astillero ni la ciudad, salvo steel, rust y hull", () => {
+  it("astillero + fábrica, ciudad + distrito y Blog no comparten materiales de construcción, salvo los compartidos por regla", () => {
     const w = world(7);
-    const mats = (zone: "portfolio" | "cv" | "blog") => new Set(w.solids.filter((s) => worldZoneAt(bounds(s).min.x, bounds(s).min.y) === zone && s.kind !== "cone").map((s) => s.mat));
-    const blog = mats("blog");
-    for (const other of ["portfolio", "cv"] as const) expect([...blog].filter((m) => mats(other).has(m)).every((m) => ["steel", "rust", "hull"].includes(m))).toBe(true);
+    const mats = (solids: Solid[]) => new Set(solids.filter((s) => s.kind !== "cone").map((s) => s.mat));
+    const portfolio = mats([...w.shipyard!.solids, ...w.factory!.solids]), cv = mats(w.city!.solids), blog = mats(w.sea!.solids);
+    expect([...portfolio].filter((m) => cv.has(m)).sort()).toEqual(["rust", "steel"]);
+    const sharedWithBlog = ["steel", "rust", "hull", "rock", "glass"]; // glass: la linterna del faro (spec §7)
+    for (const other of [portfolio, cv]) for (const m of blog) if (other.has(m)) expect(sharedWithBlog).toContain(m);
   });
 ```
 
-(el faro y la punta clickean Portfolio: `whitewash` cuenta como Portfolio en este test; si aparece como compartido con `cv` revisar el malecón, que no lo usa).
+(import `type Solid` de solids).
 
 Run: `npm run typecheck && npm test` → PASS. Captura `lab/world.html` tecla `3`: punta de roca con sendero, casa blanca, faro de tambores blancos y óxido con galería y linterna, arrecife de conos alrededor, dos boyas, y en la fosa oscura el pecio inclinado con su boya iluminada.
 
@@ -1931,7 +1958,7 @@ const tris = (s: Solid): Tri[] => (s.kind === "ground" ? s.tris : []);
 
 describe("ruta", () => {
   it("nace en la bahía, rodea la punta por el este (x > 430 cerca de y 118), cruza la fosa y termina en el sangrado, siempre sobre agua", () => {
-    expect(ROUTE[0]).toEqual({ x: 290, y: -6 });
+    expect(ROUTE[0]).toEqual({ x: 326, y: -24 });
     expect(ROUTE[ROUTE.length - 1]!.x).toBeGreaterThan(WORLD.x1);
     const L = routeLength();
     let crossedAbyss = false;
@@ -1943,7 +1970,7 @@ describe("ruta", () => {
       if (Math.abs(p.y - 118) < 40) expect(p.x).toBeGreaterThan(430);
     }
     expect(crossedAbyss).toBe(true);
-    expect(routeAt(0).heading).toBeCloseTo(Math.atan2(16, 60), 6);
+    expect(routeAt(0).heading).toBeCloseTo(Math.atan2(34, 24), 6);
   });
 
   it("ningún punto de la ruta queda detrás de un sólido estático que se le superponga en pantalla", () => {
@@ -2046,7 +2073,9 @@ import type { TerrainMesh } from "./terrain";
  * por el este, cruzan la fosa y se desvanecen en el sangrado, sus estelas y
  * luces, el haz del faro y las dos boyas. Spec §7.
  */
-export const ROUTE: Vec2[] = [{ x: 290, y: -6 }, { x: 350, y: 10 }, { x: 405, y: 50 }, { x: 436, y: 78 }, { x: 444, y: 118 }, { x: 470, y: 172 }, { x: 530, y: 224 }, { x: 600, y: 260 }];
+// Nace en (326, -24), no más al oeste ni al sur: en la bahía el barco tiene max.y < 24 y quedaría detrás (isBehind por y) de los
+// galpones del muelle de alistamiento (x 304..324, y ≥ 24) y de su selva (x 332..340, y ≥ 26) si se superpusiera con ellos en pantalla.
+export const ROUTE: Vec2[] = [{ x: 326, y: -24 }, { x: 350, y: 10 }, { x: 405, y: 50 }, { x: 436, y: 78 }, { x: 444, y: 118 }, { x: 470, y: 172 }, { x: 530, y: 224 }, { x: 600, y: 260 }];
 export const SHIPS: readonly { kind: ShipKind; speed: number; phase: number }[] = [{ kind: "cargo", speed: 1.2, phase: 0 }, { kind: "tug", speed: 2, phase: 0.4 }, { kind: "barge", speed: 0.8, phase: 0.75 }];
 export const FADE_U = 30, TURN_U = 20, WAKE_LEN = 25;
 export const SEA_STEP_MS = 100, SEA_CYCLE_MS = 4000, ABYSS_STEP_MS = 200, ABYSS_CYCLE_MS = 8000, FOAM_STEP_MS = 500;
