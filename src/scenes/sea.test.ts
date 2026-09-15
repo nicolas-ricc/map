@@ -8,7 +8,7 @@ import { BUOYS, KEEPER, LIGHTHOUSE, WRECK, WRECK_BUOY, sea, type SeaScene } from
 import { headlandZ, terrainAt } from "./terrain";
 
 const scene = (): SeaScene => sea(createRng(7));
-const SEA_MATS: readonly Material[] = ["rock", "whitewash", "rust", "steel", "glass", "hull", "foam", "leaf", "leafDark"];
+const SEA_MATS: readonly Material[] = ["rock", "whitewash", "rust", "steel", "glass", "hull", "deck", "foam", "leaf", "leafDark"];
 const water = new Set(["water", "sea", "shore", "abyss", "reef"]);
 
 describe("sea", () => {

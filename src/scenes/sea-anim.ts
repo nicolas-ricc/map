@@ -1,8 +1,8 @@
 import type { Accent } from "../iso/accent";
 import { v3, type Vec2, type Vec3 } from "../iso/geometry";
-import type { Solid, Tri } from "../iso/solids";
+import type { Solid } from "../iso/solids";
 import type { SeaScene } from "./sea";
-import { ship as buildShip, type ShipKind } from "./ships";
+import { ship as buildShip, wake, type ShipKind } from "./ships";
 
 /**
  * Blog animado, sin Pixi: tres barcos que salen de la bahía, rodean la punta
@@ -31,7 +31,6 @@ export const SHIPS: readonly { kind: ShipKind; speed: number; phase: number }[] 
 export const FADE_U = 30, TURN_U = 20;
 export const BEAM_PERIOD_MS = 8000, BEAM_LEN = 24, BEAM_INNER = 12, BEAM_HALF = (7 * Math.PI) / 180;
 export const BUOY_PERIOD_MS = 2000;
-const WATER_Z = -1;
 
 const seg = ROUTE.slice(1).map((b, i) => { const a = ROUTE[i]!; const len = Math.hypot(b.x - a.x, b.y - a.y); return { a, b, len, heading: Math.atan2(b.y - a.y, b.x - a.x) }; });
 const cum = seg.reduce<number[]>((acc, s) => [...acc, (acc[acc.length - 1] ?? 0) + s.len], [0]);
@@ -71,10 +70,8 @@ export function createSeaAnim(scene: SeaScene, opts: { reducedMotion: boolean })
   const shipFrame = (k: number): ShipFrame => {
     const p = routeAt(dists[k]!), alpha = alphaAt(dists[k]!);
     const built = buildShip(SHIPS[k]!.kind, p, p.heading);
-    const c = Math.cos(p.heading), s = Math.sin(p.heading);
-    const local = (dx: number, dy: number) => v3(p.x + dx * c - dy * s, p.y + dx * s + dy * c, WATER_Z + 0.05);
-    const wake: Tri[] = [1, 2, 3, 4].map((i): Tri => ({ pts: [local(-6 * i + 3, 0), local(-6 * i, -(0.8 + 1.2 * i)), local(-6 * i, 0.8 + 1.2 * i)], toneOffset: i < 2 ? 1 : 0 }));
-    return { solids: built.solids, lights: built.lights, wake: [{ kind: "ground", mat: "foam", tris: wake }], alpha };
+    const wakeTris = wake(SHIPS[k]!.kind, p, p.heading);
+    return { solids: built.solids, lights: built.lights, wake: [{ kind: "ground", mat: "foam", tris: wakeTris }], alpha };
   };
 
   const beamAngle = (): number => (opts.reducedMotion ? 0 : ((clock % BEAM_PERIOD_MS) / BEAM_PERIOD_MS) * Math.PI * 2);

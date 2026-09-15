@@ -88,7 +88,7 @@ function buoysAndWreck(out: Solid[], ground: Solid[], accents: Accent[]): Vec3[]
     return { pts: [v3(WRECK_BUOY.x + r0 * Math.cos(a0), WRECK_BUOY.y + r0 * Math.sin(a0), -0.95), v3(WRECK_BUOY.x + r1 * Math.cos(a0), WRECK_BUOY.y + r1 * Math.sin(a0), -0.95), v3(WRECK_BUOY.x + r1 * Math.cos(a1), WRECK_BUOY.y + r1 * Math.sin(a1), -0.95)] };
   });
   ground.push({ kind: "ground", mat: "foam", tris: ring });
-  out.push({ kind: "hull", at: v3(WRECK.x, WRECK.y, -3), len: 40, beam: 8, h: 4, mat: "hull", heading: WRECK.heading }); // asoma 1 u
+  out.push({ kind: "hull", at: v3(WRECK.x, WRECK.y, -3), len: 40, beam: 8, h: 4, mat: "hull", topMat: "rust", heading: WRECK.heading }); // asoma 1 u
   const mx = WRECK.x + 20 * Math.cos(WRECK.heading), my = WRECK.y + 20 * Math.sin(WRECK.heading);
   out.push(prism(mx - 0.3, my - 0.3, 0, 0.6, 0.6, 6, "rust")); // mástil
   return bases;
