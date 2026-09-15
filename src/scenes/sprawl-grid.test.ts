@@ -33,7 +33,7 @@ describe("sprawl-grid", () => {
     expect(urbanAt(250, 400)).toBe(false);  // estuario
   });
 
-  it("las manzanas del suburbio caen enteras en suelo urbano dentro del cover, y son más de 100", () => {
+  it("las manzanas del distrito tecnológico caen enteras en suelo urbano dentro del cover, y son más de 100", () => {
     const blocks = suburbBlocks();
     expect(blocks.length).toBeGreaterThan(100);
     for (const b of blocks) {

@@ -36,7 +36,7 @@ describe("clasificación", () => {
   });
   it("ciudad: cinturón de selva, estuario, ribera este de selva, cráteres y asfalto", () => {
     expect(terrainAt(50, ZONE_SPLIT_Y + 4)).toBe("jungle");   // cinturón
-    expect(terrainAt(-56, 200)).toBe("asphalt");               // borde oeste: el suburbio sigue derecho desde el distrito
+    expect(terrainAt(-56, 200)).toBe("asphalt");               // borde oeste: el distrito tecnológico sigue derecho desde la ciudad
     expect(terrainAt(100, 330)).toBe("asphalt");               // borde sur, ídem
     expect(terrainAt(255, 200)).toBe("water");                 // estuario
     expect(terrainAt(268, 200)).toBe("jungle");                // ribera este, antes del anillo

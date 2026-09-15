@@ -28,8 +28,8 @@ describe("world", () => {
       expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - BLEED.x); expect(b.max.x).toBeLessThanOrEqual(WORLD.x1 + BLEED.x);
       expect(b.min.y).toBeGreaterThanOrEqual(WORLD.y0 - BLEED.y); expect(b.max.y).toBeLessThanOrEqual(WORLD.y1 + BLEED.y);
     }
-    expect(w.hinterland).not.toBeNull(); expect(w.suburb).not.toBeNull();
-    expect(world(7, { zones: ["portfolio", "cv", "blog"] }).suburb).toBeNull(); // con filtro explícito no hay sangrado ni márgenes
+    expect(w.hinterland).not.toBeNull(); expect(w.tech).not.toBeNull();
+    expect(world(7, { zones: ["portfolio", "cv", "blog"] }).tech).toBeNull(); // con filtro explícito no hay sangrado ni márgenes
   });
 
   it("filtrar por zona deja fuera lo demás", () => {

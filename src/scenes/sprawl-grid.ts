@@ -4,7 +4,7 @@ import { BLOCK_D, BLOCK_W, CITY_EDGE, ROWS, WEST_COLS, estuaryEast, type Rect } 
 /**
  * Geografía de los márgenes: qué parte del sangrado es tierra construida y de
  * qué zona. Módulo puro y sin rng, como city-grid: lo comparten el terreno
- * (`bleedTerrainAt`) y las escenas del suburbio y del hinterland, así el
+ * (`bleedTerrainAt`) y las escenas del distrito tecnológico y del hinterland, así el
  * asfalto y las manzanas no pueden desalinearse.
  * Spec: docs/superpowers/specs/2026-09-15-margenes-urbanos-design.md §3.
  */
@@ -50,10 +50,10 @@ export function builtAt(x: number, y: number): Built | null {
   return y < ZONE_SPLIT_Y ? "industrial" : "urban";
 }
 
-/** Cinturón verde entre el hinterland y el suburbio: prolonga la selva del sur de la playa de vías (`y ≥ 110`) y el cinturón de costura de la ciudad (hasta `CITY_EDGE.north`). */
+/** Cinturón verde entre el hinterland y el distrito tecnológico: prolonga la selva del sur de la playa de vías (`y ≥ 110`) y el cinturón de costura de la ciudad (hasta `CITY_EDGE.north`). */
 export const GREEN_BELT = { y0: 110, y1: CITY_EDGE.north } as const;
 
-/** Suelo urbano en un punto, adentro o afuera del contenido: el suburbio arma manzanas solo donde esto es cierto en las cuatro esquinas y el centro. */
+/** Suelo urbano en un punto, adentro o afuera del contenido: el distrito tecnológico arma manzanas solo donde esto es cierto en las cuatro esquinas y el centro. */
 export function urbanAt(x: number, y: number): boolean {
   if (x < WORLD.x0 || y > WORLD.y1) return builtAt(x, y) === "urban";
   if (x >= QUAY_X || y < CITY_EDGE.north) return false;
@@ -62,7 +62,7 @@ export function urbanAt(x: number, y: number): boolean {
 
 export interface SprawlBlock extends Rect { dist: number }
 
-/** Columnas del suburbio al oeste del distrito (cada 30 desde −84, como `WEST_COLS`) y filas al sur de la ciudad (cada 24 desde 328). */
+/** Columnas del distrito tecnológico al oeste de la ciudad (cada 30 desde −84, como `WEST_COLS`) y filas al sur de la ciudad (cada 24 desde 328). */
 export const SUBURB_COLS = [-84, -114, -144, -174, -204, -234, -264] as const;
 export const SUBURB_ROWS = [328, 352, 376, 400, 424, 448, 472, 496, 520, 544, 568, 592, 616, 640] as const;
 
@@ -76,7 +76,7 @@ const blockAt = (x: number, y: number): SprawlBlock | null => {
   return { x, y, w, d, dist: Math.max(0, WORLD.x0 - (x + w), y - WORLD.y1) };
 };
 
-/** Manzanas del suburbio: las del oeste siguen las filas de la ciudad (y respetan la avenida), las del sur suman las columnas de la ciudad. Sin rng. */
+/** Manzanas del distrito tecnológico: las del oeste siguen las filas de la ciudad (y respetan la avenida), las del sur suman las columnas de la ciudad. Sin rng. */
 export function suburbBlocks(): SprawlBlock[] {
   const out: SprawlBlock[] = [];
   for (const y of ROWS) for (const x of SUBURB_COLS) { const b = blockAt(x, y); if (b) out.push(b); }

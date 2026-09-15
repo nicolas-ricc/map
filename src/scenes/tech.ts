@@ -99,7 +99,7 @@ function lab(out: Solid[], rng: Rng, b: SprawlBlock): void {
   for (let k = 0, n = rng.int(6, 8); k < n; k++) out.push(prism(b.x + 1 + k * 3, b.y + b.d + 0.3, 0, 2.2, 1.4, 1.2, rng.chance(0.5) ? "steel" : "rust")); // autos en el cordón sur
 }
 
-/** Plaza de barrio: suelo de selva facetado, senderos en cruz y conos (igual que en el suburbio). */
+/** Plaza de barrio: suelo de selva facetado, senderos en cruz y conos. */
 function park(out: Solid[], ground: Solid[], rng: Rng, b: SprawlBlock): void {
   ground.push(tiles(rng, b, 0.05, "leafDark", brokenTone));
   ground.push(strip([{ x: b.x + b.w / 2, y: b.y }, { x: b.x + b.w / 2, y: b.y + b.d }], 1, 0.08, "paving"));
@@ -118,7 +118,7 @@ function telecom(out: Solid[], b: SprawlBlock): Vec3 {
 
 const octagon = (cx: number, cy: number, rx: number, ry: number): Vec2[] => Array.from({ length: 8 }, (_, i) => { const a = ((i + 0.5) / 8) * Math.PI * 2; return { x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }; });
 
-/** Arena: anillo octogonal de piedra con el césped encima y cuatro torres de luz (el estadio del suburbio). */
+/** Arena: anillo octogonal de piedra con el césped encima y cuatro torres de luz. */
 function arena(out: Solid[], accents: Accent[], b: SprawlBlock): void {
   out.push(prism(b.x, b.y, 0, b.w, b.d, PLINTH_H, "paving"));
   const cx = b.x + b.w / 2, cy = b.y + b.d / 2, h = 5;
@@ -152,7 +152,7 @@ function avenue(ground: Solid[], solids: Solid[], accents: Accent[]): void {
   }
 }
 
-/** El muro de la ribera oeste sigue al sur del distrito hasta donde llega el suburbio. */
+/** El muro de la ribera oeste sigue al sur del distrito hasta donde llega el distrito tecnológico. */
 function quay(solids: Solid[]): void {
   const { x0, x1 } = WEST_QUAY;
   solids.push(prism(x0, CITY_EDGE.south, -1, x1 - x0, WORLD.y1 + REACH.s - CITY_EDGE.south, 1.6, "plaza"));

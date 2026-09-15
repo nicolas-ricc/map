@@ -52,7 +52,7 @@ export function cityTerrainAt(x: number, y: number): Terrain {
   if (x >= QUAY_X && x <= estuaryEast(y)) return "water";
   if (y < CITY_EDGE.north) return "jungle"; // cinturón de costura con el astillero
   if (y >= DISTRICT_BANK_Y && x > QUAY_X) return x >= MALECON_STREET_X ? "asphalt" : "jungle"; // ribera este del distrito: selva, y la calle del malecón
-  if (y >= CITY_EDGE.south || x < CITY_EDGE.west) return "asphalt"; // bordes oeste y sur: el suburbio del sangrado sigue derecho desde el distrito
+  if (y >= CITY_EDGE.south || x < CITY_EDGE.west) return "asphalt"; // bordes oeste y sur: el distrito tecnológico del sangrado sigue derecho desde la ciudad
   if (x > QUAY_X && x < EAST_RING.x0) return "jungle";
   if (inCrater(x, y)) return "jungle";
   return "asphalt";
