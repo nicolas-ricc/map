@@ -59,11 +59,14 @@ export function bleedTerrainAt(x: number, y: number): BleedTerrain {
 }
 
 const HILL_H = 12, HILL_REACH = 200, HILL_JITTER = 3, ROCK_FROM_Z = 9;
+const HILL_TAPER = 72; // las lomas del norte bajan a 0 en las 4 celdas antes del corte selva/bahía, así la selva llega al agua a 0.6 y no hay acantilado sin cara
 /** Cuánto se aleja el punto del contenido hacia el norte o el oeste (los lados que quedan detrás de la cámara). */
 const behindDist = (x: number, y: number): number => Math.max(0, WORLD.x0 - x, WORLD.y0 - y);
 /** Altura base de la selva del sangrado: lomas que suben con la distancia, solo detrás del contenido. Al sur y al este queda chato. */
 export function bleedZ(x: number, y: number): number {
-  return 0.6 + HILL_H * Math.min(1, behindDist(x, y) / HILL_REACH);
+  let hill = Math.min(1, behindDist(x, y) / HILL_REACH);
+  if (y < WORLD.y0) hill *= Math.min(1, Math.max(0, (riverCenter(y) - RIVER_HALF - x) / HILL_TAPER));
+  return 0.6 + HILL_H * hill;
 }
 
 const HEADLAND_BASE_Z = 1, HEADLAND_TOP_Z = 7, HEADLAND_RISE_X0 = 330, HEADLAND_RISE_X1 = 355;

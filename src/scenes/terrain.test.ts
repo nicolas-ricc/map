@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BLEED, MOUTH_Y, QUAY_X, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, worldZoneAt } from "../map/geo";
+import { BLEED, MOUTH_Y, QUAY_X, RIVER_HALF, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, riverCenter, worldZoneAt } from "../map/geo";
 import { createRng } from "../map/seed";
 import type { Solid, Tri } from "../iso/solids";
 import { CELL, bleedTerrainAt, bleedZ, buildTerrain, seaTerrainAt, shipyardTerrainAt, terrainAt } from "./terrain";
@@ -79,6 +79,7 @@ describe("clasificación", () => {
     expect(bleedZ(100, -250)).toBeGreaterThan(9);   // loma al norte
     expect(bleedZ(100, 500)).toBe(0.6);              // chato al sur
     expect(bleedZ(-60, 100)).toBe(0.6);              // en la costura no sube
+    expect(bleedZ(riverCenter(-200) - RIVER_HALF - 10, -200)).toBeLessThan(3); // la loma baja antes del corte con la bahía: sin acantilado
   });
 });
 
