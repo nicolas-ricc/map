@@ -111,6 +111,43 @@ variante final):
 [lab] peor redibujo en 5 s: 5.80 ms
 ```
 
+**Barcos (Task 9).** Con la flota reconstruida (Tareas 6–8: cascos
+lofteados, superestructuras con ventanas, estelas de 17 triángulos, y la
+lancha de la feria con sus tres capas) redibujando cada tick, se repitió la
+misma medición sobre `world.html` (25256 polígonos estáticos, no 25216: la
+lancha de la feria de la Task 8 suma polígonos estáticos de escena aparte
+de los barcos animados). Tres corridas: primer dibujo (segunda carga) 119.8,
+122.9 y 123.4 ms; peor redibujo (mayor de tres en 5 s) 9.20, 30.60 y 9.70 ms.
+La segunda corrida tuvo un pico aislado de 30.60 ms rodeado de 12.00 ms y
+7.90 ms en la misma corrida — del mismo tipo de ruido de máquina compartida
+que ya se documentó arriba (picos aislados de 16–17 ms en todas las
+variantes del agua), solo que más alto; se hizo una tercera corrida para
+decidir por mayoría, como indica la brief. Mayoría: dos de tres corridas
+rondan 9–10 ms, muy por debajo del objetivo de 15 ms, y ninguna corrida
+sostiene un redibujo por encima de 15 ms fuera del pico aislado. Con el
+agua ya en su variante final (`BANDS = 6`, `CELL_WATER = 18`), la puerta de
+`SHIP_STEP_MS` de la Task 9 no se activa: los barcos no obligan a
+limitar su frecuencia de redibujo. No se tocó `sea-anim.ts`.
+
+Líneas de consola crudas (tres corridas):
+
+```
+[lab] primer dibujo: 119.8 ms, 25256 polígonos estáticos
+[lab] peor redibujo en 5 s: 9.20 ms
+[lab] peor redibujo en 5 s: 8.40 ms
+[lab] peor redibujo en 5 s: 8.60 ms
+
+[lab] primer dibujo: 122.9 ms, 25256 polígonos estáticos
+[lab] peor redibujo en 5 s: 30.60 ms
+[lab] peor redibujo en 5 s: 12.00 ms
+[lab] peor redibujo en 5 s: 7.90 ms
+
+[lab] primer dibujo: 123.4 ms, 25256 polígonos estáticos
+[lab] peor redibujo en 5 s: 8.20 ms
+[lab] peor redibujo en 5 s: 9.70 ms
+[lab] peor redibujo en 5 s: 8.10 ms
+```
+
 ## 3. Distrito tecnológico (`src/scenes/tech.ts`, `tech-anim.ts`, `tech-animator.ts`)
 
 Reemplaza `suburb.ts` (se borra) sobre la misma grilla: `suburbBlocks()`,
