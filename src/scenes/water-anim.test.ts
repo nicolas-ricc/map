@@ -44,6 +44,24 @@ describe("water-anim", () => {
     expect(a.tick(500).foam).toBe(true);
     expect(a.foam()[0]!.mat).toBe("foam");
   });
+  it("triHash reparte parejo mod 4 sobre la grilla y no queda en franjas diagonales", () => {
+    const terrain = buildTerrain(createRng(7));
+    const all = terrain.water.flatMap((s) => tris(s));
+    const counts = [0, 0, 0, 0];
+    for (const t of all) counts[triHash(t)]!++;
+    for (const n of counts) {
+      const share = n / all.length;
+      expect(share).toBeGreaterThan(0.15);
+      expect(share).toBeLessThan(0.35);
+    }
+    let sameAsNeighbor = 0, checked = 0;
+    for (let k = 0; k < 300; k++) {
+      const a = tri(k * 6, 0), b = tri((k + 1) * 6, 6); // vecinos a lo largo de una diagonal de pantalla
+      if (triHash(a) === triHash(b)) sameAsNeighbor++;
+      checked++;
+    }
+    expect(sameAsNeighbor).toBeLessThan(checked); // no todos iguales en la diagonal
+  });
   it("con reduced-motion no cambia nada", () => {
     const a = createWaterAnim(buildTerrain(createRng(7)), { reducedMotion: true });
     expect(a.tick(1000)).toEqual({ bands: new Set(), foam: false });

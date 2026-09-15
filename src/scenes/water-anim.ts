@@ -15,8 +15,18 @@ const WAVE_AMP = 1.2, ABYSS_AMP = 0.6, RIPPLE_AMP = 0.35;
 const cx = (t: Tri): number => (t.pts[0].x + t.pts[1].x + t.pts[2].x) / 3;
 const cy = (t: Tri): number => (t.pts[0].y + t.pts[1].y + t.pts[2].y) / 3;
 
-/** Hash fijo por triángulo, 0..3. */
-export const triHash = (t: Tri): number => Math.abs(Math.floor(cx(t) * 7 + cy(t) * 13)) % 4;
+/**
+ * Hash fijo por triángulo, 0..3. Los centroides caen en una grilla de 6 u
+ * (cx/cy = 6a+2 o 6a+4): una combinación lineal simple de cx/cy solo toma dos
+ * residuos mod 4 y correlaciona con la paridad de a+b, es decir con las
+ * diagonales de pantalla (destellos en franjas, no dispersos). Este mixing de
+ * enteros (splitmix-like) rompe esa correlación.
+ */
+export const triHash = (t: Tri): number => {
+  let h = (Math.floor(cx(t)) * 374761393 + Math.floor(cy(t)) * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) % 4;
+};
 
 export function waveTone(t: Tri, mat: WaterMat, clockMs: number): number {
   const abyss = mat === "abyss";
