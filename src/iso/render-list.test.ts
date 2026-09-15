@@ -8,12 +8,23 @@ const prism: Solid = { kind: "prism", at: v3(0, 0, 0), w: 2, d: 2, h: 2, mat: "c
 const slab: Solid = { kind: "ground", mat: "slab", tris: [{ pts: [v3(0, 0, 0), v3(10, 0, 0), v3(0, 10, 0)] }, { pts: [v3(10, 0, 0), v3(10, 10, 0), v3(0, 10, 0)], toneOffset: -1 }] };
 
 describe("buildRenderList", () => {
-  it("capas en orden ground < shadow < solid", () => {
+  it("capas en orden ground < shadow < shadowCore < solid", () => {
     const items = buildRenderList([prism, slab]);
     const layers = items.map((i) => i.layer);
     const last = (l: Layer) => layers.lastIndexOf(l), first = (l: Layer) => layers.indexOf(l);
     expect(last("ground")).toBeLessThan(first("shadow"));
-    expect(last("shadow")).toBeLessThan(first("solid"));
+    expect(last("shadowCore")).toBeLessThan(first("solid"));
+    expect(first("shadow")).toBeLessThan(first("shadowCore"));
+  });
+
+  it("cada sólido elevado emite sombra completa y núcleo; el núcleo es más chico", () => {
+    const tall: Solid = { kind: "prism", at: v3(0, 0, 0), w: 2, d: 2, h: 20, mat: "concrete" };
+    const items = buildRenderList([tall, slab]);
+    expect(items.filter((i) => i.layer === "shadow")).toHaveLength(1);
+    expect(items.filter((i) => i.layer === "shadowCore")).toHaveLength(1);
+    const area = (pts: number[]) => { let a = 0; for (let i = 0; i < pts.length; i += 2) { const j = (i + 2) % pts.length; a += pts[i]! * pts[j + 1]! - pts[j]! * pts[i + 1]!; } return Math.abs(a) / 2; };
+    expect(area(items.find((i) => i.layer === "shadowCore")!.pts)).toBeLessThan(area(items.find((i) => i.layer === "shadow")!.pts));
+    expect(items.find((i) => i.layer === "shadowCore")!.color).toBe(ISO_COLORS.shadow);
   });
 
   it("un prisma produce una sombra y tres caras con los tres tonos del material", () => {

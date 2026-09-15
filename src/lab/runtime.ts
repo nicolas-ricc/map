@@ -1,5 +1,5 @@
-import { Application, Container, Graphics } from "pixi.js";
-import { SHADOW_ALPHA, buildRenderList } from "../iso/render-list";
+import { AlphaFilter, Application, Container, Graphics } from "pixi.js";
+import { SHADOW_BAND_ALPHA, buildRenderList } from "../iso/render-list";
 import type { WorldZone } from "../map/geo";
 import { ISO_COLORS } from "../map/palette-iso";
 import type { AnimLayer, Animator } from "../scenes/animator";
@@ -12,9 +12,9 @@ const KEY_ZONE: Record<string, WorldZone | "all"> = { "0": "all", "1": "portfoli
 
 /**
  * Arma las capas de una escena del mundo y corre sus animadores. Orden, de
- * abajo hacia arriba: agua (río, mar, orilla y capas animadas), suelo,
- * sombras y sólidos estáticos, un par sombra/sólido por capa animada, acentos
- * estáticos y una Graphics por capa de acentos animada.
+ * abajo hacia arriba: agua (río, mar, orilla y capas animadas), suelo, banda
+ * completa de sombras, núcleo de sombras, sólidos estáticos, sólidos
+ * animados, acentos estáticos y una Graphics por capa de acentos animada.
  */
 export async function bootLab(host: HTMLElement, scene: WorldScene, animators: Animator[], opts: LabOptions): Promise<void> {
   const app = new Application();
@@ -26,16 +26,22 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
   app.stage.addChild(world);
 
   const t0 = performance.now();
-  const gGround = new Graphics(), gShadow = new Graphics(), gSolid = new Graphics(), gAccents = new Graphics();
-  gShadow.alpha = SHADOW_ALPHA;
+  const gGround = new Graphics(), gShadow = new Graphics(), gCore = new Graphics(), gSolid = new Graphics(), gAccents = new Graphics();
   gAccents.blendMode = "add";
-  const waterSlot = new Container(), solidSlot = new Container(), accentSlot = new Container();
-  world.addChild(waterSlot, gGround, gShadow, gSolid, solidSlot, gAccents, accentSlot);
+  const waterSlot = new Container(), shadowSlot = new Container(), coreSlot = new Container(), solidSlot = new Container(), accentSlot = new Container();
+  // cada banda de sombra es una unión: el filtro aplica el alpha al conjunto,
+  // no a cada polígono, así dos sombras superpuestas no se oscurecen dos veces
+  shadowSlot.filters = [new AlphaFilter({ alpha: SHADOW_BAND_ALPHA })];
+  coreSlot.filters = [new AlphaFilter({ alpha: SHADOW_BAND_ALPHA })];
+  shadowSlot.addChild(gShadow);
+  coreSlot.addChild(gCore);
+  world.addChild(waterSlot, gGround, shadowSlot, coreSlot, gSolid, solidSlot, gAccents, accentSlot);
 
   const { terrain } = scene;
   const staticItems = buildRenderList([...terrain.ground, ...scene.ground, ...scene.solids]);
   drawLayer(gGround, staticItems, "ground");
   drawLayer(gShadow, staticItems, "shadow");
+  drawLayer(gCore, staticItems, "shadowCore");
   drawLayer(gSolid, staticItems, "solid");
   drawAccents(gAccents, scene.accents);
   // agua estática: todo cuerpo de agua que ningún animador reclame (el astillero anima el río; el Blog animará el mar)
@@ -53,10 +59,9 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
       waterSlot.addChild(g);
       redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "water" }; drawLayer(g, buildRenderList(l.water), "ground"); });
     } else if (kind === "solid") {
-      const gs = new Graphics(), g = new Graphics();
-      gs.alpha = SHADOW_ALPHA;
-      solidSlot.addChild(gs, g);
-      redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "solid" }; const items = buildRenderList(l.solids); drawLayer(gs, items, "shadow"); drawLayer(g, items, "solid"); });
+      const gs = new Graphics(), gc = new Graphics(), g = new Graphics();
+      shadowSlot.addChild(gs); coreSlot.addChild(gc); solidSlot.addChild(g);
+      redraw.set(id, () => { const l = a.layer(id) as AnimLayer & { kind: "solid" }; const items = buildRenderList(l.solids); drawLayer(gs, items, "shadow"); drawLayer(gc, items, "shadowCore"); drawLayer(g, items, "solid"); });
     } else {
       const g = new Graphics();
       g.blendMode = "add";

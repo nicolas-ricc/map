@@ -37,7 +37,7 @@ export const ISO_TONES = {
 } as const;
 
 export const ISO_COLORS = {
-  shadow: 0x1a1830,
+  shadow: 0x2a1a3a,
   sky: 0x171423,
   cyan: 0x7cf5ff,
   cyanMid: 0x27b3c9,
