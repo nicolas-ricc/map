@@ -1,7 +1,7 @@
 # Mundo 2: sombras, sangrado, fábrica, distrito moderno y Blog — diseño
 
 **Fecha:** 2026-09-14
-**Estado:** aprobado, sin implementar
+**Estado:** implementada (2026-09-14)
 **Antecede:** `2026-09-14-mundo-isometrico-design.md` (§4 rulings, §6 Blog),
 `2026-09-14-resume-ciudad-design.md` (grilla y desvíos de la ciudad),
 `2026-09-13-portfolio-isometrico-design.md` (astillero).
@@ -48,6 +48,86 @@ Criterios de éxito:
 | Barcos | El `hull` acepta `heading`; las piezas del barco se emiten como `poly` con huella rotada. Rotación general de sólidos sigue fuera de alcance |
 | Materiales nuevos | `brick` (fábrica), `curtain`, `stone`, `copper` (distrito), `abyss`, `foam`, `whitewash` (Blog). Exclusivos por zona; `steel`/`rust` siguen compartidos en vehículos, grúas y barcos |
 | Landmark Blog | Pasa del faro a la boya del pecio en la fosa, `(470, 160)` |
+
+### Desvíos de la implementación
+
+Decididos al planificar (plan `2026-09-14-mundo-2-fabrica-distrito-blog.md`,
+sección "Desvíos respecto de la spec"):
+
+- `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }` (no 560/330) y
+  `BLEED = { x: 342, y: 288 }` (no 320/260): el sangrado es una grilla de 18
+  anclada en la esquina del contenido, así que ancho y alto del contenido
+  tienen que ser múltiplos de 18 y los sangrados también. Blog gana 10 al este
+  y Resume 6 al sur (selva). La caja del contenido con la torre
+  (`zoneFrame("all")`, `1026 × 555`) no está centrada en el rombo: hace falta
+  `Wx + Wy ≥ 2256`; con este sangrado `Wx + Wy = 2286`.
+- El vértice de sangrado que cae sobre la costura toma la z base del terreno
+  del contenido en ese punto (no 0.6): al norte del astillero el borde es
+  losa de fábrica (z 0). Entre dos vértices de sangrado (18 u) el borde del
+  contenido puede cambiar de tierra a agua: queda una grieta de ≤ 1.6 u,
+  aceptada.
+- Piso de calidad Blog: ≥ 110 sólidos elevados (no 250), contando arrecife
+  (hasta 40 conos), pedruscos (20), roca (6 `poly`), faro, casa, boyas, pecio
+  (≥ 80 estáticos) y los tres barcos (~30). La spec heredó 250 de la spec del
+  mundo; el usuario pidió que el Blog sea agua.
+- Ruta de barcos: `(326, -24) → (350, 10) → (405, 50) → (436, 78) → (444, 118)
+  → (470, 172) → (530, 224) → (600, 260)` (no la polilínea de la spec, que
+  pisaba la selva del muelle de alistamiento y no cumplía `x > 430` con
+  `|y − 118| < 40`). Desde `(326, -24)` la caja de pantalla del carguero no
+  toca la de los galpones ni la selva del muelle de alistamiento.
+- `glass` es compartido entre Blog y Resume: la linterna del faro es `glass`
+  por spec §7.
+- Espuma del arrecife: alterna `toneOffset 0 / -1` sobre material propio
+  `foam` (no `+2 / +1` sobre `shore`) cada 500 ms; `sea.foam` va dentro de
+  `sea.band0`, no como capa propia. El cerco de la obra son cuatro prismas
+  `officeDark` de 1.2 (no un `strip`, que se pintaría bajo el zócalo).
+- Grúa de la obra: mástil en `x + w − 8` y pluma de 14 (no 20): la huella útil
+  mide 21 (`SIDEWALK = 1.5`) y pluma + contrapluma no pueden superarla.
+- `TOWER_H`, `TOWER_FLOORS` y `LIT_FLOOR` se mudan a `city-grid.ts` (sin rng)
+  para que `district.ts` calcule la caja del piso encendido sin importar
+  `city.ts` (ciclo).
+- Pecio en `(462, 150)` con heading 30° (no 466, 156): separado 12 u de la
+  ruta. La boya del pecio sigue en `(470, 160)` (`LANDMARKS.blog`).
+- Terraza verde de las torres de vidrio: prisma fino de `leafDark` (0.3) más
+  conos, no `ground` (un `ground` no puede pintarse sobre un techo).
+- Boyas: parpadeo 1 s encendida / 1 s apagada, desfasadas 1 s; se verifica que
+  en un período de 2 s cada boya está encendida ≥ 1 s y que nunca están las
+  dos apagadas a la vez.
+- Las manzanas de distrito usan un `Rng` propio (`zoneRng(seed, "cv", 1)`),
+  así las manzanas viejas no se re-sortean; autos y selva sí cambian de lugar.
+
+Surgidos durante la ejecución de las tareas (no estaban en el plan):
+
+- El este del astillero (galpones y selva `cluster(332, 340, 26, 94)`) obligó
+  a que el inicio de la ruta de barcos fuera `(326, -24)` en vez de
+  `(290, -6)`: un barco en la bahía con `max.y < 24` que se superponga en
+  pantalla con esos sólidos queda detrás de ellos (`isBehind` por y) y se
+  pintaría encima si no se corrige el punto de partida.
+- El clúster de selva este del astillero (x 332..340) empieza en y 50 en vez
+  de 26 para que los barcos que salen de la bahía nunca queden detrás de él
+  (spec §5 decía que el astillero no cambia; este ajuste es una excepción
+  puntual, no un cambio de su trazado).
+- `maxDistrictHeight` no recorta ningún bloque actual del distrito: queda
+  como guarda para futuras manzanas más altas.
+- Cornisa de la fábrica en `h − 0.8`; portones que sobresalen 0.3; un portón
+  este en `y −23..−17`; la cinta transportadora arranca en `x 121` (fuera de
+  la planta); los vagones N-S estacionados arrancan en `y −46`.
+- `DISTRICT_BANK_Y = 264` y `MALECON_STREET_X = 336` (múltiplos de `CELL`)
+  clasifican la banda este del distrito; las rayas N-S del anillo este paran
+  en `DISTRICT_BANK_Y`.
+- `SEA_STEP_MS = 150` (el mar se redibuja cada 150 ms, no cada frame) para
+  bajar el costo de redibujo; la espuma del arrecife (`sea.foam`) es su
+  propia capa dentro de `sea.band0`, dibujada después de las bandas del mar.
+  Las capas de barco/estela/haz solo se redibujan mientras están visibles.
+- Presupuesto medido en Chrome headless sin GPU, DPR 2 (ver detalle abajo):
+  el objetivo de peor redibujo ≤ 6 ms **no se cumple** en este entorno en
+  ninguna página salvo `portfolio.html`. La solución de recambio prevista en
+  el plan (RenderTexture estático para sombras y partir el mar en 4 bandas,
+  `BANDS = 4` + `sea.band3`) **no se implementó**: falta medir primero en un
+  Chrome de escritorio con GPU real, donde el costo del `AlphaFilter` por
+  banda y el de recomponer el mar cada `SEA_STEP_MS` puede ser muy distinto.
+  Ver la tabla de presupuesto en el reporte de la Task 7
+  (`task-7-report.md`) y la memoria `mapa-iso-world-rulings.md`.
 
 ## 3. Sombras (`src/iso/light.ts`, `render-list.ts`, `src/lab/runtime.ts`)
 

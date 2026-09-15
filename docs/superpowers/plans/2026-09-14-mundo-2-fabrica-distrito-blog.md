@@ -1,5 +1,30 @@
 # Mundo 2: sombras, sangrado, fábrica, distrito moderno y Blog — Plan de implementación
 
+## Estado: implementado (2026-09-14)
+
+Las 7 tasks están hechas y mergeadas a la rama; `npm test` (351 tests) y
+`npm run typecheck` verdes, `dist/` sigue sin `lab/`. Resumen de desvíos
+(detalle completo en la spec, sección "Desvíos de la implementación", y en
+`task-7-report.md`):
+
+- El sangrado quedó en `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }` y
+  `BLEED = { x: 342, y: 288 }` (no 320/260 como decía este plan), por la
+  grilla de 18 anclada a la esquina del contenido.
+- El piso de calidad de Blog bajó a ≥ 110 sólidos (no 250, heredado por
+  error de la spec del mundo).
+- La ruta de los barcos y la posición del pecio se corrieron respecto de la
+  spec para no superponerse en pantalla con el muelle de alistamiento y su
+  selva; el clúster de selva este del astillero también se corrió en y por
+  el mismo motivo (única excepción al "el astillero no cambia" de §5).
+- `SEA_STEP_MS = 150` baja el costo del mar, pero el peor redibujo medido en
+  Chrome headless sin GPU (DPR 2) sigue por encima de los 6 ms objetivo en
+  `world.html`, `resume.html` y `blog.html` (solo `portfolio.html` cumple).
+  La solución de recambio (RenderTexture para sombras estáticas, mar en 4
+  bandas) **no se implementó**: falta medirla primero en un Chrome de
+  escritorio con GPU real. No se reclama cumplido el objetivo de 6 ms.
+- Capturas de `world.html` (teclas 0 y 4), `portfolio.html`, `resume.html` y
+  `blog.html` verificadas contra §9: sin FAILs.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Arreglar las sombras, agrandar el mundo con sangrado para la cámara *cover*, sumar la fábrica detrás del astillero, el distrito moderno de Resume y la zona Blog (punta, faro, fosa de agua profunda y barcos que se van), con zonas clickeables por geografía.
