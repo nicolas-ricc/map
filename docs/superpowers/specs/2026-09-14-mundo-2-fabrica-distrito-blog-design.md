@@ -55,26 +55,50 @@ Decididos al planificar (plan `2026-09-14-mundo-2-fabrica-distrito-blog.md`,
 sección "Desvíos respecto de la spec"):
 
 - `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }` (no 560/330) y
-  `BLEED = { x: 342, y: 288 }` (no 320/260): el sangrado es una grilla de 18
+  `BLEED = { x: 342, y: 378 }` (no 320/260): el sangrado es una grilla de 18
   anclada en la esquina del contenido, así que ancho y alto del contenido
   tienen que ser múltiplos de 18 y los sangrados también. Blog gana 10 al este
-  y Resume 6 al sur (selva). La caja del contenido con la torre
-  (`zoneFrame("all")`, `1026 × 555`) no está centrada en el rombo: hace falta
-  `Wx + Wy ≥ 2256`; con este sangrado `Wx + Wy = 2286`.
+  y Resume 6 al sur (selva). El terreno proyectado es un paralelogramo (lados
+  con pendiente ±1/2), un rombo solo si `Wx = Wy`, así que el rectángulo 16:9
+  inscripto queda acotado por `min(Wx, Wy)`: con este sangrado
+  `Wy = 396 + 2·378 = 1152 ≥ 1128` (`Wx = 630 + 2·342 = 1314`, mayor y no
+  limitante). `coverFrame` usa la fórmula del paralelogramo y se retrae
+  `COVER_INSET = 3` (el borde de la malla es agua a z −1).
 - El vértice de sangrado que cae sobre la costura toma la z base del terreno
   del contenido en ese punto (no 0.6): al norte del astillero el borde es
   losa de fábrica (z 0). Entre dos vértices de sangrado (18 u) el borde del
   contenido puede cambiar de tierra a agua: queda una grieta de ≤ 1.6 u,
   aceptada.
+- `HILL_TAPER = 72` (`src/scenes/terrain.ts`): las lomas del norte bajan a 0
+  en las 4 celdas antes del corte selva/bahía, así la selva llega al agua a
+  0.6 y no queda un acantilado sin cara.
+- Los conos del arrecife caen al centro de la celda cuando el desplazamiento
+  aleatorio los saca de una celda `reef` (el anillo del arrecife mide 6 u, y
+  un desplazamiento puede caer en orilla o roca en vez de agua de arrecife).
+- `COVER_INSET = 3` (`src/lab/draw.ts`): el `coverFrame` se retrae esa
+  cantidad hacia el centro porque el borde de la malla no es exactamente el
+  paralelogramo a z 0 — es agua a z −1 o selva a 0.6 ± 0.8 —, es decir hasta
+  1.4 px por debajo de él en pantalla.
 - Piso de calidad Blog: ≥ 110 sólidos elevados (no 250), contando arrecife
   (hasta 40 conos), pedruscos (20), roca (6 `poly`), faro, casa, boyas, pecio
   (≥ 80 estáticos) y los tres barcos (~30). La spec heredó 250 de la spec del
   mundo; el usuario pidió que el Blog sea agua.
-- Ruta de barcos: `(326, -24) → (350, 10) → (405, 50) → (436, 78) → (444, 118)
-  → (470, 172) → (530, 224) → (600, 260)` (no la polilínea de la spec, que
-  pisaba la selva del muelle de alistamiento y no cumplía `x > 430` con
-  `|y − 118| < 40`). Desde `(326, -24)` la caja de pantalla del carguero no
-  toca la de los galpones ni la selva del muelle de alistamiento.
+- Ruta de barcos ejecutada (`ROUTE` en `src/scenes/sea-anim.ts`):
+  `(326, -24) → (350, 10) → (500, 20) → (510, 118) → (520, 172) → (545, 224)
+  → (610, 260)`, no la polilínea de la spec. El inicio en `(326, -24)` (no
+  `(290, -6)`) evita que un barco en la bahía (`max.y < 24`) quede detrás
+  (`isBehind` por y) de los galpones del muelle de alistamiento o de su selva
+  y se pinte encima. El trazado corre más al este y al sur que la spec porque
+  la caja de alineación en pantalla del carguero (60 u de eslora) es mucho
+  más ancha que su silueta real cuando la proa apunta en diagonal (35°..55°):
+  un trazado en diagonal directa hacia el este de la punta cruza en pantalla,
+  en algún tramo, la boya `BUOYS[0]` `(420, 80)` o el arrecife (conos cerca de
+  `(405, 111)`) aunque el barco esté a decenas de unidades de distancia en el
+  mundo real — falsos positivos del bounding-box del test de profundidad, no
+  una superposición real. El tramo `(350, 10) → (500, 20)` se aplanó (casi
+  puro este) para que el barco, casi horizontal ahí, tenga una caja angosta
+  en y que no llegue a la altura de la boya ni del arrecife; recién gira
+  hacia el sur en `x ≥ 500`, lejos de ambos.
 - `glass` es compartido entre Blog y Resume: la linterna del faro es `glass`
   por spec §7.
 - Espuma del arrecife: alterna `toneOffset 0 / -1` sobre material propio

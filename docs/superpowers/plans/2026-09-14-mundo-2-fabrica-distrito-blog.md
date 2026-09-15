@@ -8,7 +8,7 @@ Las 7 tasks están hechas y mergeadas a la rama; `npm test` (351 tests) y
 `task-7-report.md`):
 
 - El sangrado quedó en `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }` y
-  `BLEED = { x: 342, y: 288 }` (no 320/260 como decía este plan), por la
+  `BLEED = { x: 342, y: 378 }` (no 320/260 como decía este plan), por la
   grilla de 18 anclada a la esquina del contenido.
 - El piso de calidad de Blog bajó a ≥ 110 sólidos (no 250, heredado por
   error de la spec del mundo).
@@ -24,6 +24,7 @@ Las 7 tasks están hechas y mergeadas a la rama; `npm test` (351 tests) y
   escritorio con GPU real. No se reclama cumplido el objetivo de 6 ms.
 - Capturas de `world.html` (teclas 0 y 4), `portfolio.html`, `resume.html` y
   `blog.html` verificadas contra §9: sin FAILs.
+- Capturas: https://claude.ai/code/artifact/903ad85f-172b-42f9-9051-94ae970ff030 (privado).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -81,10 +82,10 @@ Las 7 tasks están hechas y mergeadas a la rama; `npm test` (351 tests) y
 
 **Desvíos respecto de la spec, decididos al planificar** (se documentan en la Task 7):
 
-- `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }` (no 560/330) y `BLEED = { x: 342, y: 288 }` (no 320/260): el sangrado es una grilla de 18 anclada en la esquina del contenido, así que el ancho y el alto del contenido tienen que ser múltiplos de 18 (630 = 35·18, 396 = 22·18) y los sangrados también. Blog gana 10 al este y Resume 6 al sur (selva). La caja del contenido con la torre (`zoneFrame("all")`, `1026 × 555`) **no está centrada** en el rombo: `FRAME_H` levanta solo la esquina NO 42 px, así que el semialto que hace falta es `277.5 + 21 = 298.5`, o sea `a ≥ 1128` y `Wx + Wy ≥ 2256`. Con este sangrado `Wx + Wy = 1314 + 972 = 2286`, `a = 1143`, semialto 302.6 y semiancho 538.
+- `WORLD = { x0: -60, y0: -60, x1: 570, y1: 336 }` (no 560/330) y `BLEED = { x: 342, y: 378 }` (no 320/260): el sangrado es una grilla de 18 anclada en la esquina del contenido, así que el ancho y el alto del contenido tienen que ser múltiplos de 18 (630 = 35·18, 396 = 22·18) y los sangrados también. Blog gana 10 al este y Resume 6 al sur (selva). El terreno proyectado es un paralelogramo (lados con pendiente ±1/2), un rombo solo si `Wx = Wy`, así que el rectángulo 16:9 inscripto queda acotado por `min(Wx, Wy)`: con este sangrado `Wy = 396 + 2·378 = 1152 ≥ 1128` (`Wx = 630 + 2·342 = 1314`, mayor y no limitante). `coverFrame` usa la fórmula del paralelogramo y se retrae `COVER_INSET = 3` (el borde de la malla es agua a z −1).
 - El vértice de sangrado que cae sobre la costura toma la **z base del terreno del contenido** en ese punto (no 0.6): al norte del astillero el borde es losa de fábrica (z 0). Entre dos vértices de sangrado (18 u) el borde del contenido puede cambiar de tierra a agua: queda una grieta de ≤ 1.6 u en esos pocos puntos, aceptada.
 - Piso de calidad Blog: **≥ 110 sólidos elevados** (no 250), contando arrecife (hasta 40 conos), pedruscos (20), roca (6 `poly`), faro, casa, boyas, pecio (≥ 80 estáticos) y los tres barcos (~30). La spec heredó 250 de la spec del mundo; el usuario pidió que el Blog sea agua.
-- Ruta de barcos: `(326, -24) → (350, 10) → (405, 50) → (436, 78) → (444, 118) → (470, 172) → (530, 224) → (600, 260)`. La de la spec pisaba la selva del muelle de alistamiento (x 330..344, y ≥ 24) y no cumplía `x > 430` con `|y − 118| < 40`. El inicio va en `(326, -24)` y no en `(290, -6)`: un barco en la bahía con `max.y < 24` que se superponga en pantalla con los galpones del muelle de alistamiento (x 304..324, y 24..116) o con la selva de `cluster(332, 340, 26, 94)` queda **detrás** de ellos (`isBehind` por y) y se pintaría encima. Desde `(326, -24)` la caja de pantalla del carguero (`min.x − max.y ≥ 328`) no toca la de esos sólidos (`max.x − min.y ≤ 322`).
+- Ruta de barcos ejecutada (`ROUTE` en `src/scenes/sea-anim.ts`): `(326, -24) → (350, 10) → (500, 20) → (510, 118) → (520, 172) → (545, 224) → (610, 260)`, no la polilínea de la spec. El inicio va en `(326, -24)` y no en `(290, -6)`: un barco en la bahía con `max.y < 24` que se superponga en pantalla con los galpones del muelle de alistamiento (x 304..324, y 24..116) o con la selva de `cluster(332, 340, 26, 94)` queda **detrás** de ellos (`isBehind` por y) y se pintaría encima. El trazado corre más al este y al sur de lo que decía la spec porque la caja de alineación en pantalla del carguero (60 u de eslora) es mucho más ancha que su silueta real cuando la proa apunta en diagonal (35°..55°): un trazado en diagonal directa hacia el este de la punta cruza en pantalla, en algún tramo, la boya `BUOYS[0]` `(420, 80)` o el arrecife (conos cerca de `(405, 111)`) aunque el barco esté a decenas de unidades de distancia en el mundo real — son falsos positivos del bounding-box del test de profundidad, no una superposición real. El tramo `(350,10) → (500,20)` se aplanó (casi puro este) para que el barco, casi horizontal ahí, tenga una caja angosta en y que no llegue a la altura de la boya ni del arrecife; recién gira hacia el sur en `x ≥ 500`, lejos de ambos.
 - `glass` es compartido entre Blog y Resume: la linterna del faro es `glass` por spec §7. El test de materiales por zona lo lista junto a `steel`/`rust`/`hull`.
 - Espuma del arrecife: alterna `toneOffset 0 / -1` sobre material `foam` cada 500 ms (la spec decía +2 / +1 sobre `shore`: con material propio el salto ya es visible). El cerco de la obra son cuatro prismas `officeDark` de 1.2 (no un `strip`: un strip a z 0.3 se pintaría debajo del zócalo). `sea.foam` va dentro de `sea.band0`, no como capa propia.
 - Grúa de la obra: mástil en `x + w − 8` y pluma de 14 (la spec decía 20). La huella útil mide 21 (`SIDEWALK = 1.5`) y pluma + contrapluma (8) no pueden superarla sin salir de la manzana.
