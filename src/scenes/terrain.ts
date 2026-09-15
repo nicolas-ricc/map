@@ -17,7 +17,10 @@ import { bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
  * `water`, `waterDeep`, `abyss`), más `TerrainMesh.foam` junto a la costa;
  * queda estática acá. Un animador de agua futuro reclamará esos `Solid` y les
  * mutará `toneOffset` in place, igual que hoy hace el astillero con sus otros
- * cuerpos animados.
+ * cuerpos animados. El agua del sangrado se subdivide en celdas de
+ * `CELL_BLEED` (se probó una subdivisión a 9 u dentro del cover; la
+ * decisión gateada por medición la descartó, ver spec §"Desvíos de la
+ * implementación").
  */
 export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "asphalt" | "sea" | "shore" | "headland" | "reef" | "abyss";
 /** Sangrado: selva y lomas, agua (mar, orilla, fosa, estuario) y tierra construida (industrial de Portfolio, urbana de Resume). */
@@ -32,7 +35,7 @@ export const WATER_MATS: readonly WaterMat[] = ["shallow", "water", "waterDeep",
 // FOAM_W = 9 (no el 3 de la spec): la spec mide en unidades finas, pero depthAt cuantiza en la grilla
 // de CELL = 6 (más la diagonal, 8.49), así que la primera cadena de celdas de agua junto a tierra ya
 // está a 6 u; 9 la cubre sin llegar a la segunda cadena.
-export const SHALLOW_D = 12, DEEP_D = 48, FOAM_W = 9, CELL_WATER = 18;
+export const SHALLOW_D = 12, DEEP_D = 48, FOAM_W = 9;
 const ABYSS_RAMP = 60;
 
 export interface TerrainMesh { ground: Solid[]; bleed: Solid[]; water: Solid[]; foam: Solid }
@@ -140,13 +143,11 @@ const newWaterTris = (): WaterTris => ({ shallow: [], water: [], waterDeep: [], 
 
 /**
  * Dos triángulos de agua por celda, con `baseTone` por su centro, y copia en
- * `foam` si están a menos de FOAM_W de tierra. `fallback` cubre la subcelda
- * cuyo propio centro clasifica como tierra (agujero de cuarto de celda) pero
- * cuya celda de 18 ya era agua: hereda la banda del centro de esa celda.
+ * `foam` si están a menos de FOAM_W de tierra.
  */
-function waterCell(w: WaterTris, foam: Tri[], x0: number, y0: number, x1: number, y1: number, i: number, j: number, fallback?: WaterMat): void {
+function waterCell(w: WaterTris, foam: Tri[], x0: number, y0: number, x1: number, y1: number, i: number, j: number): void {
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  const mat = waterBand(cx, cy) ?? fallback;
+  const mat = waterBand(cx, cy);
   if (!mat) return;
   const tmp: Tri[] = [];
   cellTris(tmp, x0, y0, x1, y1, WATER_Z, WATER_Z, WATER_Z, WATER_Z, WATER_Z, i, j);
@@ -168,7 +169,7 @@ function cellTris(out: Tri[], x0: number, y0: number, x1: number, y1: number, za
   else out.push({ pts: [a, b, d] }, { pts: [b, c, d] });
 }
 
-/** Grilla de CELL_BLEED alrededor de WORLD. Comparte vértices con la de CELL en la costura (lados múltiplos de 18) y ahí no lleva jitter. El agua del sangrado usa celdas de CELL_WATER (= CELL_BLEED: sin subdividir, decisión gateada por medición, ver spec §"Desvíos de la implementación"). */
+/** Grilla de CELL_BLEED alrededor de WORLD. Comparte vértices con la de CELL en la costura (lados múltiplos de 18) y ahí no lleva jitter. El agua del sangrado usa las mismas celdas, sin subdividir (decisión gateada por medición, ver spec §"Desvíos de la implementación"). */
 function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
   const bx0 = WORLD.x0 - BLEED.x, by0 = WORLD.y0 - BLEED.y, bx1 = WORLD.x1 + BLEED.x, by1 = WORLD.y1 + BLEED.y;
   const cols = (bx1 - bx0) / CELL_BLEED, rows = (by1 - by0) / CELL_BLEED;

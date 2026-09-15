@@ -346,7 +346,7 @@ Capas: `fair.wheel` (`solid`: el `wheel` rotado en `angle`), `fair.wheelLights`
   `[−1, 1]`, con `frac` la posición de `d` dentro de su banda (0 = borde
   somero, 1 = borde profundo); en `abyss`, por distancia a `abyssX`. Las
   crestas y senos se suman a esto.
-- **Sangrado a 9 u.** `buildBleed` subdivide las celdas de agua en
+- **Sangrado a 9 u** (ver Desvíos: quedó en 18 / 6 bandas). `buildBleed` subdivide las celdas de agua en
   `CELL_WATER = 9` cuando `inCoverQuad(cx, cy, 16/9, COVER_MARGIN)`, y las
   deja en 18 afuera. La costura entre 9 y 18 comparte vértices (18 es
   múltiplo de 9) y todo está a `WATER_Z`, así no hay grietas.
@@ -385,7 +385,7 @@ literal fuera de la paleta" sigue.
 - Espuma de costa: `foam.tris` alternan `toneOffset` 0 / −1 cada 500 ms
   (como la del arrecife).
 - Bandas: los triángulos de agua se reparten en `BANDS = 4` por x de
-  pantalla (`sx = x − y`), cada banda con un `Solid` por material; cada
+  pantalla (ver Desvíos: quedó en 18 / 6 bandas) (`sx = x − y`), cada banda con un `Solid` por material; cada
   `WATER_STEP_MS = 150` se repinta una banda (round-robin): cada triángulo
   cambia cada 600 ms, 6,7 pasos por ciclo de 4 s. Es más grueso que hoy
   (450 ms) y lo compensa que la ola viaja (el ojo sigue la cresta entre
@@ -414,12 +414,14 @@ literal fuera de la paleta" sigue.
   bandas tienen triángulos; todo el agua está a z −1; `baseTone ∈ [−1, 1]`;
   el estuario tiene `shallow` en las orillas y `water` en el centro
   (`(200, 300)` vs `(240, 300)`); el sangrado dentro del cover usa celdas de
-  9 (hay triángulos de agua con lado 9 en `(600, 300)`), fuera de 18.
+  9 (hay triángulos de agua con lado 9 en `(600, 300)`), fuera de 18 (ver
+  Desvíos: quedó en 18 / 6 bandas).
 - `water-anim.test.ts`: `waveTone` es periódica en `T`, viaja (la cresta en
   `(x, y)` a `t` está en `(x + λ, y)` a `t + T`), nunca sale de `[−2, 2]`,
   respeta `base` en promedio (media sobre un ciclo ≈ `base`), el `+2` solo
   aparece en triángulos con `hash % 4 === 0`; `tick` con `reducedMotion`
-  devuelve vacío; 4 bandas con tamaños que no difieren más de 2× entre sí.
+  devuelve vacío; 4 bandas con tamaños que no difieren más de 2× entre sí
+  (ver Desvíos: quedó en 18 / 6 bandas).
 - `palette-iso.test.ts`: `shallow` existe; para cada material de agua
   `up` es más cálido que `top` (`r − b` mayor) y `shade` más frío; las
   cuatro `top` se oscurecen en orden `shallow > water > waterDeep > abyss`.

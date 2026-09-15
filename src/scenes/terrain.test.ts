@@ -138,7 +138,7 @@ describe("buildTerrain", () => {
     expect(baseToneAt(200, 300, "shallow")).toBe(1);
   });
 
-  it("el sangrado no deja agujeros: toda celda de 18 con agua dentro del cover produce 2 triángulos (sin subdividir: CELL_WATER = CELL_BLEED, gateado por medición)", () => {
+  it("el sangrado no deja agujeros: toda celda de 18 con agua dentro del cover produce 2 triángulos (sin subdividir, gateado por medición)", () => {
     const m = buildTerrain(createRng(7));
     const all = m.water.flatMap(tris);
     // celda real del sangrado (ancla bx0 = -402, by0 = -438), en la bahía al norte, dentro del cover.
