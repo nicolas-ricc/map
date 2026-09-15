@@ -68,29 +68,33 @@ mar terminan contra una pared verde recta en `y = 336`.
 ## 4. Suburbio (`src/scenes/suburb.ts`)
 
 Grilla de manzanas `24×18` con calles de 6, alineada a la del distrito
-(`WEST_COLS` sigue hacia el oeste cada 30 desde `−84`; las filas siguen hacia el sur cada 24 desde 330). Cada manzana tirada por rng según su distancia `d` al contenido:
+(`SUBURB_COLS` sigue hacia el oeste cada 30 desde `−84`; `SUBURB_ROWS` sigue hacia el sur cada 24 desde 328, sumando las columnas de la ciudad). Cada manzana tirada por rng según su distancia `d` al contenido (`pickKind`; 12 % son parques a cualquier distancia):
 
-- `d < 60`: zócalo `paving` y dos o tres edificios `office`/`officeDark`/`stone` de h 6..12 con fachada (`floors`, `cols`), o un clásico de piedra bajo con cornisa.
-- `60 ≤ d < 160`: casas en hilera: 4..6 prismas de h 3..5 con techo `gable` (`stone`, `office`) sobre zócalo; cada tercera manzana, un parque (`leafDark` con conos `leaf`).
-- `d ≥ 160`: la mitad de las manzanas queda vacía (baldío `leafDark`), el resto casas sueltas; sin faroles.
-- Hitos, uno por cuadrante: un depósito de agua (cilindro `steel` sobre patas), un estadio bajo (anillo `stone` con césped), una iglesia con torre (`stone`, cúpula `copper`).
-- Faroles ámbar cada segunda manzana en `d < 60`; carriles discontinuos solo en la avenida que prolonga `BOULEVARD` hacia el oeste.
-- Muro de ribera: `plaza` desde `CITY_EDGE.south` hasta `WORLD.y1 + 100` en `x 192..198`, continuación del `westQuay`.
+- `d < 60`: zócalo `paving` y dos edificios `office`/`officeDark`/`stone` de h 6..12 con fachada (`floors`, `cols`) y cornisa; farol ámbar en la mitad de las manzanas.
+- `60 ≤ d < 160`: hileras: dos filas de cuatro casas de h 3..5 con techo `gable` (`stone`/`office`/`officeDark`) sobre zócalo, dos árboles en el pasillo; 15 % baldíos.
+- `d ≥ 160`: la mitad de las manzanas es baldío (`leafDark` liso, a veces una casa suelta), el resto hileras.
+- Hitos: un depósito de agua (cilindro `steel` sobre patas, remate `rust`), un estadio bajo (anillo octogonal `stone` con césped `leafDark` encima y cuatro torres de luz), una iglesia (nave `stone` a dos aguas, torre con chapitel `copper` y rosetón ámbar).
+- La avenida prolonga `BOULEVARD` hacia el oeste: cordones `paving`, canteros `leafDark` con árboles y faroles.
+- Muro de ribera: `plaza` desde `CITY_EDGE.south` hasta `WORLD.y1 + REACH.s` en `x 192..198`, continuación del `westQuay`, con bolardos.
 
 ## 5. Hinterland (`src/scenes/hinterland.ts`)
 
-- Norte (`x −60..198`, `y −204..−60`): playa de maniobras con 5 vías E-O
-  (`rail`) que prolongan `SIDING_Y`, vagones, dos galpones de dientes de sierra
-  (`brick`, `ramp`), parque de tanques (6 cilindros `steel`/`rust` de r 6..9,
-  con murete `concrete`), batería de silos (`concrete`, r 3, h 16, esbeltos),
-  línea de alta tensión (torres `steel` de 14 con travesaños, cada 48 u, rumbo
-  NO hacia las lomas), y la cantera: un escalón `sand`/`rock` cortado en la
-  loma al NO con una cinta hacia el sur.
-- Oeste (`x −204..−60`, `y −60..146`): continuación de las tres vías N-S de
-  `RAIL_YARD_X` hacia el oeste con dos vías más, patio de contenedores (pilas
-  `rust`/`steel` 6×2.4×2.6 hasta 3 de alto), galpones `concrete` a dos aguas,
-  estacionamiento de camiones, tanque de agua `steel`, faroles cian cada 40 u.
-- Nada apoya en agua ni en loma; nada supera 18 salvo silos y torres (esbeltos).
+- Norte (`x −200..198`, `y −204..−60`): playa de maniobras con 5 vías E-O
+  (`rail`, `YARD_TRACKS_Y`) con vagones en huecos de 10 u y una locomotora,
+  dos galpones `concrete` a dos aguas de 60×14, parque de tanques (`TANKS`: 6
+  cilindros `steel`/`rust` de r 7..9 con murete `concrete`), batería de silos
+  (`SILOS`: 3×2 cilindros `concrete` r 3 h 16 con galería y elevador),
+  línea de alta tensión E-O en `y = −196` (8 torres `steel` de 14 con dos
+  travesaños y dos cables), acopios `rust`/`sand` con pala cargadora, camiones,
+  y el muelle de graneles sobre la bahía (`pier`, x 190..208, con grúa torre y
+  contenedores). No hay cantera: la loma queda lejos del cover.
+- Oeste (`x −204..−60`, `y −60..110`): dos vías N-S más (`WEST_TRACKS_X`) con
+  vagones, patio de contenedores (`CONTAINER_YARD`: pilas `rust`/`steel`
+  6×2.4×2.6 hasta 3 de alto, dos pórticos sobre neumáticos), dos galpones
+  `concrete` a dos aguas y una nave `brick`, camiones, depósito de agua
+  `steel`, faroles cian. Al sur (`y 110..146`) la selva del cinturón verde.
+- Nada apoya en agua (salvo el muelle) ni en loma; nada supera 18 salvo silos,
+  torres y el elevador (esbeltos).
 
 ## 6. Criterios de aceptación
 
