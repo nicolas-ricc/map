@@ -5,6 +5,7 @@ import { cityAnimator } from "../scenes/city-animator";
 import { factoryAnimator } from "../scenes/factory-animator";
 import { seaAnimator } from "../scenes/sea-animator";
 import { shipyardAnimator } from "../scenes/shipyard-animator";
+import { waterAnimator } from "../scenes/water-animator";
 import { world } from "../scenes/world";
 import type { LabFrame } from "./draw";
 import { bootLab } from "./runtime";
@@ -17,6 +18,7 @@ export function bootWorldPage(zones: readonly WorldZone[] | undefined, frame: La
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const scene = world(SEED, zones ? { zones } : {});
   const animators: Animator[] = [];
+  animators.push(waterAnimator(scene.terrain, { reducedMotion }));
   if (scene.shipyard) animators.push(shipyardAnimator(scene.shipyard, createRng(SEED + 1), { reducedMotion }));
   if (scene.city) animators.push(cityAnimator(scene.city, createRng(SEED + 2), { reducedMotion }));
   if (scene.factory) animators.push(factoryAnimator(scene.factory, createRng(SEED + 4), { reducedMotion }));
