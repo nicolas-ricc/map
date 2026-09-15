@@ -82,7 +82,7 @@ describe("clasificación", () => {
     expect(bleedTerrainAt(-100, -100)).toBe("industrial");  // esquina NO
     expect(bleedTerrainAt(-100, 400)).toBe("urban");        // esquina SO
     expect(bleedTerrainAt(-300, 100)).toBe("jungle");       // más allá del alcance oeste
-    expect(bleedTerrainAt(100, -300)).toBe("jungle");       // más allá del alcance norte
+    expect(bleedTerrainAt(100, -400)).toBe("jungle");       // más allá del alcance norte (ahora hasta y −348 más el alcance, con la feria de por medio)
     expect(bleedTerrainAt(100, 700)).toBe("jungle");        // más allá del alcance sur
     expect(bleedTerrainAt(250, 400)).toBe("river");         // el estuario sigue
     expect(bleedTerrainAt(330, 340)).toBe("jungle");        // la punta de la lengua entre el estuario y el mar
@@ -95,7 +95,7 @@ describe("clasificación", () => {
     expect(bleedTerrainAt(400, -100)).toBe("sea");
     expect(bleedTerrainAt(600, 100)).toBe("abyss");
     expect(bleedZ(-380, 100)).toBeGreaterThan(9);   // loma al oeste, más allá de la tierra construida
-    expect(bleedZ(100, -400)).toBeGreaterThan(9);   // loma al norte
+    expect(bleedZ(100, -700)).toBeGreaterThan(9);   // loma al norte, bien más allá del alcance nuevo
     expect(bleedZ(-100, 100)).toBe(0.6);            // sobre la tierra construida no sube
     expect(bleedZ(100, 500)).toBe(0.6);             // chato al sur
     expect(bleedZ(-60, 100)).toBe(0.6);             // en la costura no sube
@@ -201,7 +201,7 @@ describe("buildTerrain", () => {
     const bt = m.bleed.flatMap(tris);
     expect(bt.length).toBeGreaterThan(3000);
     const mats = new Set(m.bleed.map((s) => s.kind === "ground" && s.mat));
-    for (const mt of mats) expect(["leafDark", "rock", "slab", "asphalt"]).toContain(mt);
+    for (const mt of mats) expect(["leafDark", "rock", "slab", "asphalt", "sand"]).toContain(mt);
     for (const t of bt) for (const p of t.pts) {
       expect(p.x).toBeGreaterThanOrEqual(WORLD.x0 - BLEED.x); expect(p.x).toBeLessThanOrEqual(WORLD.x1 + BLEED.x);
       expect(p.y).toBeGreaterThanOrEqual(WORLD.y0 - BLEED.y); expect(p.y).toBeLessThanOrEqual(WORLD.y1 + BLEED.y);
@@ -221,5 +221,13 @@ describe("buildTerrain", () => {
     for (const z of contentSeamZ) expect([0, 0.6, -1]).toContain(z);
     // con filtro por zona no hay sangrado
     expect(buildTerrain(createRng(7), ["cv"]).bleed).toEqual([]);
+  });
+
+  it("la feria es arena plana en el sangrado norte", () => {
+    expect(bleedTerrainAt(150, -300)).toBe("fair");
+    const m = buildTerrain(createRng(7));
+    const sand = m.bleed.find((s) => s.kind === "ground" && s.mat === "sand");
+    expect(sand && sand.kind === "ground" && sand.tris.length).toBeGreaterThan(50);
+    for (const t of tris(sand!)) for (const p of t.pts) expect(Math.abs(p.z)).toBeLessThanOrEqual(0.1);
   });
 });

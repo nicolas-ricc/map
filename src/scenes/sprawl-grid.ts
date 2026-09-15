@@ -8,11 +8,16 @@ import { BLOCK_D, BLOCK_W, CITY_EDGE, ROWS, WEST_COLS, estuaryEast, type Rect } 
  * asfalto y las manzanas no pueden desalinearse.
  * Spec: docs/superpowers/specs/2026-09-15-margenes-urbanos-design.md §3.
  */
-export type Built = "industrial" | "urban";
+export type Built = "industrial" | "urban" | "fair";
 
 /** Hasta dónde llega la tierra construida desde el borde del contenido, por lado. Múltiplos de CELL_BLEED. */
-export const REACH = { n: 8 * CELL_BLEED, w: 8 * CELL_BLEED, s: 16 * CELL_BLEED } as const;
+export const REACH = { n: 16 * CELL_BLEED, w: 8 * CELL_BLEED, s: 16 * CELL_BLEED } as const;
 const WOBBLE = 2 * CELL_BLEED;
+
+/** La feria: franja de arena al norte de la fábrica hasta la orilla de la bahía. Bordes alineados a la grilla del sangrado (anclada en (−402, −438)). */
+export const FAIR = { x0: 84, y0: -348, y1: -204 } as const;
+/** Orilla oeste de la bahía para cada y (≈ 212..277 en la franja de la feria). */
+export const bayShoreX = (y: number): number => riverCenter(y) - RIVER_HALF;
 
 /** El borde de la tierra construida ondula a lo largo del lado: nunca es una línea recta. */
 export function reachAt(side: keyof typeof REACH, along: number): number {
@@ -37,6 +42,8 @@ export const estuaryWater = (x: number, y: number): boolean => y > WORLD.y1 && x
  * o agua. Industrial al norte y al oeste de Portfolio (`y < ZONE_SPLIT_Y`),
  * urbano al oeste y al sur de Resume. En las esquinas manda el alcance del
  * lado que corresponde a cada eje: la esquina NO es industrial, la SO urbana.
+ * Dentro de `FAIR`, al este de la industrial y al oeste de la bahía, es la
+ * feria de arena.
  */
 export function builtAt(x: number, y: number): Built | null {
   if (bayWater(x, y) || estuaryWater(x, y) || x > WORLD.x1) return null;
@@ -47,8 +54,12 @@ export function builtAt(x: number, y: number): Built | null {
   if (w > 0 && w > reachAt("w", y)) return null;
   if (n > 0 && n > reachAt("n", x)) return null;
   if (s <= 0 && w <= 0 && n <= 0) return null; // adentro del contenido
+  if (y < WORLD.y0 && x >= FAIR.x0 && y >= FAIR.y0 && y < FAIR.y1) return "fair";
   return y < ZONE_SPLIT_Y ? "industrial" : "urban";
 }
+
+/** La feria: franja de arena en el sangrado norte, entre la fábrica y la bahía. */
+export const fairAt = (x: number, y: number): boolean => builtAt(x, y) === "fair";
 
 /** Cinturón verde entre el hinterland y el distrito tecnológico: prolonga la selva del sur de la playa de vías (`y ≥ 110`) y el cinturón de costura de la ciudad (hasta `CITY_EDGE.north`). */
 export const GREEN_BELT = { y0: 110, y1: CITY_EDGE.north } as const;

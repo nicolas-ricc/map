@@ -5,7 +5,7 @@ import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
 import { CITY_EDGE, DISTRICT_BANK_Y, EAST_RING, MALECON_STREET_X, estuaryEast, inCrater } from "./city-grid";
 import { depthAt } from "./depth-map";
-import { bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
+import { FAIR, bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
 
 /**
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
@@ -24,7 +24,7 @@ import { bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
  */
 export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "asphalt" | "sea" | "shore" | "headland" | "reef" | "abyss";
 /** Sangrado: selva y lomas, agua (mar, orilla, fosa, estuario) y tierra construida (industrial de Portfolio, urbana de Resume). */
-export type BleedTerrain = "jungle" | "sea" | "shore" | "abyss" | "river" | "industrial" | "urban";
+export type BleedTerrain = "jungle" | "sea" | "shore" | "abyss" | "river" | "industrial" | "urban" | "fair";
 
 export { CELL };
 const WATER_Z = -1;
@@ -77,7 +77,7 @@ export function terrainAt(x: number, y: number): Terrain {
  * Sangrado: mar y fosa al este; al sur, el estuario y el mar siguen hasta
  * juntarse (`seaTerrainAt` clasifica orilla, mar y fosa al este de 344); al
  * norte, la bahía sigue al este del río. La tierra restante es construida
- * (industrial o urbana, `builtAt`) hasta `REACH` y selva con lomas más allá.
+ * (industrial, urbana o la feria de arena, `builtAt`) hasta `REACH` y selva con lomas más allá.
  */
 export function bleedTerrainAt(x: number, y: number): BleedTerrain {
   if (x > WORLD.x1) return x >= abyssX(y) ? "abyss" : "sea";
@@ -107,10 +107,10 @@ const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jung
 const JITTER: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0, asphalt: 0.1, sea: 0, shore: 0, headland: 1.5, reef: 0.3, abyss: 0 };
 const MAT: Record<Exclude<Terrain, "dock">, Material> = { slab: "slab", water: "water", east: "sand", jungle: "leafDark", asphalt: "asphalt", sea: "waterDeep", shore: "water", headland: "rock", reef: "rock", abyss: "abyss" };
 const FLAT = new Set<Terrain>(["dock"]);
-const BLEED_MAT: Record<Exclude<BleedTerrain, "sea" | "shore" | "abyss" | "river">, Material> = { jungle: "leafDark", industrial: "slab", urban: "asphalt" };
+const BLEED_MAT: Record<Exclude<BleedTerrain, "sea" | "shore" | "abyss" | "river">, Material> = { jungle: "leafDark", industrial: "slab", urban: "asphalt", fair: "sand" };
 const WATER_TERRAIN = new Set<Terrain>(["water", "sea", "shore", "abyss"]);
 const BLEED_WATER = new Set<BleedTerrain>(["sea", "shore", "abyss", "river"]);
-const BLEED_BUILT = new Set<BleedTerrain>(["industrial", "urban"]);
+const BLEED_BUILT = new Set<BleedTerrain>(["industrial", "urban", "fair"]);
 
 const onSeam = (x: number, y: number): boolean => x === WORLD.x0 || x === WORLD.x1 || y === WORLD.y0 || y === WORLD.y1;
 /** z base del contenido en un punto (sin jitter); en la costura las dos grillas usan esto. */
@@ -181,6 +181,10 @@ function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
       const x = bx0 + i * CELL_BLEED, y = by0 + j * CELL_BLEED;
       const r = rng.next() * 2 - 1;
       if (inside(x, y)) { z[j]!.push(onSeam(x, y) ? contentBaseZ(x, y) : 0); continue; } // interior: no se usa; costura: z del contenido
+      // la orilla de la bahía es una curva más fina que la grilla: dentro del rectángulo de la
+      // feria la tratamos siempre como tierra plana, aunque ese vértice puntual ya sea bahía,
+      // para que la arena no se incline hacia el agua (la celda de agua vecina no lee este arreglo).
+      if (y < WORLD.y0 && x >= FAIR.x0 && y >= FAIR.y0 && y < FAIR.y1) { z[j]!.push(r * JITTER.asphalt); continue; }
       const t = bleedTerrainAt(x, y);
       if (BLEED_WATER.has(t)) { z[j]!.push(WATER_Z); continue; }
       if (BLEED_BUILT.has(t)) { z[j]!.push(r * JITTER.asphalt); continue; } // tierra construida: plana como el asfalto del contenido
@@ -188,14 +192,14 @@ function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
       z[j]!.push(base + r * (base > 0.6 ? HILL_JITTER : JITTER.jungle));
     }
   }
-  const tris: Partial<Record<Material, Tri[]>> = { leafDark: [], rock: [], slab: [], asphalt: [] };
+  const tris: Partial<Record<Material, Tri[]>> = { leafDark: [], rock: [], slab: [], asphalt: [], sand: [] };
   for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
     const x0 = bx0 + i * CELL_BLEED, y0 = by0 + j * CELL_BLEED, x1 = x0 + CELL_BLEED, y1 = y0 + CELL_BLEED;
     const cx = x0 + CELL_BLEED / 2, cy = y0 + CELL_BLEED / 2;
     if (inside(cx, cy)) continue;
     const t = bleedTerrainAt(cx, cy);
     if (BLEED_WATER.has(t)) { waterCell(w, foam, x0, y0, x1, y1, i, j); continue; }
-    const mat: Material = t === "jungle" ? (bleedZ(cx, cy) > ROCK_FROM_Z ? "rock" : "leafDark") : BLEED_MAT[t as "industrial" | "urban"];
+    const mat: Material = t === "jungle" ? (bleedZ(cx, cy) > ROCK_FROM_Z ? "rock" : "leafDark") : BLEED_MAT[t as "industrial" | "urban" | "fair"];
     cellTris(tris[mat]!, x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, null, i, j);
   }
   return (Object.keys(tris) as Material[]).filter((m) => tris[m]!.length > 0).map((m): Solid => ({ kind: "ground", mat: m, tris: tris[m]! }));
