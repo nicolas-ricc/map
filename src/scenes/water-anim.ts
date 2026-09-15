@@ -17,7 +17,7 @@ import { WATER_MATS, type TerrainMesh, type WaterMat } from "./terrain";
  * intermedio que pintarlo de durazno) y solo el +2 filtrado por hash llega a
  * `up`.
  */
-export const WATER_STEP_MS = 150, WAVE_T_MS = 4000, WAVE_LAMBDA = 10, ABYSS_T_MS = 8000, ABYSS_LAMBDA = 14, FOAM_STEP_MS = 500, BANDS = 4;
+export const WATER_STEP_MS = 150, WAVE_T_MS = 4000, WAVE_LAMBDA = 10, ABYSS_T_MS = 8000, ABYSS_LAMBDA = 14, FOAM_STEP_MS = 500, BANDS = 6;
 const WAVE_AMP = 1.2, ABYSS_AMP = 0.6, RIPPLE_AMP = 0.35;
 
 const cx = (t: Tri): number => (t.pts[0].x + t.pts[1].x + t.pts[2].x) / 3;

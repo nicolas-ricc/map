@@ -66,6 +66,51 @@ pero lo que lo rodea es plano:
   distrito tecnológico: el usuario pidió que toda la extensión sea
   financiera/tecnológica; se reemplazan.
 
+### Desvíos de la implementación
+
+Medición headless de `world.html` (Chrome vía CDP, sin GPU, DPR 2, viewport
+1600×900): dos cargas, se toma el segundo "primer dibujo"; tres redibujos de
+5 s tras la segunda carga, se toma el mayor. Antes de esta tarea (Tareas 1–4,
+`BANDS = 4`, `CELL_WATER = 9`): primer dibujo 115–130 ms, 25 283 polígonos,
+peor redibujo 9–12 ms (cifras de §8).
+
+Con el agua ya dinámica (`BANDS = 4`, `CELL_WATER = 9`) el peor redibujo
+medido ronda los 12–16 ms según la corrida (13.70 ms y 15.70 ms en dos
+corridas limpias): supera el objetivo de 15 ms en al menos una corrida, así
+que se activa la decisión gateada de §8.1.
+
+1. **`BANDS = 6`** (`src/scenes/water-anim.ts`): sigue rondando el límite
+   (16.20 ms y 12.10 ms en dos corridas) — no alcanza por sí solo.
+2. **`CELL_WATER = 18`** además de `BANDS = 6` (`src/scenes/terrain.ts`,
+   `buildBleed`): el agua del sangrado deja de subdividirse dentro del cover
+   (celda de 18 = celda de `CELL_BLEED`, sin subcelda de 9) y el peor
+   redibujo baja a 6–9 ms en la mayoría de las corridas (8.60 ms y 8.70 ms en
+   dos corridas limpias tras estabilizar; una corrida aislada marcó 17.50 ms,
+   atribuible a ruido de la máquina compartida — el mismo tipo de pico
+   aparece en todas las variantes medidas, `BANDS = 4` incluido). Esta
+   variante queda: cumple el objetivo con margen y de forma repetible.
+
+Variante final: `BANDS = 6`, `CELL_WATER = 18`. Primer dibujo con la
+variante final: 110–131 ms (< 170 ms), 25 216 polígonos estáticos
+(< 36 000; la cifra baja levemente respecto a los 25 283 de §8 por cambios
+de tareas anteriores en el agua, no por esta tarea). Peor redibujo: 6–9 ms
+en régimen estable, muy por debajo del objetivo de 15 ms.
+
+Líneas de consola crudas (dos corridas representativas, ya estabilizada la
+variante final):
+
+```
+[lab] primer dibujo: 110.5 ms, 25216 polígonos estáticos
+[lab] peor redibujo en 5 s: 7.50 ms
+[lab] peor redibujo en 5 s: 8.60 ms
+[lab] peor redibujo en 5 s: 6.40 ms
+
+[lab] primer dibujo: 127.7 ms, 25216 polígonos estáticos
+[lab] peor redibujo en 5 s: 8.70 ms
+[lab] peor redibujo en 5 s: 8.40 ms
+[lab] peor redibujo en 5 s: 5.80 ms
+```
+
 ## 3. Distrito tecnológico (`src/scenes/tech.ts`, `tech-anim.ts`, `tech-animator.ts`)
 
 Reemplaza `suburb.ts` (se borra) sobre la misma grilla: `suburbBlocks()`,

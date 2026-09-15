@@ -31,7 +31,7 @@ describe("water-anim", () => {
       expect(Math.abs(sum / n - 1)).toBeLessThan(0.6);
     }
   });
-  it("reparte el agua en cuatro bandas parejas, pinta una por paso en ronda y alterna la espuma", () => {
+  it("reparte el agua en seis bandas parejas, pinta una por paso en ronda y alterna la espuma", () => {
     const terrain = buildTerrain(createRng(7));
     const a = createWaterAnim(terrain, { reducedMotion: false });
     const sizes = Array.from({ length: BANDS }, (_, k) => a.band(k).reduce((n, s) => n + tris(s).length, 0));
@@ -39,8 +39,8 @@ describe("water-anim", () => {
     expect(sizes.reduce((x, y) => x + y, 0)).toBe(total);
     expect(Math.max(...sizes)).toBeLessThan(2 * Math.min(...sizes));
     expect(a.band(0).some((s) => tris(s).some((t) => (t.toneOffset ?? 0) !== 0))).toBe(true);
-    const c1 = a.tick(WATER_STEP_MS), c2 = a.tick(WATER_STEP_MS), c3 = a.tick(WATER_STEP_MS), c4 = a.tick(WATER_STEP_MS);
-    expect([c1, c2, c3, c4].map((c) => [...c.bands])).toEqual([[1], [2], [3], [0]]);
+    const c1 = a.tick(WATER_STEP_MS), c2 = a.tick(WATER_STEP_MS), c3 = a.tick(WATER_STEP_MS), c4 = a.tick(WATER_STEP_MS), c5 = a.tick(WATER_STEP_MS), c6 = a.tick(WATER_STEP_MS);
+    expect([c1, c2, c3, c4, c5, c6].map((c) => [...c.bands])).toEqual([[1], [2], [3], [4], [5], [0]]);
     expect(a.tick(500).foam).toBe(true);
     expect(a.foam()[0]!.mat).toBe("foam");
   });

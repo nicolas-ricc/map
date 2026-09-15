@@ -1,11 +1,11 @@
 import { v3 } from "../iso/geometry";
 import type { Solid, Tri } from "../iso/solids";
-import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, RIVER_HALF, SHORE_W, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, eastBank, inCoverQuad, inHeadland, inMouth, riverCenter, shoreWidth, worldZoneAt, type WorldZone } from "../map/geo";
+import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, RIVER_HALF, SHORE_W, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, eastBank, inHeadland, inMouth, riverCenter, shoreWidth, worldZoneAt, type WorldZone } from "../map/geo";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
 import { CITY_EDGE, DISTRICT_BANK_Y, EAST_RING, MALECON_STREET_X, estuaryEast, inCrater } from "./city-grid";
 import { depthAt } from "./depth-map";
-import { COVER_MARGIN, bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
+import { bayWater, beyondBuilt, builtAt, estuaryWater } from "./sprawl-grid";
 
 /**
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
@@ -32,7 +32,7 @@ export const WATER_MATS: readonly WaterMat[] = ["shallow", "water", "waterDeep",
 // FOAM_W = 9 (no el 3 de la spec): la spec mide en unidades finas, pero depthAt cuantiza en la grilla
 // de CELL = 6 (más la diagonal, 8.49), así que la primera cadena de celdas de agua junto a tierra ya
 // está a 6 u; 9 la cubre sin llegar a la segunda cadena.
-export const SHALLOW_D = 12, DEEP_D = 48, FOAM_W = 9, CELL_WATER = 9;
+export const SHALLOW_D = 12, DEEP_D = 48, FOAM_W = 9, CELL_WATER = 18;
 const ABYSS_RAMP = 60;
 
 export interface TerrainMesh { ground: Solid[]; bleed: Solid[]; water: Solid[]; foam: Solid }
@@ -168,7 +168,7 @@ function cellTris(out: Tri[], x0: number, y0: number, x1: number, y1: number, za
   else out.push({ pts: [a, b, d] }, { pts: [b, c, d] });
 }
 
-/** Grilla de CELL_BLEED alrededor de WORLD. Comparte vértices con la de CELL en la costura (lados múltiplos de 18) y ahí no lleva jitter. El agua se subdivide en celdas de CELL_WATER dentro del cover, de CELL_BLEED afuera. */
+/** Grilla de CELL_BLEED alrededor de WORLD. Comparte vértices con la de CELL en la costura (lados múltiplos de 18) y ahí no lleva jitter. El agua del sangrado usa celdas de CELL_WATER (= CELL_BLEED: sin subdividir, decisión gateada por medición, ver spec §"Desvíos de la implementación"). */
 function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
   const bx0 = WORLD.x0 - BLEED.x, by0 = WORLD.y0 - BLEED.y, bx1 = WORLD.x1 + BLEED.x, by1 = WORLD.y1 + BLEED.y;
   const cols = (bx1 - bx0) / CELL_BLEED, rows = (by1 - by0) / CELL_BLEED;
@@ -193,15 +193,7 @@ function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
     const cx = x0 + CELL_BLEED / 2, cy = y0 + CELL_BLEED / 2;
     if (inside(cx, cy)) continue;
     const t = bleedTerrainAt(cx, cy);
-    if (BLEED_WATER.has(t)) {
-      if (inCoverQuad(cx, cy, 16 / 9, COVER_MARGIN)) {
-        // la celda de 18 ya es agua: si el centro de alguna subcelda de 9 cae en tierra, esa
-        // subcelda hereda la banda del centro de la celda de 18 (no queda un agujero sin pintar).
-        const fallback = waterBand(cx, cy) ?? undefined;
-        for (let sj = 0; sj < 2; sj++) for (let si = 0; si < 2; si++) waterCell(w, foam, x0 + si * CELL_WATER, y0 + sj * CELL_WATER, x0 + (si + 1) * CELL_WATER, y0 + (sj + 1) * CELL_WATER, i * 2 + si, j * 2 + sj, fallback);
-      } else waterCell(w, foam, x0, y0, x1, y1, i, j);
-      continue;
-    }
+    if (BLEED_WATER.has(t)) { waterCell(w, foam, x0, y0, x1, y1, i, j); continue; }
     const mat: Material = t === "jungle" ? (bleedZ(cx, cy) > ROCK_FROM_Z ? "rock" : "leafDark") : BLEED_MAT[t as "industrial" | "urban"];
     cellTris(tris[mat]!, x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, null, i, j);
   }

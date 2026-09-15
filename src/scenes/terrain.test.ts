@@ -138,13 +138,13 @@ describe("buildTerrain", () => {
     expect(baseToneAt(200, 300, "shallow")).toBe(1);
   });
 
-  it("el sangrado no deja agujeros de cuarto de celda: toda celda de 18 con agua dentro del cover produce 8 triángulos (2 por subcelda de 9)", () => {
+  it("el sangrado no deja agujeros: toda celda de 18 con agua dentro del cover produce 2 triángulos (sin subdividir: CELL_WATER = CELL_BLEED, gateado por medición)", () => {
     const m = buildTerrain(createRng(7));
     const all = m.water.flatMap(tris);
     // celda real del sangrado (ancla bx0 = -402, by0 = -438), en la bahía al norte, dentro del cover.
     const x0 = 282, y0 = -420, x1 = 300, y1 = -402;
     const inCell = all.filter((t) => t.pts.every((p) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1));
-    expect(inCell.length).toBe(8);
+    expect(inCell.length).toBe(2);
   });
 
   it("el canal del astillero y la bahía siguen clasificando como agua (no como agujero) en m.water", () => {
@@ -159,12 +159,12 @@ describe("buildTerrain", () => {
     expect(all.filter((t) => t.pts.every((p) => inContent(p) && p.y < ZONE_SPLIT_Y)).every((t) => t.pts.every((p) => p.x >= QUAY_X))).toBe(true);
   });
 
-  it("el agua del sangrado usa celdas de 9 dentro del cover y de 18 afuera", () => {
+  it("el agua del sangrado usa celdas de 18, dentro y fuera del cover (gateado por medición: peor redibujo)", () => {
     const m = buildTerrain(createRng(7));
     const side = (t: Tri) => Math.max(...t.pts.map((p) => p.x)) - Math.min(...t.pts.map((p) => p.x));
     const at = (x: number, y: number) => m.water.flatMap(tris).filter((t) => t.pts.some((p) => Math.abs(p.x - x) < 1 && Math.abs(p.y - y) < 1));
     // vértices reales de la grilla (anclada en bx0=-402, by0=-438): dentro del cover, (597,300); afuera, (858,660).
-    expect(at(597, 300).some((t) => side(t) === 9)).toBe(true);
+    expect(at(597, 300).every((t) => side(t) === 18)).toBe(true);
     expect(at(858, 660).every((t) => side(t) === 18)).toBe(true);
   });
   it("la punta está alta y cae al mar; el dique seco no tiene suelo (lo pone la escena)", () => {
