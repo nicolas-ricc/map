@@ -94,12 +94,25 @@ describe("tessellate", () => {
     expect(vis.some((f) => f.tone === "down")).toBe(true);
   });
 
-  it("casco: popa cuadrada, proa en punta al este", () => {
-    const all = tessellateAll({ kind: "hull", at: v3(0, 0, 0), len: 20, beam: 4, h: 2, mat: "hull" });
-    const top = all.find((f) => f.tone === "top")!;
-    expect(top.pts).toHaveLength(5);
-    expect(top.pts).toContainEqual({ x: 20, y: 0, z: 2 });
-    expect(top.pts).toContainEqual({ x: 0, y: -2, z: 2 });
+  it("hull lofteado: proa en punta, popa redondeada, cubierta en deck, banda baja en mat y obra muerta en topMat, arrufo en la proa", () => {
+    const s: Solid = { kind: "hull", at: v3(0, 0, 0), len: 20, beam: 4, h: 2, mat: "hull", topMat: "hullBlue" };
+    const all = tessellateAll(s);
+    expect(all).toHaveLength(2 + 10 * 4); // cubierta, base, 10 lados × (2 bandas × 2 triángulos)
+    const deck = all.find((f) => f.normal.z > 0.99)!;
+    expect(deck.mat).toBe("deck"); expect(deck.pts).toHaveLength(10);
+    expect(Math.max(...deck.pts.map((p) => p.x))).toBeCloseTo(20, 6); // proa
+    expect(Math.min(...deck.pts.map((p) => p.x))).toBeCloseTo(0, 6);  // popa
+    expect(deck.pts.find((p) => p.x === 20)!.z).toBeCloseTo(2 * 1.25, 6); // arrufo de proa
+    expect(deck.pts.find((p) => p.x === 0)!.z).toBeCloseTo(2 * 1.1, 6);  // arrufo de popa
+    const sides = all.filter((f) => Math.abs(f.normal.z) < 0.99 && f.normal.z > -0.5);
+    expect(sides.filter((f) => f.mat === "hull").length).toBe(20);
+    expect(sides.filter((f) => f.mat === "hullBlue").length).toBe(20);
+    const b = bounds(s);
+    expect(b.min.x).toBeCloseTo(0, 6); expect(b.max.x).toBeCloseTo(20, 6);
+    expect(b.min.y).toBeCloseTo(-2, 6); expect(b.max.y).toBeCloseTo(2, 6);
+    expect(b.max.z).toBeCloseTo(2.5, 6);
+    const mono = tessellateAll({ kind: "hull", at: v3(0, 0, 0), len: 20, beam: 4, h: 2, mat: "hull" });
+    expect(mono.every((f) => f.mat === "hull")).toBe(true); // sin topMat: monocromo (astillero)
   });
 
   it("hull con heading π/2 tiene la proa al sur (+y) y gira alrededor de la popa", () => {
@@ -107,7 +120,14 @@ describe("tessellate", () => {
     expect(Math.max(...pts.map((p) => p.y))).toBeCloseTo(40, 6);
     expect(Math.min(...pts.map((p) => p.y))).toBeCloseTo(20, 6);
     expect(Math.min(...pts.map((p) => p.x))).toBeCloseTo(8, 6);
-    expect(Math.max(...pts.map((p) => p.x))).toBeCloseTo(12, 6);
+  });
+
+  it("poly con facade emite ventanas y losas sobre sus paredes", () => {
+    const fp = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 3 }, { x: 0, y: 3 }];
+    const plain = tessellateAll({ kind: "poly", footprint: fp, z: 0, h: 3, mat: "whitewash" });
+    const withFacade = tessellateAll({ kind: "poly", footprint: fp, z: 0, h: 3, mat: "whitewash", facade: { floors: 1, cols: 2 } });
+    expect(withFacade.length).toBeGreaterThan(plain.length);
+    expect(withFacade.some((f) => f.mat === "glass")).toBe(true);
   });
 
   it("franja: un cuadrilátero horizontal por segmento, sin descarte", () => {
@@ -148,5 +168,21 @@ describe("bounds", () => {
   it("AABB de un suelo", () => {
     const b = bounds({ kind: "ground", mat: "slab", tris: [{ pts: [v3(0, 0, -1), v3(6, 0, 0), v3(0, 6, 1)] }] });
     expect(b).toEqual({ min: { x: 0, y: 0, z: -1 }, max: { x: 6, y: 6, z: 1 } });
+  });
+});
+
+describe("wheel", () => {
+  it("wheel: anillo vertical en el plano (1, −1, 0) con rayos, cubo y góndolas colgando; girar mueve las góndolas y todo el anillo cumple x + y = const", () => {
+    const w: Solid = { kind: "wheel", at: v3(100, 50, 17), r: 14, width: 1.2, mat: "steel", sides: 16, angle: 0, gondolas: { mat: "rust", w: 1.6, d: 1.2, h: 1.4 } };
+    const faces = tessellateAll(w);
+    expect(faces.filter((f) => f.mat === "steel").length).toBe(16 + 16 + 1); // sectores, rayos, cubo
+    for (const f of faces.filter((f) => f.mat === "steel")) { expect(f.tone).toBe("top"); for (const p of f.pts) expect(p.x + p.y).toBeCloseTo(150, 6); }
+    expect(faces.filter((f) => f.mat === "rust").length).toBe(16 * 6);
+    const b = bounds(w);
+    expect(b.max.z).toBeCloseTo(31, 6); expect(b.min.z).toBeLessThan(3.1);
+    const top0 = tessellateAll(w).filter((f) => f.mat === "rust").flatMap((f) => f.pts).sort((p, q) => q.z - p.z)[0]!;
+    const top1 = tessellateAll({ ...w, angle: Math.PI / 16 }).filter((f) => f.mat === "rust").flatMap((f) => f.pts).sort((p, q) => q.z - p.z)[0]!;
+    expect(Math.hypot(top0.x - top1.x, top0.y - top1.y)).toBeGreaterThan(1);
+    expect(tessellate(w).filter((f) => f.mat === "steel").length).toBe(33); // mira a la cámara: nada se descarta
   });
 });

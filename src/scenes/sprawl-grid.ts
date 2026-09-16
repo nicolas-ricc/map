@@ -4,15 +4,23 @@ import { BLOCK_D, BLOCK_W, CITY_EDGE, ROWS, WEST_COLS, estuaryEast, type Rect } 
 /**
  * Geografía de los márgenes: qué parte del sangrado es tierra construida y de
  * qué zona. Módulo puro y sin rng, como city-grid: lo comparten el terreno
- * (`bleedTerrainAt`) y las escenas del suburbio y del hinterland, así el
+ * (`bleedTerrainAt`) y las escenas del distrito tecnológico y del hinterland, así el
  * asfalto y las manzanas no pueden desalinearse.
  * Spec: docs/superpowers/specs/2026-09-15-margenes-urbanos-design.md §3.
  */
-export type Built = "industrial" | "urban";
+export type Built = "industrial" | "urban" | "fair";
 
 /** Hasta dónde llega la tierra construida desde el borde del contenido, por lado. Múltiplos de CELL_BLEED. */
-export const REACH = { n: 8 * CELL_BLEED, w: 8 * CELL_BLEED, s: 16 * CELL_BLEED } as const;
+export const REACH = { n: 16 * CELL_BLEED, w: 8 * CELL_BLEED, s: 16 * CELL_BLEED } as const;
 const WOBBLE = 2 * CELL_BLEED;
+
+/** La feria: franja de arena al norte de la fábrica hasta la orilla de la bahía. Bordes alineados a la grilla del sangrado (anclada en (−402, −438)). */
+export const FAIR = { x0: 84, y0: -348, y1: -204 } as const;
+/** Orilla oeste de la bahía para cada y (≈ 212..277 en la franja de la feria). */
+export const bayShoreX = (y: number): number => riverCenter(y) - RIVER_HALF;
+
+/** El rectángulo geométrico de la feria, agua incluida (a diferencia de `fairAt`, que excluye la bahía). Lo comparten `builtAt` y el aplanado de vértices del sangrado en terrain.ts. */
+export const inFairBox = (x: number, y: number): boolean => y < WORLD.y0 && x >= FAIR.x0 && y >= FAIR.y0 && y < FAIR.y1;
 
 /** El borde de la tierra construida ondula a lo largo del lado: nunca es una línea recta. */
 export function reachAt(side: keyof typeof REACH, along: number): number {
@@ -25,7 +33,7 @@ const westDist = (x: number): number => WORLD.x0 - x;
 const northDist = (y: number): number => WORLD.y0 - y;
 
 /** La bahía sigue hacia el norte al este de la orilla oeste del río. */
-export const bayWater = (x: number, y: number): boolean => y < WORLD.y0 && x >= riverCenter(y) - RIVER_HALF;
+export const bayWater = (x: number, y: number): boolean => y < WORLD.y0 && x >= bayShoreX(y);
 /** La lengua de tierra entre el estuario y el mar se adelgaza de 37 a 0 en las dos primeras celdas al sur del contenido; después es toda agua. */
 const SPIT_LEN = 2 * CELL_BLEED;
 export const spitEast = (y: number): number => ZONE_SPLIT_X - (ZONE_SPLIT_X - estuaryEast(WORLD.y1)) * Math.min(1, (y - WORLD.y1) / SPIT_LEN);
@@ -37,6 +45,8 @@ export const estuaryWater = (x: number, y: number): boolean => y > WORLD.y1 && x
  * o agua. Industrial al norte y al oeste de Portfolio (`y < ZONE_SPLIT_Y`),
  * urbano al oeste y al sur de Resume. En las esquinas manda el alcance del
  * lado que corresponde a cada eje: la esquina NO es industrial, la SO urbana.
+ * Dentro de `FAIR`, al este de la industrial y al oeste de la bahía, es la
+ * feria de arena.
  */
 export function builtAt(x: number, y: number): Built | null {
   if (bayWater(x, y) || estuaryWater(x, y) || x > WORLD.x1) return null;
@@ -47,13 +57,17 @@ export function builtAt(x: number, y: number): Built | null {
   if (w > 0 && w > reachAt("w", y)) return null;
   if (n > 0 && n > reachAt("n", x)) return null;
   if (s <= 0 && w <= 0 && n <= 0) return null; // adentro del contenido
+  if (inFairBox(x, y)) return "fair";
   return y < ZONE_SPLIT_Y ? "industrial" : "urban";
 }
 
-/** Cinturón verde entre el hinterland y el suburbio: prolonga la selva del sur de la playa de vías (`y ≥ 110`) y el cinturón de costura de la ciudad (hasta `CITY_EDGE.north`). */
+/** La feria: franja de arena en el sangrado norte, entre la fábrica y la bahía. */
+export const fairAt = (x: number, y: number): boolean => builtAt(x, y) === "fair";
+
+/** Cinturón verde entre el hinterland y el distrito tecnológico: prolonga la selva del sur de la playa de vías (`y ≥ 110`) y el cinturón de costura de la ciudad (hasta `CITY_EDGE.north`). */
 export const GREEN_BELT = { y0: 110, y1: CITY_EDGE.north } as const;
 
-/** Suelo urbano en un punto, adentro o afuera del contenido: el suburbio arma manzanas solo donde esto es cierto en las cuatro esquinas y el centro. */
+/** Suelo urbano en un punto, adentro o afuera del contenido: el distrito tecnológico arma manzanas solo donde esto es cierto en las cuatro esquinas y el centro. */
 export function urbanAt(x: number, y: number): boolean {
   if (x < WORLD.x0 || y > WORLD.y1) return builtAt(x, y) === "urban";
   if (x >= QUAY_X || y < CITY_EDGE.north) return false;
@@ -62,7 +76,7 @@ export function urbanAt(x: number, y: number): boolean {
 
 export interface SprawlBlock extends Rect { dist: number }
 
-/** Columnas del suburbio al oeste del distrito (cada 30 desde −84, como `WEST_COLS`) y filas al sur de la ciudad (cada 24 desde 328). */
+/** Columnas del distrito tecnológico al oeste de la ciudad (cada 30 desde −84, como `WEST_COLS`) y filas al sur de la ciudad (cada 24 desde 328). */
 export const SUBURB_COLS = [-84, -114, -144, -174, -204, -234, -264] as const;
 export const SUBURB_ROWS = [328, 352, 376, 400, 424, 448, 472, 496, 520, 544, 568, 592, 616, 640] as const;
 
@@ -76,7 +90,7 @@ const blockAt = (x: number, y: number): SprawlBlock | null => {
   return { x, y, w, d, dist: Math.max(0, WORLD.x0 - (x + w), y - WORLD.y1) };
 };
 
-/** Manzanas del suburbio: las del oeste siguen las filas de la ciudad (y respetan la avenida), las del sur suman las columnas de la ciudad. Sin rng. */
+/** Manzanas del distrito tecnológico: las del oeste siguen las filas de la ciudad (y respetan la avenida), las del sur suman las columnas de la ciudad. Sin rng. */
 export function suburbBlocks(): SprawlBlock[] {
   const out: SprawlBlock[] = [];
   for (const y of ROWS) for (const x of SUBURB_COLS) { const b = blockAt(x, y); if (b) out.push(b); }

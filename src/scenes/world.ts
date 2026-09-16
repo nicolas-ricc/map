@@ -5,10 +5,11 @@ import type { WorldZone } from "../map/geo";
 import { createRng, type Rng } from "../map/seed";
 import { city, type CityScene } from "./city";
 import { factory, type FactoryScene } from "./factory";
+import { fair, type FairScene } from "./fair";
 import { hinterland, type HinterlandScene } from "./hinterland";
 import { sea, type SeaScene } from "./sea";
 import { shipyard, type Scene } from "./shipyard";
-import { suburb, type SuburbScene } from "./suburb";
+import { tech, type TechScene } from "./tech";
 import { buildTerrain, type TerrainMesh } from "./terrain";
 
 /**
@@ -27,7 +28,8 @@ export interface WorldScene {
   sea: SeaScene | null;
   /** Los márgenes construidos viven sobre el sangrado: solo existen con el mundo entero (sin filtro de zonas). */
   hinterland: HinterlandScene | null;
-  suburb: SuburbScene | null;
+  tech: TechScene | null;
+  fair: FairScene | null;
 }
 
 const ALL_ZONES: readonly WorldZone[] = ["portfolio", "cv", "blog"];
@@ -40,7 +42,7 @@ export const LANDMARKS: Record<WorldZone, Vec3> = {
   blog: v3(470, 160, 0),
 };
 
-/** Rng por zona y parte (0 = escena principal, 1 = escena secundaria: fábrica, distrito; 2 = margen: hinterland, suburbio). Retocar una no reordena las otras. */
+/** Rng por zona y parte (0 = escena principal, 1 = escena secundaria: fábrica, distrito; 2 = margen: hinterland, distrito tecnológico). Retocar una no reordena las otras. */
 export function zoneRng(seed: number, zone: WorldZone, part = 0): Rng {
   return createRng(seed * 31 + ZONE_INDEX[zone] + 16 * part);
 }
@@ -65,11 +67,12 @@ export function world(seed: number, opts: { zones?: readonly WorldZone[] } = {})
     se = sea(zoneRng(seed, "blog"));
     ground.push(...se.ground); solids.push(...se.solids); accents.push(...se.accents);
   }
-  let hi: HinterlandScene | null = null, su: SuburbScene | null = null;
+  let hi: HinterlandScene | null = null, su: TechScene | null = null, fa2: FairScene | null = null;
   if (!opts.zones) {
     hi = hinterland(zoneRng(seed, "portfolio", 2));
-    su = suburb(zoneRng(seed, "cv", 2));
-    for (const sc of [hi, su]) { ground.push(...sc.ground); solids.push(...sc.solids); accents.push(...sc.accents); }
+    su = tech(zoneRng(seed, "cv", 2));
+    fa2 = fair(zoneRng(seed, "portfolio", 3));
+    for (const sc of [hi, su, fa2]) { ground.push(...sc.ground); solids.push(...sc.solids); accents.push(...sc.accents); }
   }
-  return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct, factory: fa, sea: se, hinterland: hi, suburb: su };
+  return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct, factory: fa, sea: se, hinterland: hi, tech: su, fair: fa2 };
 }

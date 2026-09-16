@@ -45,6 +45,21 @@ describe("paleta isométrica", () => {
     }
   });
 
+  it("agua: cuatro profundidades que se oscurecen, seno frío y cresta cálida (el atardecer)", () => {
+    const rgb = (c: number) => [c >> 16, (c >> 8) & 255, c & 255] as const;
+    const warmth = (c: number) => rgb(c)[0] - rgb(c)[2];
+    const blueShare = (c: number) => rgb(c)[2] / (rgb(c)[0] + rgb(c)[1] + rgb(c)[2]);
+    const mats = ["shallow", "water", "waterDeep", "abyss"] as const;
+    for (let i = 1; i < mats.length; i++) expect(lum(ISO_TONES[mats[i]!].top)).toBeLessThan(lum(ISO_TONES[mats[i - 1]!].top));
+    for (const m of mats) {
+      expect(warmth(ISO_TONES[m].up)).toBeGreaterThan(warmth(ISO_TONES[m].top) + 40);
+      expect(blueShare(ISO_TONES[m].lit)).toBeGreaterThan(blueShare(ISO_TONES[m].top));
+      expect(lum(ISO_TONES[m].lit)).toBeLessThan(lum(ISO_TONES[m].down));
+      expect(lum(ISO_TONES[m].down)).toBeLessThan(lum(ISO_TONES[m].top));
+    }
+    expect(Object.keys(ISO_TONES.hullBlue).sort()).toEqual(["down", "lit", "shade", "top", "up"]);
+  });
+
   it("tríadas de acento por zona: cian, ámbar y magenta, todas en el atlas", () => {
     expect(ACCENT_COLORS).toEqual(["cyan", "cyanMid", "cyanBleed", "amber", "amberMid", "amberBleed", "magenta", "magentaMid", "magentaBleed"]);
     const all = allIsoColors();

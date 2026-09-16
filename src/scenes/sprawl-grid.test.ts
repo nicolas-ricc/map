@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { BLEED, CELL, QUAY_X, WORLD, ZONE_SPLIT_X, coverQuad, inCoverQuad, pointInPolygon } from "../map/geo";
+import { BLEED, CELL, QUAY_X, RIVER_HALF, WORLD, ZONE_SPLIT_X, coverQuad, inCoverQuad, pointInPolygon, riverCenter } from "../map/geo";
 import { CITY_EDGE, estuaryEast } from "./city-grid";
-import { GREEN_BELT, REACH, builtAt, reachAt, suburbBlocks, urbanAt } from "./sprawl-grid";
+import { GREEN_BELT, REACH, bayShoreX, builtAt, fairAt, reachAt, suburbBlocks, urbanAt } from "./sprawl-grid";
 import { bleedTerrainAt, bleedZ, terrainAt } from "./terrain";
 
 describe("sprawl-grid", () => {
@@ -22,6 +22,13 @@ describe("sprawl-grid", () => {
     expect(builtAt(400, 400)).toBeNull();          // mar
     expect(builtAt(100, 100)).toBeNull();          // contenido
     expect(builtAt(-400, 100)).toBeNull();         // más allá del alcance: loma
+    expect(builtAt(150, -300)).toBe("fair");
+    expect(builtAt(100, -220)).toBe("fair");
+    expect(builtAt(40, -300)).toBe("industrial");   // al oeste de la feria
+    expect(builtAt(150, -400)).toBeNull();          // más allá del alcance nuevo
+    expect(builtAt(240, -300)).toBeNull();          // bahía
+    expect(fairAt(150, -300)).toBe(true); expect(fairAt(150, -100)).toBe(false);
+    expect(bayShoreX(-300)).toBe(riverCenter(-300) - RIVER_HALF);
   });
 
   it("urbanAt cubre los bordes de la ciudad que pasaron a asfalto y el sangrado urbano", () => {
@@ -33,7 +40,7 @@ describe("sprawl-grid", () => {
     expect(urbanAt(250, 400)).toBe(false);  // estuario
   });
 
-  it("las manzanas del suburbio caen enteras en suelo urbano dentro del cover, y son más de 100", () => {
+  it("las manzanas del distrito tecnológico caen enteras en suelo urbano dentro del cover, y son más de 100", () => {
     const blocks = suburbBlocks();
     expect(blocks.length).toBeGreaterThan(100);
     for (const b of blocks) {
@@ -46,7 +53,7 @@ describe("sprawl-grid", () => {
     expect(blocks.some((b) => b.dist > 160)).toBe(true);
   });
 
-  it("dentro del cover 16:9 la selva (con roca) es a lo sumo el 20 % del sangrado y el 12 % del total", () => {
+  it("dentro del cover 16:9 la selva (con roca) es a lo sumo el 7 % del sangrado y el 6 % del total", () => {
     const quad = coverQuad(16 / 9).flat();
     let bleed = 0, bleedGreen = 0, all = 0, allGreen = 0;
     for (let y = WORLD.y0 - BLEED.y + 3; y < WORLD.y1 + BLEED.y; y += CELL) for (let x = WORLD.x0 - BLEED.x + 3; x < WORLD.x1 + BLEED.x; x += CELL) {
@@ -56,8 +63,8 @@ describe("sprawl-grid", () => {
       all++; if (green) allGreen++;
       if (!inside) { bleed++; if (green) bleedGreen++; }
     }
-    expect(bleedGreen / bleed).toBeLessThan(0.2);
-    expect(allGreen / all).toBeLessThan(0.12);
+    expect(bleedGreen / bleed).toBeLessThan(0.07);
+    expect(allGreen / all).toBeLessThan(0.06);
   });
 
   it("el estuario sigue al sur hasta el mar y el terreno del sangrado es plano donde está construido", () => {

@@ -17,7 +17,7 @@ describe("world", () => {
     expect(w.shipyard).not.toBeNull();
     expect(w.factory).not.toBeNull();
     expect(w.solids.length).toBeGreaterThan(700);
-    expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris.length).toBeGreaterThan(300);
+    expect(w.terrain.water.reduce((n, s) => n + (s.kind === "ground" ? s.tris.length : 0), 0) > 300).toBe(true);
     for (const s of [...w.shipyard!.solids, ...w.factory!.solids, ...w.city!.solids, ...w.sea!.solids]) {
       const b = bounds(s);
       expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - 2); expect(b.max.x).toBeLessThanOrEqual(WORLD.x1 + 1); // el distrito crece hasta el borde oeste del mundo
@@ -28,8 +28,9 @@ describe("world", () => {
       expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - BLEED.x); expect(b.max.x).toBeLessThanOrEqual(WORLD.x1 + BLEED.x);
       expect(b.min.y).toBeGreaterThanOrEqual(WORLD.y0 - BLEED.y); expect(b.max.y).toBeLessThanOrEqual(WORLD.y1 + BLEED.y);
     }
-    expect(w.hinterland).not.toBeNull(); expect(w.suburb).not.toBeNull();
-    expect(world(7, { zones: ["portfolio", "cv", "blog"] }).suburb).toBeNull(); // con filtro explícito no hay sangrado ni márgenes
+    expect(w.hinterland).not.toBeNull(); expect(w.tech).not.toBeNull(); expect(w.fair).not.toBeNull();
+    expect(world(7, { zones: ["portfolio", "cv", "blog"] }).tech).toBeNull(); // con filtro explícito no hay sangrado ni márgenes
+    expect(world(7, { zones: ["portfolio", "cv", "blog"] }).fair).toBeNull();
   });
 
   it("filtrar por zona deja fuera lo demás", () => {
@@ -37,7 +38,7 @@ describe("world", () => {
     expect(w.shipyard).toBeNull();
     expect(w.city).not.toBeNull();
     expect(w.solids.length).toBeGreaterThan(250);
-    expect(w.terrain.sea.kind === "ground" && w.terrain.sea.tris).toEqual([]);
+    expect(w.terrain.bleed).toEqual([]);
     const b = world(7, { zones: ["blog"] });
     expect(b.city).toBeNull();
     expect(b.sea).not.toBeNull();
@@ -71,7 +72,7 @@ describe("world", () => {
   it("todo el render usa colores del atlas", () => {
     const w = world(7);
     const colors = allIsoColors();
-    for (const i of buildRenderList([...w.terrain.ground, w.terrain.river, w.terrain.sea, w.terrain.shore, w.terrain.abyss, ...w.terrain.bleed, ...w.ground, ...w.solids])) expect(colors.has(i.color)).toBe(true);
+    for (const i of buildRenderList([...w.terrain.ground, ...w.terrain.water, w.terrain.foam, ...w.terrain.bleed, ...w.ground, ...w.solids])) expect(colors.has(i.color)).toBe(true);
   });
 
   it("el landmark del Blog cae en la fosa y el sangrado existe solo con el mundo entero", () => {

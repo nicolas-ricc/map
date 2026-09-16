@@ -20,9 +20,11 @@ escenas en `src/scenes/`, incluidas `factory.ts` (fábrica de Portfolio),
 Blog). El mundo tiene origen en `(-60, -60)` y un sangrado de terreno
 alrededor de todo el contenido, para que la cámara *cover* nunca muestre
 cielo; sobre el sangrado viven los márgenes construidos, `hinterland.ts`
-(industria de Portfolio al norte y al oeste de la fábrica) y `suburb.ts`
-(suburbio de Resume al oeste y al sur de la ciudad), separados por un
-cinturón verde; el estuario y el mar siguen hacia el sur hasta juntarse.
+(industria de Portfolio al norte y al oeste de la fábrica, con su central
+térmica) y `tech.ts` (distrito tecnológico de Resume al oeste y al sur de la
+ciudad), separados por un cinturón verde; `fair.ts` es la feria de la playa
+sobre la bahía, al norte de la fábrica; el estuario y el mar siguen hacia el
+sur hasta juntarse.
 Solo existen con el mundo entero (`world.html`). `/map/lab/portfolio.html` muestra solo el astillero;
 `/map/lab/resume.html` muestra la ciudad de oficinas más el astillero,
 encuadrados en Resume; `/map/lab/blog.html` muestra la punta, el faro, la fosa
@@ -35,4 +37,5 @@ Para cambiar una escena, editar su lista de sólidos; para el look,
 (`2026-09-13-portfolio-isometrico-design.md`, `2026-09-14-mundo-isometrico-design.md`,
 `2026-09-14-resume-ciudad-design.md`,
 `2026-09-14-mundo-2-fabrica-distrito-blog-design.md`,
-`2026-09-15-margenes-urbanos-design.md`).
+`2026-09-15-margenes-urbanos-design.md`,
+`2026-09-15-mundo-3-tecnologico-feria-agua-barcos-design.md`).

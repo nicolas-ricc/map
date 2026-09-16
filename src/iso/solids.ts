@@ -5,17 +5,18 @@ import { centroid, dot, polygonNormal, type Vec2, type Vec3, v3 } from "./geomet
 import { shadeTone } from "./light";
 import { VIEW_DIR } from "./project";
 
-export interface Tri { pts: [Vec3, Vec3, Vec3]; toneOffset?: number }
+export interface Tri { pts: [Vec3, Vec3, Vec3]; toneOffset?: number; baseTone?: number }
 
 export type Solid =
   | { kind: "prism"; at: Vec3; w: number; d: number; h: number; mat: Material; roof?: "flat" | "gable" | "step"; facade?: Facade }
-  | { kind: "poly"; footprint: Vec2[]; z: number; h: number; mat: Material }
+  | { kind: "poly"; footprint: Vec2[]; z: number; h: number; mat: Material; facade?: Facade }
   | { kind: "ramp"; at: Vec3; w: number; d: number; h: number; mat: Material; dir: RampDir }
   | { kind: "cylinder"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
   | { kind: "cone"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
-  | { kind: "hull"; at: Vec3; len: number; beam: number; h: number; mat: Material; heading?: number }
+  | { kind: "hull"; at: Vec3; len: number; beam: number; h: number; mat: Material; topMat?: Material; heading?: number; sheer?: number }
   | { kind: "strip"; path: Vec2[]; width: number; z: number; mat: Material }
-  | { kind: "ground"; tris: Tri[]; mat: Material };
+  | { kind: "ground"; tris: Tri[]; mat: Material }
+  | { kind: "wheel"; at: Vec3; r: number; width: number; mat: Material; sides: number; angle: number; gondolas?: { mat: Material; w: number; d: number; h: number } };
 
 /** Hacia dónde baja la rampa: "e" tiene el borde alto al oeste, "s" lo tiene al norte. */
 export type RampDir = "e" | "w" | "n" | "s";
@@ -128,12 +129,39 @@ function cone(at: Vec3, r: number, h: number, sides: number, mat: Material): Fac
   return out;
 }
 
-/** Huella del casco: popa en `at`, proa a `len` en la dirección `heading` (0 = este), hombros al 70 %. */
-function hullFootprint(at: Vec3, len: number, beam: number, heading = 0): Vec2[] {
-  const half = beam / 2, shoulder = len * 0.7;
-  const local = [{ x: 0, y: -half }, { x: shoulder, y: -half }, { x: len, y: 0 }, { x: shoulder, y: half }, { x: 0, y: half }];
-  const c = Math.cos(heading), s = Math.sin(heading);
-  return local.map((p) => ({ x: at.x + p.x * c - p.y * s, y: at.y + p.x * s + p.y * c }));
+export const HULL_WATERLINE = 0.2, HULL_SHEER = 0.25, KEEL_BEAM = 0.7;
+/** Anillo de cubierta en fracciones de eslora/manga: popa redondeada, manga máxima al 57 %, proa en punta. Sentido horario visto desde arriba. */
+export const DECK_RING: readonly Vec2[] = [
+  { x: 0.04, y: -0.3 }, { x: 0, y: 0 }, { x: 0.04, y: 0.3 }, { x: 0.18, y: 0.5 }, { x: 0.57, y: 0.5 },
+  { x: 0.86, y: 0.3 }, { x: 1, y: 0 }, { x: 0.86, y: -0.3 }, { x: 0.57, y: -0.5 }, { x: 0.18, y: -0.5 },
+];
+/** Arrufo: cuánto sube la cubierta sobre `h` en cada punto (proa cuadrática, popa lineal más corta). */
+const sheerAt = (x: number): number => Math.max(0, (x - 0.55) / 0.45) ** 2 + 0.4 * Math.max(0, (0.18 - x) / 0.18);
+
+/** Anillos de cubierta y quilla en coordenadas de mundo (popa en `at`, proa a `len` según `heading`). */
+export function hullRings(s: Solid & { kind: "hull" }): { deck: Vec3[]; keel: Vec3[] } {
+  const c = Math.cos(s.heading ?? 0), sn = Math.sin(s.heading ?? 0), sheer = s.sheer ?? HULL_SHEER;
+  const world = (fx: number, fy: number, z: number): Vec3 => { const x = fx * s.len, y = fy * s.beam; return v3(s.at.x + x * c - y * sn, s.at.y + x * sn + y * c, z); };
+  const deck = DECK_RING.map((p) => world(p.x, p.y, s.at.z + s.h * (1 + sheer * sheerAt(p.x))));
+  const keel = DECK_RING.map((p) => world(0.06 + 0.84 * p.x, p.y * KEEL_BEAM, s.at.z));
+  return { deck, keel };
+}
+
+/** Casco lofteado entre quilla y cubierta: cada lado son dos cuadriláteros (obra viva en `mat`, obra muerta en `topMat`) partidos en triángulos. */
+function hull(s: Solid & { kind: "hull" }): Face[] {
+  const { deck, keel } = hullRings(s);
+  const c = centroid([...deck, ...keel]);
+  const top = s.topMat ?? s.mat, deckMat: Material = s.topMat ? "deck" : s.mat;
+  const out = [face(deck, deckMat, c), face(keel, s.mat, c)];
+  const lerp = (a: Vec3, b: Vec3, t: number): Vec3 => v3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+  const n = deck.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const k0 = keel[i]!, k1 = keel[j]!, d0 = deck[i]!, d1 = deck[j]!, m0 = lerp(k0, d0, HULL_WATERLINE), m1 = lerp(k1, d1, HULL_WATERLINE);
+    out.push(face([k0, k1, m1], s.mat, c), face([k0, m1, m0], s.mat, c));
+    out.push(face([m0, m1, d1], top, c), face([m0, d1, d0], top, c));
+  }
+  return out;
 }
 
 function strip(path: Vec2[], width: number, z: number, mat: Material): Face[] {
@@ -157,6 +185,39 @@ function ground(tris: Tri[], mat: Material): Face[] {
   });
 }
 
+const SQ = Math.SQRT1_2;
+/** El plano de la rueda: `u` es horizontal en pantalla (mundo (1, −1)); la normal mira a la cámara. */
+export const WHEEL_U: Vec3 = { x: SQ, y: -SQ, z: 0 };
+export const WHEEL_NORMAL: Vec3 = { x: SQ, y: SQ, z: 0 };
+export const wheelPoint = (at: Vec3, a: number, rho: number): Vec3 => v3(at.x + WHEEL_U.x * rho * Math.cos(a), at.y + WHEEL_U.y * rho * Math.cos(a), at.z + rho * Math.sin(a));
+
+/** Rueda de frente a la cámara: llanta en sectores, rayos, cubo (todos en el plano, tono `top`) y góndolas como prismas colgados de la llanta. */
+function wheel(s: Solid & { kind: "wheel" }): Face[] {
+  // Los planos de la rueda no siguen la regla habitual de sombreado por normal: una pared que
+  // mirase a la cámara se pintaría "shade" (la cara más oscura), pero el anillo debe leerse en
+  // el color base del material, así que se fuerza el tono "top" sin desplazamiento.
+  const flat = (pts: Vec3[]): Face => ({ pts, normal: WHEEL_NORMAL, mat: s.mat, tone: "top", toneOffset: 0 });
+  const out: Face[] = [];
+  const hub = s.r * 0.12, inner = s.r - s.width, half = s.width / 6;
+  for (let k = 0; k < s.sides; k++) {
+    const a0 = s.angle + (2 * Math.PI * k) / s.sides, a1 = s.angle + (2 * Math.PI * (k + 1)) / s.sides;
+    out.push(flat([wheelPoint(s.at, a0, inner), wheelPoint(s.at, a1, inner), wheelPoint(s.at, a1, s.r), wheelPoint(s.at, a0, s.r)]));
+    const px = -Math.sin(a0) * half, pz = Math.cos(a0) * half; // perpendicular al rayo dentro del plano
+    const off = (p: Vec3, sgn: number): Vec3 => v3(p.x + WHEEL_U.x * px * sgn, p.y + WHEEL_U.y * px * sgn, p.z + pz * sgn);
+    const i0 = wheelPoint(s.at, a0, hub), i1 = wheelPoint(s.at, a0, inner);
+    out.push(flat([off(i0, -1), off(i1, -1), off(i1, 1), off(i0, 1)]));
+  }
+  out.push(flat(Array.from({ length: 8 }, (_, k) => wheelPoint(s.at, s.angle + (2 * Math.PI * k) / 8, hub))));
+  if (s.gondolas) {
+    const g = s.gondolas;
+    for (let k = 0; k < s.sides; k++) {
+      const p = wheelPoint(s.at, s.angle + (2 * Math.PI * (k + 0.5)) / s.sides, s.r - s.width / 2);
+      out.push(...extrude(rect(p.x - g.w / 2, p.y - g.d / 2, g.w, g.d), p.z - g.h, g.h, g.mat));
+    }
+  }
+  return out;
+}
+
 export function tessellateAll(s: Solid): Face[] {
   switch (s.kind) {
     case "prism": {
@@ -167,13 +228,14 @@ export function tessellateAll(s: Solid): Face[] {
       const ix = s.w * STEP_INSET, iy = s.d * STEP_INSET;
       return [...box, ...extrude(rect(s.at.x + ix, s.at.y + iy, s.w - 2 * ix, s.d - 2 * iy), s.at.z + s.h, s.h * STEP_RATIO, s.mat)];
     }
-    case "poly": return extrude(s.footprint, s.z, s.h, s.mat);
+    case "poly": { const raw = extrude(s.footprint, s.z, s.h, s.mat); return s.facade ? raw.flatMap((f) => (isWall(f) ? [f, ...facadeFaces(f, s.facade!)] : [f])) : raw; }
     case "ramp": return ramp(s.at, s.w, s.d, s.h, s.dir, s.mat);
     case "cylinder": return extrude(regular(s.at.x, s.at.y, s.r, s.sides ?? 8), s.at.z, s.h, s.mat);
     case "cone": return cone(s.at, s.r, s.h, s.sides ?? 6, s.mat);
-    case "hull": return extrude(hullFootprint(s.at, s.len, s.beam, s.heading), s.at.z, s.h, s.mat);
+    case "hull": return hull(s);
     case "strip": return strip(s.path, s.width, s.z, s.mat);
     case "ground": return ground(s.tris, s.mat);
+    case "wheel": return wheel(s);
   }
 }
 

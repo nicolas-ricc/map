@@ -1,10 +1,9 @@
 import type { Accent } from "../iso/accent";
 import { v3, type Vec3 } from "../iso/geometry";
-import type { Solid } from "../iso/solids";
 import type { Rng } from "../map/seed";
 import type { Scene } from "./shipyard";
 
-export interface AnimChanges { trolley: boolean; water: boolean; sparks: boolean }
+export interface AnimChanges { trolley: boolean; sparks: boolean }
 export interface ShipyardAnim {
   tick(dtMs: number): AnimChanges;
   sparks(): Accent[];
@@ -13,8 +12,6 @@ export interface ShipyardAnim {
 
 export const TROLLEY_CYCLE_MS = 14000;
 export const TROLLEY_PAUSE_MS = 2000;
-export const WATER_STEP_MS = 100;
-export const WATER_CYCLE_MS = 2000;
 const SPARK_FRAME_MS = 100;
 const SPARK_FRAMES = 3;
 const SPARK_GAP_MS: [number, number] = [1000, 3000];
@@ -31,15 +28,12 @@ function trolleyPhase(ms: number): number {
   return 1 - easeInOut((t - 2 * TROLLEY_PAUSE_MS - move) / move);
 }
 
-export function createShipyardAnim(scene: Scene, water: Solid[], rng: Rng, opts: { reducedMotion: boolean }): ShipyardAnim {
+export function createShipyardAnim(scene: Scene, rng: Rng, opts: { reducedMotion: boolean }): ShipyardAnim {
   const [y0, y1] = scene.trolleyRange;
-  const tris = water.flatMap((w) => (w.kind === "ground" ? w.tris : []));
-  const centers = tris.map((t) => (t.pts[0].x + t.pts[1].x + t.pts[2].x + t.pts[0].y + t.pts[1].y + t.pts[2].y) / 3);
 
   const nextGap = () => rng.int(SPARK_GAP_MS[0], SPARK_GAP_MS[1]);
 
   let clock = 0;
-  let waterStep = -1;
   let sparkTimer = nextGap();
   let sparkFrame = -1;
   let spot: Vec3 | null = null;
@@ -62,20 +56,12 @@ export function createShipyardAnim(scene: Scene, water: Solid[], rng: Rng, opts:
     trolleyLamp,
     sparks: () => live,
     tick(dtMs) {
-      if (opts.reducedMotion) return { trolley: false, water: false, sparks: false };
+      if (opts.reducedMotion) return { trolley: false, sparks: false };
       clock += dtMs;
-      const changes: AnimChanges = { trolley: false, water: false, sparks: false };
+      const changes: AnimChanges = { trolley: false, sparks: false };
 
       const y = y0 + (y1 - y0) * trolleyPhase(clock);
       if (y !== scene.trolley.at.y) { scene.trolley.at.y = y; changes.trolley = true; }
-
-      const step = Math.floor(clock / WATER_STEP_MS);
-      if (step !== waterStep) {
-        waterStep = step;
-        const phase = ((clock % WATER_CYCLE_MS) / WATER_CYCLE_MS) * Math.PI * 2;
-        for (let i = 0; i < tris.length; i++) tris[i]!.toneOffset = Math.round(Math.sin(centers[i]! / 8 - phase));
-        changes.water = true;
-      }
 
       if (sparkFrame >= 0) {
         sparkTimer -= dtMs;

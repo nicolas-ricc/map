@@ -53,3 +53,36 @@ export function convexHull(input: Vec2[]): Vec2[] {
   upper.pop();
   return [...lower, ...upper];
 }
+
+export interface PolySeg { a: Vec3; b: Vec3; len: number; heading: number }
+/** Punto de la polilínea: posición, rumbo del tramo y su índice. */
+export interface PolyPoint { x: number; y: number; z: number; heading: number; seg: number }
+export interface Polyline { segs: readonly PolySeg[]; length: number; at(d: number): PolyPoint }
+
+/**
+ * Camina una polilínea: tramos con largo (en planta, x/y) y rumbo, largo
+ * total y el punto a `d` unidades del inicio (z interpolada, 0 si los puntos
+ * son `Vec2`). `at` recorta `d` a `[0, length]`: quien quiera dar la vuelta o
+ * rebotar lo hace antes de llamar. En el límite entre dos tramos manda el
+ * anterior (t = 1), así el índice no salta antes de tiempo. Para cerrar un
+ * circuito, pasar el primer punto otra vez al final.
+ */
+export function polyline(pts: readonly (Vec2 | Vec3)[]): Polyline {
+  const p = pts.map((q) => v3(q.x, q.y, (q as Partial<Vec3>).z ?? 0));
+  const segs: PolySeg[] = p.slice(1).map((b, i) => {
+    const a = p[i]!;
+    return { a, b, len: Math.hypot(b.x - a.x, b.y - a.y), heading: Math.atan2(b.y - a.y, b.x - a.x) };
+  });
+  const cum = segs.reduce<number[]>((acc, s) => [...acc, (acc[acc.length - 1] ?? 0) + s.len], [0]);
+  const length = cum[cum.length - 1] ?? 0;
+  const at = (dist: number): PolyPoint => {
+    const first = p[0] ?? v3(0, 0, 0);
+    if (segs.length === 0) return { x: first.x, y: first.y, z: first.z, heading: 0, seg: 0 };
+    const d = Math.max(0, Math.min(length, dist));
+    let i = 0;
+    while (i < segs.length - 1 && d > cum[i + 1]!) i++;
+    const s = segs[i]!, t = s.len === 0 ? 0 : (d - cum[i]!) / s.len;
+    return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, z: s.a.z + (s.b.z - s.a.z) * t, heading: s.heading, seg: i };
+  };
+  return { segs, length, at };
+}

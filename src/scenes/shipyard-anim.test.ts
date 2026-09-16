@@ -2,13 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { Accent } from "../iso/accent";
 import { createRng } from "../map/seed";
 import { shipyard } from "./shipyard";
-import { TROLLEY_CYCLE_MS, TROLLEY_PAUSE_MS, WATER_CYCLE_MS, createShipyardAnim } from "./shipyard-anim";
-import { buildTerrain } from "./terrain";
+import { TROLLEY_CYCLE_MS, TROLLEY_PAUSE_MS, createShipyardAnim } from "./shipyard-anim";
 
 const setup = (reducedMotion = false) => {
   const scene = shipyard(createRng(7));
-  const water = [buildTerrain(createRng(7), ["portfolio"]).river];
-  return { scene, water, anim: createShipyardAnim(scene, water, createRng(3), { reducedMotion }) };
+  return { scene, anim: createShipyardAnim(scene, createRng(3), { reducedMotion }) };
 };
 
 /** Los acentos de este escenario siempre son puntos; angosta el tipo para los tests. */
@@ -44,19 +42,6 @@ describe("shipyard-anim", () => {
     expect(scene.trolley.at.y).toBeCloseTo(scene.trolleyRange[1], 3);
     expect(dot(anim.trolleyLamp()).at.y).toBeCloseTo(scene.trolleyRange[1] + 2, 3);
     expect(dot(anim.trolleyLamp()).at.z).toBeLessThan(scene.trolley.at.z);
-  });
-
-  it("el agua cambia de tono por ondas y vuelve a fase tras un ciclo", () => {
-    const { water, anim } = setup();
-    const tris = water.flatMap((w) => (w.kind === "ground" ? w.tris : []));
-    const c = anim.tick(100);
-    expect(c.water).toBe(true);
-    const offsets = tris.map((t) => t.toneOffset ?? 0);
-    expect(offsets.some((o) => o !== 0)).toBe(true);
-    expect(offsets.every((o) => o === -1 || o === 0 || o === 1)).toBe(true);
-    // Ruling: 20 ticks de 100ms tras el primero (clock=100→2100) para volver a la misma fase.
-    for (let t = 0; t < WATER_CYCLE_MS; t += 100) anim.tick(100);
-    expect(tris.map((t) => t.toneOffset ?? 0)).toEqual(offsets);
   });
 
   it("las chispas aparecen en una cuaderna, duran tres frames y desaparecen", () => {
@@ -99,7 +84,7 @@ describe("shipyard-anim", () => {
     const y = scene.trolley.at.y;
     for (let i = 0; i < 100; i++) {
       const c = anim.tick(200);
-      expect(c).toEqual({ trolley: false, water: false, sparks: false });
+      expect(c).toEqual({ trolley: false, sparks: false });
     }
     expect(scene.trolley.at.y).toBe(y);
     expect(anim.sparks()).toEqual([]);

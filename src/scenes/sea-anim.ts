@@ -1,17 +1,14 @@
 import type { Accent } from "../iso/accent";
-import { v3, type Vec2, type Vec3 } from "../iso/geometry";
-import type { Solid, Tri } from "../iso/solids";
-import { distToHeadland } from "../map/geo";
+import { polyline, v3, type Vec2, type Vec3 } from "../iso/geometry";
+import type { Solid } from "../iso/solids";
 import type { SeaScene } from "./sea";
-import { ship as buildShip, type ShipKind } from "./ships";
-import type { TerrainMesh } from "./terrain";
+import { ship as buildShip, wake, type ShipKind } from "./ships";
 
 /**
- * Blog animado, sin Pixi: el mar en tres bandas (onda de tono, una banda por
- * paso), la espuma del arrecife en su propia capa (cae a ambos lados del
- * límite entre la banda 0 y la 1), la fosa más lenta, tres barcos que salen
- * de la bahía, rodean la punta por el este, cruzan la fosa y se desvanecen en
- * el sangrado, sus estelas y luces, el haz del faro y las dos boyas. Spec §7.
+ * Blog animado, sin Pixi: tres barcos que salen de la bahía, rodean la punta
+ * por el este, cruzan la fosa y se desvanecen en el sangrado, sus estelas y
+ * luces, el haz del faro y las dos boyas. El agua en sí (repartida por
+ * profundidad en `terrain.ts`) no es asunto de acá: la anima `water-animator.ts`. Spec §7.
  */
 // Nace en (326, -24), no más al oeste ni al sur: en la bahía el barco tiene max.y < 24 y quedaría detrás (isBehind por y) de los
 // galpones del muelle de alistamiento (x 304..324, y ≥ 24) y de su selva (x 332..340, y ≥ 26) si se superpusiera con ellos en pantalla.
@@ -32,90 +29,80 @@ import type { TerrainMesh } from "./terrain";
 export const ROUTE: Vec2[] = [{ x: 326, y: -24 }, { x: 350, y: 10 }, { x: 500, y: 20 }, { x: 510, y: 118 }, { x: 520, y: 172 }, { x: 545, y: 224 }, { x: 610, y: 260 }];
 export const SHIPS: readonly { kind: ShipKind; speed: number; phase: number }[] = [{ kind: "cargo", speed: 1.2, phase: 0 }, { kind: "tug", speed: 2, phase: 0.4 }, { kind: "barge", speed: 0.8, phase: 0.75 }];
 export const FADE_U = 30, TURN_U = 20;
-// SEA_STEP_MS 150 (no 100, Task 6): en el lab medido (Chrome headless vía CDP, sin GPU) el peor
-// redibujo en 5 s rondaba 9-14 ms con 100 ms y sigue en 9-12 ms con 150 ms: por encima de la meta de
-// 6 ms. Queda pendiente medir en un Chrome de escritorio con GPU (Task 7) antes de decidir si hace
-// falta más ajuste; no se subió más este valor porque ya está fuera del alcance de esta tarea.
-export const SEA_STEP_MS = 150, SEA_CYCLE_MS = 4000, ABYSS_STEP_MS = 200, ABYSS_CYCLE_MS = 8000, FOAM_STEP_MS = 500;
 export const BEAM_PERIOD_MS = 8000, BEAM_LEN = 24, BEAM_INNER = 12, BEAM_HALF = (7 * Math.PI) / 180;
 export const BUOY_PERIOD_MS = 2000;
-const BANDS = 3, FOAM_DIST = 8; // espuma: triángulos de orilla a menos de 8 u de la punta (arrecife de 6 + 2)
-const WATER_Z = -1;
 
-const seg = ROUTE.slice(1).map((b, i) => { const a = ROUTE[i]!; const len = Math.hypot(b.x - a.x, b.y - a.y); return { a, b, len, heading: Math.atan2(b.y - a.y, b.x - a.x) }; });
-const cum = seg.reduce<number[]>((acc, s) => [...acc, (acc[acc.length - 1] ?? 0) + s.len], [0]);
-export const routeLength = (): number => cum[cum.length - 1]!;
+// Lancha de la feria: hace la lanzadera entre la punta del muelle de la feria (`fair.ts`, bahía
+// norte) y la orilla de la bahía frente al muelle de graneles. Los tres puntos están en agua
+// (bayWater), y el punto norte amarra en el muelle de la feria (ver el ajuste de la Task 17 abajo).
+//
+// Ruling del controller (Task 8, fix): una recta entre los dos muelles no sirve porque la costa oeste
+// de la bahía llega hasta x ≈ 277 cerca de y −204 (una saliente entre los dos muelles). Se agregó un
+// punto intermedio que la rodea por el este. El punto sur se corrió 6 u más al este que el propuesto
+// ((235, −84) → (241, −84)): entre el intermedio y el sur, cerca de (257, −126), la recta original
+// volvía a tocar la misma costa (una segunda entrada, más al sur) y quedaba a menos de 6 u de tierra.
+// Con el ajuste, `depthAt` mínimo a lo largo de toda la polilínea es exactamente 6 (en ese mismo punto).
+//
+// Ajuste de la Task 17 (regla de la Task 8): con la feria construida, la lancha queda detrás del
+// pabellón del muelle (`fair.ts`, cono `copper` en (243, −277)) en pantalla —`isBehind(ferry,
+// pabellón)` da `true`— cerca del punto norte, entre el 5 % y el 15 % del primer tramo. Alcanzaba
+// con correr el punto norte 2 u al este para despejarlo, pero la regla pide pasos de 6 u: se corrió
+// ((248, −288) → (254, −288)); no hay más superposición en ese tramo y `depthAt` en el punto sigue
+// muy por encima de 6 (≈ 37).
+export const FERRY_ROUTE: readonly Vec2[] = [{ x: 254, y: -288 }, { x: 290, y: -212 }, { x: 241, y: -84 }];
+export const FERRY_SPEED = 3, FERRY_PAUSE_MS = 4000;
+
+const route = polyline(ROUTE);
+export const routeLength = (): number => route.length;
 
 const lerpAngle = (a: number, b: number, t: number): number => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * t; };
 
 /** Punto y rumbo a `dist` unidades del inicio; el rumbo se interpola en los TURN_U alrededor de cada vértice. */
 export function routeAt(dist: number): { x: number; y: number; heading: number } {
-  const d = Math.max(0, Math.min(routeLength(), dist));
-  let i = 0;
-  while (i < seg.length - 1 && d > cum[i + 1]!) i++;
-  const s = seg[i]!, local = d - cum[i]!, t = local / s.len;
+  const p = route.at(dist), seg = route.segs, i = p.seg, s = seg[i]!;
+  const local = Math.hypot(p.x - s.a.x, p.y - s.a.y); // lo andado dentro del tramo: `at` no devuelve la acumulada
   let heading = s.heading;
   if (local < TURN_U / 2 && i > 0) heading = lerpAngle(seg[i - 1]!.heading, s.heading, 0.5 + local / TURN_U);
   else if (s.len - local < TURN_U / 2 && i < seg.length - 1) heading = lerpAngle(s.heading, seg[i + 1]!.heading, (TURN_U / 2 - (s.len - local)) / TURN_U);
-  return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, heading };
+  return { x: p.x, y: p.y, heading };
 }
 
 export interface ShipFrame { solids: Solid[]; lights: Accent[]; wake: Solid[]; alpha: number }
-export interface SeaChanges { bands: Set<number>; abyss: boolean; ships: boolean; beam: boolean; buoys: boolean; foam: boolean }
+export interface SeaChanges { ships: boolean; beam: boolean; buoys: boolean; ferry: boolean }
 export interface SeaAnim {
-  band(k: number): Solid[];
-  abyss(): Solid[];
-  foam(): Solid[];
   ship(k: number): ShipFrame;
   dist(k: number): number;
   alphaAt(dist: number): number;
   beam(): Accent[];
   buoys(): Accent[];
+  ferry(): ShipFrame;
   tick(dtMs: number): SeaChanges;
 }
 
-const centerKey = (t: Tri): number => (t.pts[0].x + t.pts[1].x + t.pts[2].x + t.pts[0].y + t.pts[1].y + t.pts[2].y) / 3;
-const centerX = (t: Tri): number => (t.pts[0].x + t.pts[1].x + t.pts[2].x) / 3;
-const centerY = (t: Tri): number => (t.pts[0].y + t.pts[1].y + t.pts[2].y) / 3;
-
-export function createSeaAnim(scene: SeaScene, terrain: TerrainMesh, opts: { reducedMotion: boolean }): SeaAnim {
-  const seaTris = terrain.sea.kind === "ground" ? terrain.sea.tris : [], shoreTris = terrain.shore.kind === "ground" ? terrain.shore.tris : [];
-  const abyssTris = terrain.abyss.kind === "ground" ? terrain.abyss.tris : [];
-  // bandas por x: cada una lleva su parte de mar y de orilla; la espuma del arrecife tiene su propia
-  // capa (no una banda: cae a ambos lados del límite entre la banda 0 y la 1, y una banda repintaría
-  // la mitad de sus triángulos con la Graphics de la otra)
-  const xs = [...seaTris, ...shoreTris].map(centerX);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs) + 1e-6, bandW = (x1 - x0) / BANDS;
-  const bandOf = (t: Tri) => Math.min(BANDS - 1, Math.floor((centerX(t) - x0) / bandW));
-  const foamTris: Tri[] = shoreTris.filter((t) => distToHeadland(centerX(t), centerY(t)) < FOAM_DIST).map((t) => ({ pts: t.pts }));
-  const bands: Solid[][] = Array.from({ length: BANDS }, (_, k) => [
-    { kind: "ground", mat: "waterDeep", tris: seaTris.filter((t) => bandOf(t) === k) },
-    { kind: "ground", mat: "water", tris: shoreTris.filter((t) => bandOf(t) === k) },
-  ]);
-  const foamSolid: Solid = { kind: "ground", mat: "foam", tris: foamTris };
-  const abyssSolid: Solid = { kind: "ground", mat: "abyss", tris: abyssTris };
-
-  let clock = 0, seaStep = 0, abyssStep = 0, foamStep = 0, buoyStep = 0;
+export function createSeaAnim(scene: SeaScene, opts: { reducedMotion: boolean }): SeaAnim {
+  let clock = 0, buoyStep = 0;
   const L = routeLength();
   const dists = SHIPS.map((s) => s.phase * L);
   const alphaAt = (d: number): number => Math.max(0, Math.min(1, d / FADE_U, (L - d) / FADE_U));
 
-  const wave = (tris: Tri[], k: number, phase: number, amp: number) => { for (const t of tris) t.toneOffset = Math.round(amp * Math.sin(centerKey(t) / k - phase)); };
-  const paintBand = (k: number): void => {
-    const phase = ((clock % SEA_CYCLE_MS) / SEA_CYCLE_MS) * Math.PI * 2;
-    for (const s of bands[k]!) if (s.kind === "ground") wave(s.tris, 8, phase, 1);
+  // La lancha camina FERRY_ROUTE sin suavizado de giro en los vértices (a diferencia de los barcos,
+  // dobla en el momento): el rumbo es el del tramo actual, invertido cuando vuelve. `polyline.at` ya
+  // recorta la distancia a las dos puntas, que es justo donde la lancha para.
+  const ferryLine = polyline(FERRY_ROUTE);
+  const ferryLen = ferryLine.length;
+  const ferryPointAt = ferryLine.at;
+  let ferryDist = 0, ferryDir = 1, ferryPause = FERRY_PAUSE_MS;
+  const ferryFrame = (): ShipFrame => {
+    const pt = ferryPointAt(ferryDist), p = { x: pt.x, y: pt.y }, heading = ferryDir > 0 ? pt.heading : pt.heading + Math.PI;
+    const built = buildShip("ferry", p, heading);
+    return { solids: built.solids, lights: built.lights, wake: [{ kind: "ground", mat: "foam", tris: wake("ferry", p, heading) }], alpha: 1 };
   };
-  const paintFoam = (): void => { for (const t of foamTris) t.toneOffset = foamStep % 2 === 0 ? 0 : -1; };
-  for (let k = 0; k < BANDS; k++) paintBand(k);
-  paintFoam();
 
   const shipFrame = (k: number): ShipFrame => {
     const p = routeAt(dists[k]!), alpha = alphaAt(dists[k]!);
     const built = buildShip(SHIPS[k]!.kind, p, p.heading);
-    const c = Math.cos(p.heading), s = Math.sin(p.heading);
-    const local = (dx: number, dy: number) => v3(p.x + dx * c - dy * s, p.y + dx * s + dy * c, WATER_Z + 0.05);
-    const wake: Tri[] = [1, 2, 3, 4].map((i): Tri => ({ pts: [local(-6 * i + 3, 0), local(-6 * i, -(0.8 + 1.2 * i)), local(-6 * i, 0.8 + 1.2 * i)], toneOffset: i < 2 ? 1 : 0 }));
-    return { solids: built.solids, lights: built.lights, wake: [{ kind: "ground", mat: "foam", tris: wake }], alpha };
+    const wakeTris = wake(SHIPS[k]!.kind, p, p.heading);
+    return { solids: built.solids, lights: built.lights, wake: [{ kind: "ground", mat: "foam", tris: wakeTris }], alpha };
   };
 
   const beamAngle = (): number => (opts.reducedMotion ? 0 : ((clock % BEAM_PERIOD_MS) / BEAM_PERIOD_MS) * Math.PI * 2);
@@ -127,29 +114,26 @@ export function createSeaAnim(scene: SeaScene, terrain: TerrainMesh, opts: { red
   const buoyOn = (k: number): boolean => Math.floor((clock + k * (BUOY_PERIOD_MS / 2)) / (BUOY_PERIOD_MS / 2)) % 2 === 0;
 
   return {
-    band: (k) => bands[k]!,
-    abyss: () => [abyssSolid],
-    foam: () => [foamSolid],
     ship: shipFrame,
     dist: (k) => dists[k]!,
     alphaAt,
     beam: () => [wedge(BEAM_LEN, "magentaBleed", 0.5), wedge(BEAM_INNER, "magenta", 0.6)],
     buoys: () => scene.buoys.flatMap((b, k) => (buoyOn(k) ? [{ kind: "dot" as const, at: v3(b.x, b.y, b.z + 0.3), r: 0.8, color: "magentaMid" as const }] : [])),
+    ferry: ferryFrame,
     tick(dtMs) {
-      const none: SeaChanges = { bands: new Set(), abyss: false, ships: false, beam: false, buoys: false, foam: false };
+      const none: SeaChanges = { ships: false, beam: false, buoys: false, ferry: false };
       if (opts.reducedMotion || dtMs <= 0) return none;
       clock += dtMs;
-      const c: SeaChanges = { bands: new Set(), abyss: false, ships: true, beam: true, buoys: false, foam: false };
-      const fs = Math.floor(clock / FOAM_STEP_MS);
-      if (fs !== foamStep) { foamStep = fs; c.foam = true; paintFoam(); }
-      const ss = Math.floor(clock / SEA_STEP_MS);
-      if (ss !== seaStep) { seaStep = ss; c.bands.add(ss % BANDS); } // round-robin: una banda por paso
-      for (const k of c.bands) paintBand(k);
-      const as = Math.floor(clock / ABYSS_STEP_MS);
-      if (as !== abyssStep) { abyssStep = as; wave(abyssTris, 14, ((clock % ABYSS_CYCLE_MS) / ABYSS_CYCLE_MS) * Math.PI * 2, 0.6); c.abyss = true; }
+      const c: SeaChanges = { ships: true, beam: true, buoys: false, ferry: false };
       for (let k = 0; k < SHIPS.length; k++) { dists[k] = dists[k]! + (SHIPS[k]!.speed * dtMs) / 1000; if (dists[k]! >= L) dists[k] = dists[k]! - L; }
       const bs = Math.floor(clock / (BUOY_PERIOD_MS / 2));
       if (bs !== buoyStep) { buoyStep = bs; c.buoys = true; }
+      if (ferryPause > 0) ferryPause -= dtMs;
+      else {
+        ferryDist += (ferryDir * FERRY_SPEED * dtMs) / 1000; c.ferry = true;
+        if (ferryDist >= ferryLen) { ferryDist = ferryLen; ferryDir = -1; ferryPause = FERRY_PAUSE_MS; }
+        else if (ferryDist <= 0) { ferryDist = 0; ferryDir = 1; ferryPause = FERRY_PAUSE_MS; }
+      }
       return c;
     },
   };
