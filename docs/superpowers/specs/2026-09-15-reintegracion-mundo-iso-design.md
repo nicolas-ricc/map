@@ -1,7 +1,7 @@
 # Reintegración del mundo isométrico al sitio — diseño
 
 **Fecha:** 2026-09-15
-**Estado:** aprobada, sin implementar
+**Estado:** implementada (2026-09-16)
 **Antecede:** `2026-09-15-mundo-3-tecnologico-feria-agua-barcos-design.md` (último
 estado del mundo en el laboratorio), `2026-09-14-mundo-isometrico-design.md`
 (§10 dejó esta reintegración para una spec aparte),
@@ -275,6 +275,55 @@ log de `primer dibujo` / `peor redibujo` bajo `import.meta.env.DEV` en
   criterio de la spec original (< 200 KB gzip) probablemente no se cumple ya
   por Pixi solo; se anota, no se gatea.
 
+### Medidas (Task 8, 2026-09-16)
+
+Mismo headless de siempre (Chrome vía CDP con `agent-browser`, sin GPU, DPR 2,
+viewport 1600×900), `npx vite --port 5199`, sobre `/map/` (el sitio):
+
+- **Primer dibujo (segunda apertura, pestaña cerrada y reabierta): 261.0 ms.**
+  Se pasa del presupuesto (≤ 200 ms). `stage.staticCount` = 32 050 polígonos
+  estáticos — bastante más que la estimación de §5 (≈ 5 000 solo del velo);
+  el resto son los sólidos del mundo completo (astillero, fábrica, ciudad,
+  distrito tecnológico, feria, hinterland, mar). No se tocó código en esta
+  tarea (fuera de alcance): el sospechoso natural es el velo (`veilPolygons`,
+  ≈ 4 700 celdas), pero también pesa el resto de la escena: **queda para una
+  tarea de rendimiento aparte** decidir si se optimiza (tiras horizontales en
+  `veilCells`, o revisar el conteo total de sólidos).
+- **Peor redibujo en 5 s (máximo de 15 lecturas, moviendo el puntero sobre el
+  canvas ~30 s con `agent-browser mouse move`): 12.70 ms.** Dentro del
+  presupuesto (≤ 15 ms).
+- **gzip de `dist/assets/index-*.js` tras `npm run build`: 104 048 bytes**
+  (104 KB; el archivo sin comprimir pesa 332 440 bytes). Por encima de los
+  200 KB gzip de la spec original, como se anticipaba en este punto — no se
+  gatea.
+
+Líneas de consola crudas (recorte de la sesión de medición):
+
+```
+[info] [mapa] primer dibujo: 513.5 ms, 32050 polígonos estáticos
+[info] [mapa] primer dibujo: 260.4 ms, 32050 polígonos estáticos
+[info] [mapa] primer dibujo: 261.0 ms, 32050 polígonos estáticos
+[info] [mapa] peor redibujo en 5 s: 11.30 ms
+[info] [mapa] peor redibujo en 5 s: 9.20 ms
+[info] [mapa] peor redibujo en 5 s: 9.10 ms
+[info] [mapa] peor redibujo en 5 s: 10.50 ms
+[info] [mapa] peor redibujo en 5 s: 7.50 ms
+[info] [mapa] peor redibujo en 5 s: 8.50 ms
+[info] [mapa] peor redibujo en 5 s: 12.70 ms
+[info] [mapa] peor redibujo en 5 s: 7.70 ms
+[info] [mapa] peor redibujo en 5 s: 7.20 ms
+[info] [mapa] peor redibujo en 5 s: 8.90 ms
+[info] [mapa] peor redibujo en 5 s: 7.70 ms
+[info] [mapa] peor redibujo en 5 s: 9.60 ms
+[info] [mapa] peor redibujo en 5 s: 7.60 ms
+[info] [mapa] peor redibujo en 5 s: 7.20 ms
+[info] [mapa] peor redibujo en 5 s: 11.70 ms
+```
+
+(La primera línea de `primer dibujo`, 513.5 ms, es la primera apertura de la
+pestaña, más fría; la spec pide la segunda, 260.4/261.0 ms, consistente entre
+dos aperturas sucesivas.)
+
 ## 6. Tests
 
 Unit (Vitest, sin Pixi salvo donde ya lo hay):
@@ -333,3 +382,101 @@ Manual (agent-browser, viewport 2×, `localhost`):
 - Cambiar `coverQuad` para centrar verticalmente en aspectos verticales.
 - Reducir el peso de Pixi (imports selectivos).
 - Cuarta zona.
+
+## 9. Desvíos de la implementación
+
+Respecto del texto de esta spec (Tasks 1–8, cerradas el 2026-09-16):
+
+- **`VIEW_INSET` en unidades de mundo.** `clampToBleed` (`src/world/view.ts`)
+  usa `VIEW_INSET = 3` como margen del paralelogramo del sangrado en
+  unidades de mundo, no de pantalla como sugiere el texto de §3.6.
+- **Piso de escala de `zoneView`.** El texto dice "nunca menor que la escala
+  cover del host"; la implementación aplica un piso algo mayor,
+  `cover × ZONE_MIN_ZOOM` con `ZONE_MIN_ZOOM = 1.01`, para evitar el caso
+  límite en que ambas escalas empatan exacto y la comparación de punto
+  flotante decide mal.
+- **`LABEL_Z = 34`.** La altura del rótulo sobre el pie del landmark
+  (`src/main.ts`) es una constante nombrada con ese valor, no derivada de
+  otra constante existente.
+- **`<nav id="zonas">` dentro de `#canvas-host`.** El texto de §3.8 no fija
+  dónde vive el nav en el DOM; terminó como hijo de `#canvas-host` (para que
+  su posicionamiento absoluto quede relativo al host del canvas), no como
+  hermano suelto.
+- **Rótulos ocultos hasta `mapa-listo`.** Los links de `#zonas` son
+  `visibility: hidden` hasta que la raíz (`<html>`) recibe la clase
+  `mapa-listo`, agregada en `main.ts` justo después del primer `jumpTo` de
+  la cámara. Se sumó en la ronda de fixes de la Task 6 para evitar un
+  parpadeo de los rótulos en su posición `(0, 0)` antes del primer
+  posicionamiento real; no está en el texto original de §3.7/§3.8.
+- **Columna angosta de escritorio: la zona no entra a escala natural.** En el
+  layout de escritorio con la columna izquierda angosta, `zoneView` no
+  encuentra una escala ≥ cover que además quepa con margen 4 % adentro de
+  esa columna; se resuelve centrando la zona a escala `cover × ZONE_MIN_ZOOM`
+  (anticipado como caso a resolver en §3.6, sin decidir la solución exacta).
+- **Sin `stage.test.ts` con Pixi.** Como preveía la nota de autorevisión del
+  plan, no se agregó un test de `Stage` que instancie `Graphics`: la lógica
+  de objetivos de alpha se extrajo a la función pura `focusAlphas` (testeada
+  en `veil.test.ts`/`stage` según corresponda) y el resto del comportamiento
+  visual se verificó a ojo en el laboratorio y con las capturas de la Task 8.
+- **Presupuesto de primer dibujo no cumplido.** Medido en Task 8: 260–261 ms
+  caliente en `/map/` (segunda apertura), por encima del objetivo de
+  ≤ 200 ms de §5. El peor redibujo sí cumple (12.70 ms ≤ 15 ms). Se anota
+  sin tocar código, según el alcance de la Task 8; el sospechoso natural
+  para una futura optimización es el velo (`veilPolygons`, ≈ 4 700 celdas)
+  y/o el total de sólidos estáticos del mundo completo (32 050). Ver §5.
+
+### Checklist manual §6, ítems 1–8 (Task 8, 2026-09-16)
+
+Capturas en
+`/tmp/claude-1000/-home-nicolasr-Projects-mapa--claude-worktrees-mundo-2/d1ff0b65-9d47-4fce-924a-b97356f749ef/scratchpad/task8/`
+(agent-browser, Chrome vía CDP, viewport 1600×900 DPR 2 salvo donde se
+indica).
+
+1. **PASS** — `/map/` a 16:9 sin cielo en ninguna esquina, tres rótulos
+   (Portfolio sobre la grúa, Resume sobre la torre, Blog sobre el faro).
+   Captura: `01-cover-1600x900.png`.
+2. **PASS** — Hover sobre cada zona vela las otras dos (velo + acentos
+   atenuados) y la punta del faro enciende Portfolio, no Blog, como pide
+   `veil.test.ts`. Verificado por diferencia de píxel entre pares de
+   capturas con la página recién abierta (sin contaminar el estado `hot`
+   con un movimiento de mouse previo — `worldZoneAt` no tiene "zona nula": un
+   punto cualquiera del canvas siempre resuelve a alguna de las tres, así
+   que cualquier `pointermove` previo deja `hot` en una zona real, no en
+   `null`). Capturas: `02-hover-portfolio.png`, `02-hover-resume.png`,
+   `02-hover-blog.png`, `02-hover-faro-tip.png`.
+3. **PASS** — Clic en `#zonas a[data-zone=cv]` (Resume) encaja ciudad +
+   distrito tecnológico en la columna izquierda sin cielo, panel a la
+   derecha, URL pasa a `/map/cv/`; "Volver al mapa" y Escape devuelven a
+   `/map/`. **Verificación adicional del click en el rótulo visible de
+   Resume, pedida para esta tarea:** `agent-browser click "#zonas
+   a[data-zone=cv]"` seguido de `agent-browser get url` confirma
+   `http://localhost:5199/map/cv/` — sin mis-clic (a diferencia de una
+   corrida previa con locator de texto). Captura: `03-click-resume-active.png`.
+4. **PASS** — Tab recorre Portfolio → Resume → Blog (verificado leyendo
+   `data-zone` del elemento con foco tras cada `Tab`) con anillo de foco
+   visible; Enter sobre Blog navega a `/map/blog/`. Capturas:
+   `04-tab1-portfolio.png`, `04-tab2-resume.png`, `04-tab3-blog.png`.
+5. **PASS** — Móvil 390×844: cover sin cielo y zona activa (Resume) en su
+   franja sin cielo. Capturas: `05-mobile-cover.png`, `05-mobile-active.png`.
+6. **PASS** — `npm run build` + `npm run preview`, carga directa de
+   `/map/cv/`: arranca ya en la zona, sin pasar por el mapa. Captura:
+   `06-direct-load-cv.png`.
+7. **PASS (verificado en headless)** — `agent-browser set media
+   reduced-motion` antes de abrir la página: los clics entre zonas saltan
+   sin animación (cámara de duración 0) y, comparando dos capturas tomadas
+   3 s aparte sin ninguna interacción de por medio, el diff de píxeles es
+   cero (mundo completamente quieto: sin barcos, luces ni olas animándose).
+   El brief permitía anotar "no verificado" si la herramienta no soportaba
+   emulación de medios, pero sí la soporta. Capturas: `07-reduced-motion.png`,
+   `07-rm-c1.png`, `07-rm-c2.png` (par usado para el diff de cero píxeles).
+8. **PASS** — `npm test` (54 archivos, 412 tests), `npm run typecheck` y
+   `npm run build` verdes; `dist/` no contiene `lab/`
+   (`find dist -type d` solo lista `assets/`, `portfolio/`, `cv/`, `blog/`);
+   los cuatro `lab/*.html` (`world.html`, `portfolio.html`, `resume.html`,
+   `blog.html`) abren y renderizan en `npx vite --port 5199`. Capturas:
+   `08-lab-world.png`, `08-lab-portfolio.png`, `08-lab-resume.png`,
+   `08-lab-blog.png`.
+
+Resultado: 8/8 PASS. El único incumplimiento de presupuesto es el primer
+dibujo de §5 (260–261 ms vs. ≤ 200 ms), que no es parte del checklist §6
+pero sí del criterio 5 de §7 (medido y anotado, no necesariamente cumplido).
