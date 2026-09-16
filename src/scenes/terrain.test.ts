@@ -229,7 +229,7 @@ describe("buildTerrain", () => {
   });
 
   it("la feria es arena plana en el sangrado norte", () => {
-    expect(bleedTerrainAt(150, -300)).toBe("fair");
+    expect(bleedTerrainAt(150, -264)).toBe("fair");
     const m = buildTerrain(createRng(7));
     const sand = m.bleed.find((s) => s.kind === "ground" && s.mat === "sand");
     expect(sand && sand.kind === "ground" && sand.tris.length).toBeGreaterThan(50);

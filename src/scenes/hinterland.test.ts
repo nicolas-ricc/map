@@ -4,7 +4,7 @@ import { bounds, isFlat, type Solid } from "../iso/solids";
 import { WORLD, ZONE_SPLIT_Y, inCoverQuad, worldZoneAt } from "../map/geo";
 import { allIsoColors, type Material } from "../map/palette-iso";
 import { createRng } from "../map/seed";
-import { COOLING, PARKING, POWER, PYLON_N, SILOS, TANKS, hinterland } from "./hinterland";
+import { COOLING, PARKING, POWER, PYLON_N, ROAD_Y, SILOS, TANKS, WEST_RAIL_X0, hinterland } from "./hinterland";
 import { GREEN_BELT } from "./sprawl-grid";
 import { bleedTerrainAt, terrainAt } from "./terrain";
 
@@ -46,8 +46,8 @@ describe("hinterland", () => {
     expect(s.solids.filter((x) => x.kind === "prism" && x.roof === "gable" && x.mat === "concrete").length).toBeGreaterThanOrEqual(3);
     expect(s.solids.filter((x) => x.kind === "cylinder" && x.r >= 7 && x.sides === 12)).toHaveLength(TANKS.length);
     expect(s.solids.filter((x) => x.kind === "cylinder" && x.mat === "concrete" && x.h === SILOS.h)).toHaveLength(SILOS.cols * SILOS.rows);
-    expect(s.solids.filter((x) => x.kind === "prism" && x.h === 14 && x.w === 1)).toHaveLength(PYLON_N);
-    expect(s.solids.filter((x) => x.kind === "prism" && x.d === 0.24).length).toBeGreaterThanOrEqual(2 * (PYLON_N - 2)); // cables
+    expect(s.solids.filter((x) => x.kind === "prism" && x.h === 14 && x.w === 1)).toHaveLength(PYLON_N - 2); // las dos últimas caerían en la feria
+    expect(s.solids.filter((x) => x.kind === "prism" && x.d === 0.24).length).toBeGreaterThanOrEqual(2 * (PYLON_N - 4)); // cables
     expect(s.solids.filter((x) => x.kind === "prism" && x.w === 6 && x.d === 2.4 && x.h === 2.6 && x.at.z > 0).length).toBeGreaterThan(20); // contenedores apilados
     const belt = s.solids.filter((x) => x.kind === "cone" && (x.mat === "leaf" || x.mat === "leafDark") && x.at.y >= GREEN_BELT.y0 && x.at.y < GREEN_BELT.y1 && x.at.x < WORLD.x0);
     expect(belt.length).toBeGreaterThanOrEqual(30);
@@ -74,9 +74,19 @@ describe("hinterland", () => {
     expect(s.solids.filter((x) => x.kind === "cone" && x.mat === "rust" && bounds(x).max.y < -204)).toHaveLength(3); // acopios de carbón
     expect(s.ground.filter((g) => g.kind === "strip" && g.mat === "steel" && g.width === 0.8)).toHaveLength(1); // cinta transportadora
     expect(s.solids.filter((x) => x.kind === "prism" && x.h === 1.2 && x.w !== 2.2 && x.mat === "steel" && bounds(x).max.y < -204)).toHaveLength(4); // cerco de la central
-    expect(s.accents.filter((a) => a.kind === "dot" && a.color === "cyan" && a.at.y < -204)).toHaveLength(5); // 2 farolas del patio de transformadores + 3 de la calle
+    expect(s.accents.filter((a) => a.kind === "dot" && a.color === "cyan" && a.at.y < ROAD_Y)).toHaveLength(5); // 2 farolas del patio de transformadores + 3 de la calle
     const north = s.solids.filter((x) => bounds(x).max.y < -204 && !isFlat(x));
     expect(north.length).toBeGreaterThan(30); expect(north.length).toBeLessThanOrEqual(250);
     for (const x of north) { const b = bounds(x); expect(inCoverQuad((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, 16 / 9, 30)).toBe(true); }
+  });
+
+  it("las vías del oeste del astillero siguen por el cinturón verde hasta el borde del sangrado, sin conos encima", () => {
+    const s = scene();
+    const rails = s.ground.filter((g) => g.kind === "strip" && g.mat === "rail" && g.path[0]!.x === WEST_RAIL_X0 && g.path[1]!.x === 0);
+    expect(rails.map((g) => g.kind === "strip" && g.path[0]!.y)).toEqual([131, 134]);
+    const sleepers = s.solids.filter((x) => x.kind === "prism" && x.mat === "rust" && x.d === 5 && x.h === 0.3);
+    expect(sleepers.length).toBeGreaterThanOrEqual(90);
+    for (const x of sleepers) { const b = bounds(x); expect(b.min.x).toBeGreaterThan(WEST_RAIL_X0); expect(b.max.x).toBeLessThan(0); }
+    for (const c of s.solids) if (c.kind === "cone" && (c.mat === "leaf" || c.mat === "leafDark")) for (const ry of [131, 134]) expect(Math.abs(c.at.y - ry)).toBeGreaterThanOrEqual(c.r + 1.5);
   });
 });

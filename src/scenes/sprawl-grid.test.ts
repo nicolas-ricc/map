@@ -22,12 +22,13 @@ describe("sprawl-grid", () => {
     expect(builtAt(400, 400)).toBeNull();          // mar
     expect(builtAt(100, 100)).toBeNull();          // contenido
     expect(builtAt(-400, 100)).toBeNull();         // más allá del alcance: loma
-    expect(builtAt(150, -300)).toBe("fair");
+    expect(builtAt(150, -264)).toBe("fair");
     expect(builtAt(100, -220)).toBe("fair");
-    expect(builtAt(40, -300)).toBe("industrial");   // al oeste de la feria
+    expect(builtAt(40, -264)).toBe("industrial");   // al oeste de la feria
+    expect(builtAt(150, -330)).toBe("industrial");  // al norte de la feria
     expect(builtAt(150, -400)).toBeNull();          // más allá del alcance nuevo
     expect(builtAt(240, -300)).toBeNull();          // bahía
-    expect(fairAt(150, -300)).toBe(true); expect(fairAt(150, -100)).toBe(false);
+    expect(fairAt(150, -264)).toBe(true); expect(fairAt(150, -100)).toBe(false);
     expect(bayShoreX(-300)).toBe(riverCenter(-300) - RIVER_HALF);
   });
 

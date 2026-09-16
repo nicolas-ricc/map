@@ -3,9 +3,10 @@ import { v3, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid } from "../iso/solids";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { WORLD, ZONE_SPLIT_Y, inCoverQuad } from "../map/geo";
+import { BLEED, WORLD, ZONE_SPLIT_Y, inCoverQuad } from "../map/geo";
 import { jungle } from "./flora";
 import { towerCrane } from "./pieces";
+import { RAIL_Y } from "./shipyard";
 import { COVER_MARGIN, GREEN_BELT, builtAt } from "./sprawl-grid";
 
 /**
@@ -151,14 +152,21 @@ function westHalls(out: Solid[], accents: Accent[], rng: Rng): void {
   out.push({ kind: "cylinder", at: v3(wx, wy, legH), r: 3, h: 4, mat: "steel", sides: 10 });
   accents.push({ kind: "dot", at: v3(wx, wy, legH + 4.2), r: 0.6, color: "cyanMid" });
   for (const [x, y] of [[-190, 44], [-130, 96], [-70, 20], [-150, -50], [-180, 10]] as const) lamp(out, accents, x, y);
-  jungle(out, rng, { x0: -238, x1: WORLD.x0 - 2, y0: GREEN_BELT.y0 + 2, y1: ZONE_SPLIT_Y - 5 }, 30); // la mitad de Portfolio del cinturón verde (r ≤ 4: ningún cono cruza la costura y = 146)
+  jungle(out, rng, { x0: -238, x1: WORLD.x0 - 2, y0: GREEN_BELT.y0 + 2, y1: ZONE_SPLIT_Y - 5 }, 60, 0.4, { y: RAIL_Y }); // la mitad de Portfolio del cinturón verde (r ≤ 4: ningún cono cruza la costura y = 146); se siembran 60 porque los que caerían sobre las vías del oeste se descartan (quedan ~30)
+}
+
+/** Las vías del oeste del astillero siguen por el cinturón verde hasta el borde del sangrado: en pantalla salen por la izquierda, como si no terminaran. */
+export const WEST_RAIL_X0 = WORLD.x0 - BLEED.x;
+function westRails(out: Solid[]): void {
+  for (const y of RAIL_Y) out.push(strip([{ x: WEST_RAIL_X0, y }, { x: 0, y }], 0.5, 0.05, "rail"));
+  for (let x = -2; x > WEST_RAIL_X0; x -= 4) out.push(prism(x, RAIL_Y[0] - 1, 0, 1, 5, 0.3, "rust")); // durmientes, al paso de los del astillero
 }
 
 export const POWER = { x: 34, y: -276, w: 40, d: 16 } as const;
 export const STACKS_N = [{ x: 78, y: -270 }, { x: 78, y: -260 }] as const;
 export const COOLING = { x: 20, y: -236, r: 8 } as const;
-export const PARKING = { x: 50, y: -236, w: 34, d: 24 } as const;
-export const ROAD_Y = -212;
+export const PARKING = { x: 50, y: -200, w: 34, d: 24 } as const;
+export const ROAD_Y = -176;
 const inCover = (x: number, y: number): boolean => inCoverQuad(x, y, 16 / 9, COVER_MARGIN);
 /** Huella entera sobre tierra industrial y dentro del cover: guarda cada pieza (o grupo) de la central y la calle. */
 const ok = (x: number, y: number, w: number, d: number): boolean => onIndustrial(x, y, w, d) && inCover(x + w / 2, y + d / 2);
@@ -205,6 +213,7 @@ export function hinterland(rng: Rng): HinterlandScene {
   pier(solids, accents);
   containerYard(solids, rng);
   westHalls(solids, accents, rng);
+  westRails(solids);
   powerPlant(solids, accents, stacks, rng);
   fairRoad(solids, accents, rng);
   return { ground: solids.filter((s) => s.kind === "strip"), solids: solids.filter((s) => s.kind !== "strip"), accents, stacks };

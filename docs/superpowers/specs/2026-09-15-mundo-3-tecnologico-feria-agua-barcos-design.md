@@ -241,6 +241,27 @@ Desvíos puntuales de las Tareas 1–18 que no habían quedado escritos arriba
   caras de la vuelta al mundo llevan `tone: "top"` fijo en vez de calculado.
   El bucle del test de la vuelta al mundo se corrigió para que el reloj se
   mantenga bajo 40 s.
+- **Feria en el cover (2026-09-16).** Con la cámara cover del sitio (16:9,
+  borde norte `x + y = −211`) la vuelta al mundo, la torre de caída y el
+  noroeste de la feria quedaban fuera de pantalla, y entre el parque de
+  tanques y la feria había arena vacía. La franja bajó dos celdas del
+  sangrado: `FAIR = { y0: −312, y1: −168 }` y todas las piezas +36 en y (la
+  calle y el estacionamiento del hinterland también); las dos torres de alta
+  tensión que caerían en la feria ya no se arman. La vuelta al mundo pasó a
+  la playa del sureste, `WHEEL = (216, −204)`, `r 20`, `hub 23`, 20 góndolas
+  (altura 43, la excepción esbelta sigue): posición elegida por búsqueda para
+  que ningún sólido estático quede delante de ella en pantalla. La torre de
+  caída ocupa el lugar viejo de la rueda, `DROP = (150, −264)`. El punto
+  norte de la lancha conserva `(+11, −11)` respecto del pabellón:
+  `(279, −252)`. La fila de vértices del borde sur de la feria también se
+  aplana (del lado de la bahía eran agua a −1 y la arena se hundía).
+- **Vías del oeste (2026-09-16).** Las vías `y 131/134` del astillero
+  terminaban en `x 0` sobre el empalme con la playa de la fábrica, y los
+  conos de selva las tapaban: se leían como cortadas por el bosque. El
+  hinterland las prolonga con durmientes hasta `WORLD.x0 − BLEED.x`
+  (`WEST_RAIL_X0 = −402`): en pantalla salen por el borde izquierdo.
+  `jungle()` acepta `rails` y descarta los conos que pisarían esas vías (el
+  cinturón verde siembra 60 para que queden ~30).
 - **Cinta transportadora del acopio.** Es un `strip` a `z 4`, como manda la
   spec §4.2, así que vive en la capa de suelo: su punta este queda ordenada
   *debajo* de la cara sur del galpón de turbinas en vez de apoyarse encima.

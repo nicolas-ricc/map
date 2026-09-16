@@ -138,7 +138,9 @@ function buildBleed(rng: Rng, w: WaterTris, foam: Tri[]): Solid[] {
       // la orilla de la bahía es una curva más fina que la grilla: dentro del rectángulo de la
       // feria la tratamos siempre como tierra plana, aunque ese vértice puntual ya sea bahía,
       // para que la arena no se incline hacia el agua (la celda de agua vecina no lee este arreglo).
-      if (inFairBox(x, y)) { z[j]!.push(r * JITTER.asphalt); continue; }
+      // La fila de vértices del borde sur de la feria también: la celda de arena de arriba los lee, y
+      // del lado de la bahía serían agua a −1 (la arena se hundiría hacia el sur).
+      if (inFairBox(x, y) || inFairBox(x, y - CELL_BLEED)) { z[j]!.push(r * JITTER.asphalt); continue; }
       const t = bleedTerrainAt(x, y);
       if (BLEED_WATER.has(t)) { z[j]!.push(WATER_Z); continue; }
       if (BLEED_BUILT.has(t)) { z[j]!.push(r * JITTER.asphalt); continue; } // tierra construida: plana como el asfalto del contenido

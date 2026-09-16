@@ -44,12 +44,17 @@ export const BUOY_PERIOD_MS = 2000;
 // Con el ajuste, `depthAt` mínimo a lo largo de toda la polilínea es exactamente 6 (en ese mismo punto).
 //
 // Ajuste de la Task 17 (regla de la Task 8): con la feria construida, la lancha queda detrás del
-// pabellón del muelle (`fair.ts`, cono `copper` en (243, −277)) en pantalla —`isBehind(ferry,
+// pabellón del muelle (`fair.ts`, cono `copper`, entonces en (243, −277)) en pantalla —`isBehind(ferry,
 // pabellón)` da `true`— cerca del punto norte, entre el 5 % y el 15 % del primer tramo. Alcanzaba
 // con correr el punto norte 2 u al este para despejarlo, pero la regla pide pasos de 6 u: se corrió
 // ((248, −288) → (254, −288)); no hay más superposición en ese tramo y `depthAt` en el punto sigue
 // muy por encima de 6 (≈ 37).
-export const FERRY_ROUTE: readonly Vec2[] = [{ x: 254, y: -288 }, { x: 290, y: -212 }, { x: 241, y: -84 }];
+//
+// Con la feria corrida 36 u al sur (2026-09-16) el pabellón quedó en (268, −241) y el punto norte
+// conserva el mismo desplazamiento (+11, −11) respecto de él: (279, −252). Verificado con la misma
+// regla: `depthAt` mínimo a lo largo de la polilínea sigue siendo 6 y ningún sólido estático queda
+// delante de la lancha en pantalla.
+export const FERRY_ROUTE: readonly Vec2[] = [{ x: 279, y: -252 }, { x: 290, y: -212 }, { x: 241, y: -84 }];
 export const FERRY_SPEED = 3, FERRY_PAUSE_MS = 4000;
 
 const route = polyline(ROUTE);
