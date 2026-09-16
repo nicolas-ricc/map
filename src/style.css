@@ -48,7 +48,11 @@ body.zone #content { opacity: 1; }
   position: absolute; left: 0; top: 0; pointer-events: auto; will-change: transform;
   font-size: 0.8rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; text-decoration: none;
   text-shadow: 0 0 6px #000, 0 1px 2px #000; transition: opacity 200ms ease;
+  /* ocultos hasta que main.ts los coloque sobre su landmark (primer jumpTo de la
+     cámara): si no, se ven apilados en la esquina y saltan a su lugar. */
+  visibility: hidden;
 }
+.mapa-listo #zonas a { visibility: visible; }
 #zonas a[data-zone="portfolio"] { color: #7cf5ff; }
 #zonas a[data-zone="cv"] { color: #ffc457; }
 #zonas a[data-zone="blog"] { color: #ff5ee0; }
@@ -65,4 +69,4 @@ body.zone #titulo { opacity: 0; }
 .no-canvas #content { opacity: 1; }
 .no-canvas #zonas { position: static; pointer-events: auto; padding: 2rem clamp(1rem, 4vw, 3rem) 0; }
 .no-canvas #zonas ul { display: flex; gap: 1.5rem; flex-wrap: wrap; }
-.no-canvas #zonas a { position: static; transform: none !important; font-size: 1.1rem; letter-spacing: 0; text-transform: none; text-decoration: underline; }
+.no-canvas #zonas a { position: static; transform: none !important; visibility: visible; font-size: 1.1rem; letter-spacing: 0; text-transform: none; text-decoration: underline; }

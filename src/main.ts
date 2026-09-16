@@ -139,6 +139,9 @@ async function boot(): Promise<void> {
   const root = document.documentElement;
   root.classList.add("no-anim");
   render(current, false);
+  // Los rótulos estaban ocultos (ver #zonas a en style.css) hasta este primer
+  // jumpTo, que ya los colocó sobre su landmark: recién ahora se muestran.
+  root.classList.add("mapa-listo");
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("no-anim")));
 }
 
