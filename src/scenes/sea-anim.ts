@@ -42,7 +42,13 @@ export const BUOY_PERIOD_MS = 2000;
 // ((235, −84) → (241, −84)): entre el intermedio y el sur, cerca de (257, −126), la recta original
 // volvía a tocar la misma costa (una segunda entrada, más al sur) y quedaba a menos de 6 u de tierra.
 // Con el ajuste, `depthAt` mínimo a lo largo de toda la polilínea es exactamente 6 (en ese mismo punto).
-export const FERRY_ROUTE: readonly Vec2[] = [{ x: 248, y: -288 }, { x: 290, y: -212 }, { x: 241, y: -84 }];
+//
+// Ajuste de la Task 17 (regla de la Task 8): con la feria construida, el pabellón del muelle
+// (`fair.ts`, cono `copper` en (243, −277)) queda detrás de la lancha en pantalla cerca del punto
+// norte, entre el 5 % y el 15 % del primer tramo. Se corrió el punto norte 6 u al este
+// ((248, −288) → (254, −288)), como indica la regla: no hay más superposición en ese tramo y
+// `depthAt` en el punto sigue muy por encima de 6 (≈ 37).
+export const FERRY_ROUTE: readonly Vec2[] = [{ x: 254, y: -288 }, { x: 290, y: -212 }, { x: 241, y: -84 }];
 export const FERRY_SPEED = 3, FERRY_PAUSE_MS = 4000;
 
 const seg = ROUTE.slice(1).map((b, i) => { const a = ROUTE[i]!; const len = Math.hypot(b.x - a.x, b.y - a.y); return { a, b, len, heading: Math.atan2(b.y - a.y, b.x - a.x) }; });

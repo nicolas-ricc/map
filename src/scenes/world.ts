@@ -5,6 +5,7 @@ import type { WorldZone } from "../map/geo";
 import { createRng, type Rng } from "../map/seed";
 import { city, type CityScene } from "./city";
 import { factory, type FactoryScene } from "./factory";
+import { fair, type FairScene } from "./fair";
 import { hinterland, type HinterlandScene } from "./hinterland";
 import { sea, type SeaScene } from "./sea";
 import { shipyard, type Scene } from "./shipyard";
@@ -28,6 +29,7 @@ export interface WorldScene {
   /** Los márgenes construidos viven sobre el sangrado: solo existen con el mundo entero (sin filtro de zonas). */
   hinterland: HinterlandScene | null;
   tech: TechScene | null;
+  fair: FairScene | null;
 }
 
 const ALL_ZONES: readonly WorldZone[] = ["portfolio", "cv", "blog"];
@@ -65,11 +67,12 @@ export function world(seed: number, opts: { zones?: readonly WorldZone[] } = {})
     se = sea(zoneRng(seed, "blog"));
     ground.push(...se.ground); solids.push(...se.solids); accents.push(...se.accents);
   }
-  let hi: HinterlandScene | null = null, su: TechScene | null = null;
+  let hi: HinterlandScene | null = null, su: TechScene | null = null, fa2: FairScene | null = null;
   if (!opts.zones) {
     hi = hinterland(zoneRng(seed, "portfolio", 2));
     su = tech(zoneRng(seed, "cv", 2));
-    for (const sc of [hi, su]) { ground.push(...sc.ground); solids.push(...sc.solids); accents.push(...sc.accents); }
+    fa2 = fair(zoneRng(seed, "portfolio", 3));
+    for (const sc of [hi, su, fa2]) { ground.push(...sc.ground); solids.push(...sc.solids); accents.push(...sc.accents); }
   }
-  return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct, factory: fa, sea: se, hinterland: hi, tech: su };
+  return { terrain, ground, solids, accents, landmarks: LANDMARKS, shipyard: sy, city: ct, factory: fa, sea: se, hinterland: hi, tech: su, fair: fa2 };
 }
