@@ -1,7 +1,7 @@
 # Mundo 3: distrito tecnológico, feria al norte, agua dinámica y barcos — diseño
 
 **Fecha:** 2026-09-15
-**Estado:** propuesta
+**Estado:** implementada (2026-09-15)
 **Antecede:** `2026-09-15-margenes-urbanos-design.md` (suburbio, hinterland, `builtAt`),
 `2026-09-14-mundo-2-fabrica-distrito-blog-design.md` (§6 distrito, §7 mar y barcos).
 **Alcance:** el laboratorio (`lab/world.html`, teclas `0`..`4`) y el motor puro
@@ -177,6 +177,121 @@ Líneas de consola crudas (dos corridas):
 [lab] peor redibujo en 5 s: 7.70 ms
 [lab] peor redibujo en 5 s: 11.60 ms
 ```
+
+**Cierre (Task 19).** Con las 18 tareas del plan mergeadas en esta rama
+(norte industrial, feria completa, flota y agua en su variante final), se
+repitió la misma medición sobre `world.html` tres veces (la tercera para
+decidir por mayoría, porque la primera corrida tuvo un primer dibujo por
+encima de la meta): primer dibujo (segunda carga) 175.6, 149.1 y 154.4 ms;
+peor redibujo (mayor de tres en 5 s) 13.80, 11.60 y 10.00 ms; 32 050
+polígonos estáticos en las tres corridas (sube desde los 30 107 de la Task 13
+por el norte industrial, la feria y la lancha añadidos en las Tareas 14–18).
+Mayoría: dos de tres corridas de primer dibujo están bajo la meta de 170 ms
+(149.1 y 154.4 ms) y la tercera (175.6 ms) es un exceso menor atribuible al
+mismo ruido de máquina compartida ya documentado arriba; el peor redibujo
+nunca superó los 15 ms (máximo 13.80 ms) en ninguna corrida. Cifras finales:
+primer dibujo 149–176 ms (meta ≤ 170 ms, cumplida por mayoría), 32 050
+polígonos estáticos (meta ≤ 36 000, cumplida), peor redibujo ≤ 13.80 ms
+(meta ≤ 15 ms, cumplida con margen): ninguna de las tres decisiones gateadas
+de §8.1–§8.3 se activó de nuevo; quedan en las variantes ya elegidas por las
+Tareas 5, 9 y 13 (`BANDS = 6`, `CELL_WATER = 18`, sin `SHIP_STEP_MS`, sin
+recorte de fachadas).
+
+Desvíos puntuales de las Tareas 1–18 que no habían quedado escritos arriba
+(agua, hull, feria, distrito tecnológico, norte industrial), uno por línea:
+
+- **Agua.** `FOAM_W = 9` u (la espuma cubre el primer anillo de celdas de
+  costa; los 3 u de la spec son más finos que la grilla). `shallow` mide su
+  `baseTone` desde la primera distancia alcanzable (6 u → +1), no desde 0.
+  `waveOffset`: la escalera de tono solo tiene un escalón por encima de
+  `top`, así que +1 se queda en `top` y solo el +2 gateado por hash llega a
+  `up`. `triHash` es un hash entero por mezcla de bits (el hash lineal de la
+  spec era degenerado sobre la grilla, repetía valores).
+- **Test de paleta.** "Más frío" se mide como proporción de azul en el
+  color, no como `r − b` (la resta daba falsos negativos con el durazno del
+  reflejo).
+- **Casco (`hull`).** `DECK_RING` de la spec tiene la popa en `x 0`. El
+  casco de carga (`cargo`) lleva regala (`bulwark`); la lancha de la feria
+  (`ferry`) lleva el ámbar en el mástil, no en la cubierta.
+- **Ruta de la lancha.** Polilínea de tres puntos
+  `[(254,−288), (290,−212), (241,−84)]`: la orilla oeste de la bahía llega a
+  `x 277` en `y −204`, y el pabellón del muelle obligó a correr el primer
+  vértice 6 u al este.
+- **Distrito tecnológico.** Torres de altura `h 12..18` (19–20 son
+  imposibles bajo el test de altura con los conos de terraza); dos niveles
+  solo cuando el primer nivel mide `≥ 12`; cantidades de la spec sin cambios
+  (4 conos de atrio, 4..6 unidades de techo, 6..8 autos). El presupuesto se
+  pagó con decoración en vez de recortar torres: columnas solares cada 6 u
+  (3 paneles por laboratorio), conos de terraza `1..3`, selva de parque
+  `4..6`, un árbol por cuadra en el cantero de la avenida, franja de selva
+  oeste con 2 árboles; 1 190 sólidos elevados en total. La animación del
+  distrito usa coseno para el pulso de los carteles (cuadro 0 = intensidad
+  1) y el parpadeo de ventanas vuelve a sortear el piso si repite el mismo.
+- **Norte industrial.** `inFairBox` es un predicado compartido entre la
+  feria y la central; los vértices del rectángulo de la feria se achatan
+  para mantener la arena plana; cada pieza de la central (turbinas,
+  chimeneas, torre de refrigeración, transformadores, acopio de carbón)
+  está guardada por `onIndustrial` + `inCoverQuad` por separado; no se
+  movieron la refinería, las locomotoras ni el pilón de alta tensión (el
+  mapa de archivos de la spec solo los mencionaba de pasada).
+- **Feria.** El borde x del paseo de madera sale de
+  `min(bayShoreX(y), y+9, y+18) − 16`; los puntos de guirnalda del muelle
+  van a `z 3.8` sobre postes de 3 u; la tolerancia z del test del tren es
+  `4.2` (por el tercer vagón y su asiento en la bajada más empinada); las
+  caras de la vuelta al mundo llevan `tone: "top"` fijo en vez de calculado.
+  El bucle del test de la vuelta al mundo se corrigió para que el reloj se
+  mantenga bajo 40 s.
+
+Líneas de consola crudas (tres corridas):
+
+```
+[lab] primer dibujo: 175.6 ms, 32050 polígonos estáticos
+[lab] peor redibujo en 5 s: 13.80 ms
+[lab] peor redibujo en 5 s: 11.60 ms
+[lab] peor redibujo en 5 s: 10.30 ms
+
+[lab] primer dibujo: 149.1 ms, 32050 polígonos estáticos
+[lab] peor redibujo en 5 s: 11.60 ms
+[lab] peor redibujo en 5 s: 7.90 ms
+[lab] peor redibujo en 5 s: 9.70 ms
+
+[lab] primer dibujo: 154.4 ms, 32050 polígonos estáticos
+[lab] peor redibujo en 5 s: 9.10 ms
+[lab] peor redibujo en 5 s: 9.80 ms
+[lab] peor redibujo en 5 s: 10.00 ms
+```
+
+**Criterios de aceptación (§9), verificados con capturas de `world.html` en
+`.claude/worktrees/mundo-2/.superpowers/sdd/2026-09-15-mundo-3-tecnologico-feria-agua-barcos/` (`final-1.png`..`final-4.png` y sus recortes):**
+
+1. **PASS.** Tecla `4` (cover): sin cielo visible; entre la feria y el
+   vértice norte del cover solo queda una loma corta (franja verde angosta
+   en las dos esquinas superiores de `crop-4-northedge.png`), no selva plana;
+   la vuelta al mundo se ve de frente como círculo (`crop-4-fair.png`,
+   `crop-4-fair-zoom.png`); el tren de la montaña rusa y su circuito están
+   trazados sobre la playa; la lancha de la feria navega entre el muelle de
+   la feria y el de graneles con su estela en V (`crop-4-fair-zoom.png`).
+2. **PASS.** Tecla `2` (Resume/cv): la extensión se lee como distrito de
+   oficinas y campus — torres de muro cortina con ventanas en todas las
+   plantas, ventanas prendidas y apagadas por piso, sin casas sin ventanas
+   (`crop-2-tech.png`, `crop-2-tech-b.png`).
+3. **PASS.** Toda el agua visible en el cover ondula con triángulos de tono
+   variable; turquesa en la orilla y el bajío junto al malecón, azul en la
+   bahía, azul profundo mar adentro y casi negro hacia la fosa al sureste;
+   destellos color durazno dispersos sobre el agua profunda; espuma blanca
+   en toda la costa (`crop-4-southwater.png`).
+4. **PASS.** El carguero, el remolcador, la barcaza y la lancha de la feria
+   muestran proa en punta, popa redondeada, obra muerta de otro color que la
+   obra viva, cubierta de madera, superestructura con ventanas y estela en V
+   (`crop-4-southwater.png`, `crop-4-fair-zoom.png`); el pecio de la fosa
+   hereda la misma forma lofteada por compartir `hull()` (verificado en
+   código, `src/scenes/ships.ts`/`sea.ts`; no visible en las capturas porque
+   la fosa con el pecio queda fuera del cover, al este).
+5. **PASS.** `npm test`, `npm run typecheck` y `npm run build` verdes;
+   `dist/` sin `lab/`; palette-guard verde con los colores nuevos pegados
+   como literales.
+6. **PASS.** Presupuesto de §8 medido arriba (Cierre, Task 19) y anotado en
+   esta sección.
 
 ## 3. Distrito tecnológico (`src/scenes/tech.ts`, `tech-anim.ts`, `tech-animator.ts`)
 

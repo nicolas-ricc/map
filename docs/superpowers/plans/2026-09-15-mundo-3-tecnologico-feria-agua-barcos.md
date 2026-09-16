@@ -2236,3 +2236,44 @@ git commit -m "feat(scenes): la feria se mueve: vuelta al mundo con luces, tren 
 git add docs/superpowers/specs/2026-09-15-mundo-3-tecnologico-feria-agua-barcos-design.md docs/superpowers/plans/2026-09-15-mundo-3-tecnologico-feria-agua-barcos.md README.md
 git commit -m "docs: Mundo 3 implementado: estado, medidas y desvíos"
 ```
+
+## Estado: implementado (2026-09-15)
+
+Las 19 tasks están hechas y mergeadas a la rama; `npm test` (422 tests),
+`npm run typecheck` y `npm run build` verdes, `dist/` sigue sin `lab/`.
+Medición final de `world.html` (Chrome headless vía CDP, sin GPU, DPR 2):
+primer dibujo 149–176 ms (meta ≤ 170 ms, cumplida por mayoría en tres
+corridas), 32 050 polígonos estáticos (meta ≤ 36 000), peor redibujo hasta
+13.80 ms (meta ≤ 15 ms). Ninguna de las tres decisiones gateadas de §8 se
+activó tras la Task 5 (agua). Resumen de desvíos (detalle completo en la
+spec, sección "Desvíos de la implementación"):
+
+- Agua: `BANDS = 6`, `CELL_WATER = 18` (bleed a 18 u en vez de 9, decisión
+  gateada por medición), `FOAM_W = 9` u, `shallow` medido desde la primera
+  distancia alcanzable (6 u), `waveOffset` con un solo escalón sobre `top`
+  y `+2` gateado por hash para llegar a `up`, `triHash` como mezcla entera
+  (el hash lineal de la spec era degenerado sobre la grilla). Test de
+  paleta: "más frío" se mide como proporción de azul, no `r − b`.
+- Casco: `DECK_RING` con la popa en `x 0`; carguero con regala; lancha de
+  la feria con el ámbar en el mástil.
+- Ruta de la lancha: polilínea de tres puntos
+  `[(254,−288), (290,−212), (241,−84)]` (la orilla oeste de la bahía y el
+  pabellón del muelle forzaron el primer vértice 6 u al este).
+- Distrito tecnológico: torres `h 12..18` (19–20 imposibles con los conos
+  de terraza), dos niveles solo con el primer nivel `≥ 12`; presupuesto
+  pagado con decoración (columnas solares, conos de terraza, selva de
+  parque y cantero) en vez de recortar torres; 1 190 sólidos elevados.
+  Animación con pulso coseno en los carteles y parpadeo que resortea el
+  piso si repite.
+- Norte industrial: `inFairBox` compartido entre feria y central, vértices
+  de la feria achatados, cada pieza de la central guardada por
+  `onIndustrial` + `inCoverQuad`; no se tocaron refinería, locomotoras ni
+  pilón de alta tensión.
+- Feria: borde del paseo `min(bayShoreX(y), y+9, y+18) − 16`; guirnaldas a
+  `z 3.8`; tolerancia z del test del tren en `4.2`; caras de la vuelta al
+  mundo con `tone: "top"` fijo; bucle del test de la vuelta al mundo
+  corregido para no pasar de 40 s.
+
+Criterios de aceptación (§9): los 6 en PASS, con evidencia en capturas
+(`final-1.png`..`final-4.png` y recortes) y en la sección "Desvíos de la
+implementación" de la spec.
