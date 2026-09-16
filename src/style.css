@@ -7,10 +7,12 @@
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
 #app { height: 100%; }
 /* clip y no hidden: un contenedor con overflow:hidden igual scrollea cuando el
-   browser enfoca un hijo fuera de vista (los divs de accesibilidad de Pixi) y
-   eso desplazaba el canvas; overflow:clip no es scrolleable. Como clip no crea
-   un scroll container, el min-width automático de grid seguiría al ancho del
-   canvas y la columna no podría encogerse: por eso el min-width/height: 0. */
+   browser enfoca un hijo fuera de vista, y los links de #zonas están
+   posicionados en absoluto sobre el canvas, algunos fuera del host mientras
+   la cámara los mueve: eso desplazaba el canvas al enfocarlos; overflow:clip
+   no es scrolleable. Como clip no crea un scroll container, el min-width
+   automático de grid seguiría al ancho del canvas y la columna no podría
+   encogerse: por eso el min-width/height: 0. */
 #canvas-host { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: clip; }
 #canvas-host canvas { display: block; }
 #app { display: grid; grid-template-columns: 1fr 0fr; grid-template-rows: 100%; height: 100%; transition: grid-template-columns 500ms cubic-bezier(0.33, 1, 0.68, 1); }
@@ -48,11 +50,12 @@ body.zone #content { opacity: 1; }
   position: absolute; left: 0; top: 0; pointer-events: auto; will-change: transform;
   font-size: 0.8rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; text-decoration: none;
   text-shadow: 0 0 6px #000, 0 1px 2px #000; transition: opacity 200ms ease;
-  /* ocultos hasta que main.ts los coloque sobre su landmark (primer jumpTo de la
-     cámara): si no, se ven apilados en la esquina y saltan a su lugar. */
-  visibility: hidden;
 }
-.mapa-listo #zonas a { visibility: visible; }
+/* ocultos hasta que main.ts los coloque sobre su landmark (primer jumpTo de la
+   cámara): si no, se ven apilados en la esquina y saltan a su lugar. Solo con
+   JS presente: sin JS nadie los va a posicionar, así que quedan visibles y
+   accesibles desde el primer render (prerenderizado, sin canvas). */
+.js:not(.mapa-listo) #zonas a { visibility: hidden; }
 #zonas a[data-zone="portfolio"] { color: #7cf5ff; }
 #zonas a[data-zone="cv"] { color: #ffc457; }
 #zonas a[data-zone="blog"] { color: #ff5ee0; }

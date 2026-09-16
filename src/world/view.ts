@@ -1,11 +1,11 @@
-import { BLEED, WORLD, type WorldZone } from "../map/geo";
+import { BLEED, COVER_INSET, WORLD, type WorldZone } from "../map/geo";
 import { coverFrame, fitTransform, zoneFrame } from "./frame";
 
 /** Estado de cámara del contenedor del mundo: `pantalla = mundo_proyectado × scale + (x, y)`. Igual a CameraState. */
 export interface View { x: number; y: number; scale: number }
 
-/** Unidades de mundo que el viewport se queda adentro del rectángulo del sangrado: el borde del terreno está a z −1 (agua) o 0.6 ± 0.8 (lomas), ±1.4 px respecto del paralelogramo a z 0. */
-export const VIEW_INSET = 3;
+/** El mismo margen que usa coverQuad (COVER_INSET), para que el viewport se quede adentro del sangrado. */
+export const VIEW_INSET = COVER_INSET;
 /** zoneView nunca baja de coverView × esto: con el inset, un viewport exactamente a escala cover no cabe. */
 export const ZONE_MIN_ZOOM = 1.01;
 

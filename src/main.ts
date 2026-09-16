@@ -11,7 +11,7 @@ import { v3 } from "./iso/geometry";
 import { project } from "./iso/project";
 import { worldZoneAt } from "./map/geo";
 import { ISO_COLORS } from "./map/palette-iso";
-import { zoneById, type ZoneId } from "./map/zones";
+import { zoneById, ZONE_IDS, type ZoneId } from "./map/zones";
 import { pathForZone, zoneFromPath } from "./router";
 import { LANDMARKS } from "./scenes/world";
 import { showMap, showZone } from "./views";
@@ -49,13 +49,21 @@ async function boot(): Promise<void> {
   let hot: ZoneId | null = null;
 
   const labels = new Map<ZoneId, HTMLAnchorElement>();
-  for (const a of document.querySelectorAll<HTMLAnchorElement>("#zonas a[data-zone]")) labels.set(a.dataset.zone as ZoneId, a);
+  for (const a of document.querySelectorAll<HTMLAnchorElement>("#zonas a[data-zone]")) {
+    // validar contra ZONE_IDS en vez de castear: un data-zone espurio no entra al mapa
+    const id = a.dataset.zone;
+    if ((ZONE_IDS as readonly string[]).includes(id ?? "")) labels.set(id as ZoneId, a);
+  }
 
   const placeLabels = (v: View): void => {
     for (const [id, a] of labels) {
       const l = LANDMARKS[id];
       const p = project(v3(l.x, l.y, LABEL_Z));
-      a.style.transform = `translate(${(p.x * v.scale + v.x).toFixed(1)}px, ${(p.y * v.scale + v.y).toFixed(1)}px) translate(-50%, -100%)`;
+      const sx = p.x * v.scale + v.x, sy = p.y * v.scale + v.y;
+      a.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -100%)`;
+      // un rótulo fuera del host no debe recibir foco
+      const inside = sx >= 0 && sx <= host.clientWidth && sy >= 0 && sy <= host.clientHeight;
+      a.style.visibility = inside ? "" : "hidden";
     }
   };
 
