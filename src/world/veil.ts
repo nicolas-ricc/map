@@ -31,13 +31,42 @@ export function veilCells(): VeilCell[] {
   return out;
 }
 
-/** Cada celda como cuadrilátero proyectado a z 0, agrupado por zona. Las celdas no se solapan: una Graphics por zona con alpha global no oscurece dos veces. */
+export interface VeilRun { zone: WorldZone; x0: number; x1: number; y: number; h: number }
+
+/**
+ * Funde en tiras las celdas de una misma fila (mismo y), mismo tamaño y misma
+ * zona contiguas en x: una fila uniforme de sangrado (por ejemplo Portfolio)
+ * pasa de ~70 celdas a una sola tira. No cambia la cobertura, sólo el número
+ * de cuadriláteros que hay que proyectar y dibujar.
+ */
+export function veilRuns(): VeilRun[] {
+  const byRow = new Map<string, VeilCell[]>();
+  for (const c of veilCells()) {
+    const key = `${c.y}|${c.size}`;
+    const row = byRow.get(key);
+    if (row) row.push(c); else byRow.set(key, [c]);
+  }
+  const out: VeilRun[] = [];
+  for (const row of byRow.values()) {
+    row.sort((a, b) => a.x - b.x);
+    let run: VeilRun | null = null;
+    for (const c of row) {
+      if (run && run.zone === c.zone && run.x1 === c.x) { run.x1 = c.x + c.size; continue; }
+      if (run) out.push(run);
+      run = { zone: c.zone, x0: c.x, x1: c.x + c.size, y: c.y, h: c.size };
+    }
+    if (run) out.push(run);
+  }
+  return out;
+}
+
+/** Cada tira como cuadrilátero proyectado a z 0, agrupado por zona. Las tiras no se solapan: una Graphics por zona con alpha global no oscurece dos veces. */
 export function veilPolygons(): Record<WorldZone, number[][]> {
   const polys: Record<WorldZone, number[][]> = { portfolio: [], cv: [], blog: [] };
-  for (const c of veilCells()) {
+  for (const r of veilRuns()) {
     const pts: number[] = [];
-    for (const [dx, dy] of [[0, 0], [1, 0], [1, 1], [0, 1]] as const) { const p = project(v3(c.x + dx * c.size, c.y + dy * c.size, 0)); pts.push(p.x, p.y); }
-    polys[c.zone].push(pts);
+    for (const [x, y] of [[r.x0, r.y], [r.x1, r.y], [r.x1, r.y + r.h], [r.x0, r.y + r.h]] as const) { const p = project(v3(x, y, 0)); pts.push(p.x, p.y); }
+    polys[r.zone].push(pts);
   }
   return polys;
 }

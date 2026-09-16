@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { v3 } from "../iso/geometry";
 import { BLEED, CELL, CELL_BLEED, WORLD, worldZoneAt } from "../map/geo";
-import { ACCENT_DIM, VEIL_ALPHA, accentZone, focusAlphas, veilCells, veilPolygons } from "./veil";
+import { ACCENT_DIM, VEIL_ALPHA, accentZone, focusAlphas, veilCells, veilPolygons, veilRuns } from "./veil";
 
 describe("veilCells", () => {
   const cells = veilCells();
@@ -30,11 +30,35 @@ describe("veilCells", () => {
 });
 
 describe("veilPolygons", () => {
-  it("un cuadrilátero proyectado por celda, repartido por zona", () => {
+  it("un cuadrilátero proyectado por tira, repartido por zona", () => {
     const polys = veilPolygons();
     const total = polys.portfolio.length + polys.cv.length + polys.blog.length;
-    expect(total).toBe(veilCells().length);
-    for (const z of ["portfolio", "cv", "blog"] as const) { expect(polys[z].length).toBeGreaterThan(100); for (const p of polys[z]) expect(p).toHaveLength(8); }
+    expect(total).toBe(veilRuns().length);
+    for (const z of ["portfolio", "cv", "blog"] as const) { expect(polys[z].length).toBeGreaterThan(0); for (const p of polys[z]) expect(p).toHaveLength(8); }
+  });
+});
+
+describe("veilRuns", () => {
+  const runs = veilRuns();
+  const cells = veilCells();
+  it("cubren la misma área que las celdas", () => {
+    const area = runs.reduce((s, r) => s + (r.x1 - r.x0) * r.h, 0);
+    expect(area).toBe((WORLD.x1 - WORLD.x0 + 2 * BLEED.x) * (WORLD.y1 - WORLD.y0 + 2 * BLEED.y));
+  });
+  it("cada tira es una sola zona: en su centro y en el centro de cada celda que abarca", () => {
+    for (const r of runs) {
+      const cx = (r.x0 + r.x1) / 2, cy = r.y + r.h / 2;
+      expect(worldZoneAt(cx, cy)).toBe(r.zone);
+      for (let x = r.x0; x < r.x1; x += r.h) expect(worldZoneAt(x + r.h / 2, cy)).toBe(r.zone);
+    }
+  });
+  it("son muchas menos que las celdas", () => {
+    expect(runs.length).toBeLessThan(cells.length / 4);
+  });
+  it("veilPolygons devuelve un cuadrilátero por tira, repartido por zona", () => {
+    const polys = veilPolygons();
+    const total = polys.portfolio.length + polys.cv.length + polys.blog.length;
+    expect(total).toBe(runs.length);
   });
 });
 
