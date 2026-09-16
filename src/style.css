@@ -54,8 +54,9 @@ body.zone #content { opacity: 1; }
 /* ocultos hasta que main.ts los coloque sobre su landmark (primer jumpTo de la
    cámara): si no, se ven apilados en la esquina y saltan a su lugar. Solo con
    JS presente: sin JS nadie los va a posicionar, así que quedan visibles y
-   accesibles desde el primer render (prerenderizado, sin canvas). */
-.js:not(.mapa-listo) #zonas a { visibility: hidden; }
+   accesibles desde el primer render (prerenderizado, sin canvas). Sin canvas
+   el nav vuelve al flujo y debe verse: por eso también se excluye .no-canvas. */
+.js:not(.mapa-listo):not(.no-canvas) #zonas a { visibility: hidden; }
 #zonas a[data-zone="portfolio"] { color: #7cf5ff; }
 #zonas a[data-zone="cv"] { color: #ffc457; }
 #zonas a[data-zone="blog"] { color: #ff5ee0; }
