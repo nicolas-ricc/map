@@ -336,13 +336,14 @@ Mismo headless (Chrome vía CDP con `agent-browser`, sin GPU, DPR 2, viewport
 en 32 050 (no cambia: son los sólidos, no el velo); el velo pasó de 5 816
 cuadriláteros a 486 tiras (123 Portfolio, 122 CV, 241 Blog).
 
-- **Primer dibujo (segunda apertura, misma pestaña recargada): 200.7 ms.**
-  A la altura del presupuesto (≤ 200 ms) — una mejora de ~60 ms sobre los
-  260–261 ms de antes del merge, aunque una tercera recarga dio 210.5 ms: la
-  medida es ruidosa alrededor de la propia línea del presupuesto, no
-  claramente por debajo. El resto de la escena (32 050 sólidos) sigue
-  pesando lo mismo y domina el primer dibujo; para bajar de forma holgada de
-  200 ms haría falta atacar ese conteo, fuera del alcance de esta tarea.
+- **Primer dibujo 200.7 ms (segunda carga) y 210.5 ms (tercera) contra
+  ≤ 200 ms: el presupuesto de §5 no se cumple, por un margen dentro del
+  ruido de la máquina; peor redibujo 14.70 ms ≤ 15 ms sí.** Mejora de ~60 ms
+  sobre los 260–261 ms de antes del merge, pero no alcanza el límite. El
+  costo dominante son los 32 050 polígonos estáticos del mundo (no el velo,
+  que bajó de 5 816 a 486); la reducción queda para una task de rendimiento
+  aparte (RenderTexture para las sombras estáticas, ya pendiente desde
+  Mundo 2).
 - **Peor redibujo en 5 s (máximo de 10 lecturas, moviendo el puntero sobre el
   canvas ~10 s con `agent-browser mouse move`): 14.70 ms.** Dentro del
   presupuesto (≤ 15 ms), similar al 12.70 ms de antes del merge.
@@ -421,6 +422,18 @@ Manual (agent-browser, viewport 2×, `localhost`):
 4. No queda código del mapa viejo; `npm test`, `typecheck` y `build` verdes.
 5. Presupuesto de §5 medido y anotado en esta spec.
 
+### Veredicto por criterio (Task 8/8b, 2026-09-16)
+
+- **Criterio 1: PASS** (§6 ítems 1, 5).
+- **Criterio 2: PASS** (§6 ítems 2, 3, 4, 6).
+- **Criterio 3: PASS** (§6 ítem 4: los tres links del nav son los únicos
+  controles y funcionan por teclado/clic; `.no-canvas` no se verificó en
+  headless — no se corrió el sitio sin Pixi/canvas disponible, sólo se
+  confirmó que el nav funciona con Tab/Enter/clic sobre canvas presente).
+- **Criterio 4: PASS** (§6 ítem 8).
+- **Criterio 5: NO CUMPLIDO al límite** — ver §5 y §9 (Task 8b): primer
+  dibujo 200.7/210.5 ms contra ≤ 200 ms.
+
 ## 8. Fuera de alcance
 
 - Arrastre con el dedo y pinch en móvil.
@@ -475,11 +488,13 @@ Respecto del texto de esta spec (Tasks 1–8, cerradas el 2026-09-16):
   frente a las 5 816 celdas), sin cambiar la cobertura del sangrado (misma
   área, mismo `worldZoneAt` por tira, verificado en `veil.test.ts`). El
   primer dibujo bajó a ~200–210 ms (segunda apertura: 200.7 ms; tercera:
-  210.5 ms) — a la altura del presupuesto, pero no claramente por debajo: el
-  resto de la escena (32 050 sólidos estáticos, que no cambia con este
-  ajuste) sigue dominando el tiempo. El peor redibujo se mantuvo dentro del
-  presupuesto (14.70 ms ≤ 15 ms). Bajar de forma holgada de 200 ms queda
-  para una futura tarea de rendimiento sobre el conteo de sólidos. Ver §5.
+  210.5 ms). **Veredicto: primer dibujo 200.7 ms (segunda carga) y 210.5 ms
+  (tercera) contra ≤ 200 ms: el presupuesto de §5 no se cumple, por un
+  margen dentro del ruido de la máquina; peor redibujo 14.70 ms ≤ 15 ms sí.
+  El costo dominante son los 32 050 polígonos estáticos del mundo (no el
+  velo, que bajó de 5 816 a 486); la reducción queda para una task de
+  rendimiento aparte (RenderTexture para las sombras estáticas, ya
+  pendiente desde Mundo 2).** Ver §5.
 
 ### Checklist manual §6, ítems 1–8 (Task 8, 2026-09-16)
 
@@ -534,5 +549,11 @@ indica).
    `08-lab-blog.png`.
 
 Resultado: 8/8 PASS. El único incumplimiento de presupuesto es el primer
-dibujo de §5 (260–261 ms vs. ≤ 200 ms), que no es parte del checklist §6
-pero sí del criterio 5 de §7 (medido y anotado, no necesariamente cumplido).
+dibujo de §5, que no es parte del checklist §6 pero sí del criterio 5 de §7.
+Medido entonces (Task 8) en 260–261 ms vs. ≤ 200 ms; tras el merge de celdas
+en tiras (Task 8b) queda en 200.7 ms (segunda carga) y 210.5 ms (tercera)
+contra ≤ 200 ms: el presupuesto de §5 no se cumple, por un margen dentro del
+ruido de la máquina; peor redibujo 14.70 ms ≤ 15 ms sí. El costo dominante
+son los 32 050 polígonos estáticos del mundo (no el velo, que bajó de 5 816
+a 486); la reducción queda para una task de rendimiento aparte (RenderTexture
+para las sombras estáticas, ya pendiente desde Mundo 2).

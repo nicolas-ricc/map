@@ -34,7 +34,7 @@ describe("veilPolygons", () => {
     const polys = veilPolygons();
     const total = polys.portfolio.length + polys.cv.length + polys.blog.length;
     expect(total).toBe(veilRuns().length);
-    for (const z of ["portfolio", "cv", "blog"] as const) { expect(polys[z].length).toBeGreaterThan(0); for (const p of polys[z]) expect(p).toHaveLength(8); }
+    for (const z of ["portfolio", "cv", "blog"] as const) { expect(polys[z].length).toBeGreaterThan(100); for (const p of polys[z]) expect(p).toHaveLength(8); }
   });
 });
 
