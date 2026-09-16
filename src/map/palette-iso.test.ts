@@ -45,14 +45,18 @@ describe("paleta isométrica", () => {
     }
   });
 
-  it("agua: cuatro profundidades que se oscurecen, seno frío y cresta cálida (el atardecer)", () => {
+  it("agua: cuatro profundidades que se oscurecen, seno frío y cresta clara que sigue siendo agua; el sol va en glint", () => {
     const rgb = (c: number) => [c >> 16, (c >> 8) & 255, c & 255] as const;
     const warmth = (c: number) => rgb(c)[0] - rgb(c)[2];
     const blueShare = (c: number) => rgb(c)[2] / (rgb(c)[0] + rgb(c)[1] + rgb(c)[2]);
     const mats = ["shallow", "water", "waterDeep", "abyss"] as const;
     for (let i = 1; i < mats.length; i++) expect(lum(ISO_TONES[mats[i]!].top)).toBeLessThan(lum(ISO_TONES[mats[i - 1]!].top));
     for (const m of mats) {
-      expect(warmth(ISO_TONES[m].up)).toBeGreaterThan(warmth(ISO_TONES[m].top) + 40);
+      expect(warmth(ISO_TONES[m].up)).toBeGreaterThan(warmth(ISO_TONES[m].top)); // apenas más cálida
+      expect(blueShare(ISO_TONES[m].up)).toBeGreaterThan(0.4); // pero azul: la cresta no es un destello
+      expect(lum(ISO_TONES[m].up) - lum(ISO_TONES[m].top)).toBeLessThan(30); // y sutil
+      expect(warmth(ISO_TONES.glint.top)).toBeGreaterThan(warmth(ISO_TONES[m].top) + 120); // el destello sí es coral
+      expect(lum(ISO_TONES.glint.top)).toBeGreaterThan(lum(ISO_TONES[m].up) + 30);
       expect(blueShare(ISO_TONES[m].lit)).toBeGreaterThan(blueShare(ISO_TONES[m].top));
       expect(lum(ISO_TONES[m].lit)).toBeLessThan(lum(ISO_TONES[m].down));
       expect(lum(ISO_TONES[m].down)).toBeLessThan(lum(ISO_TONES[m].top));

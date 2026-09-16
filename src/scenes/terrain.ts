@@ -83,13 +83,17 @@ export function waterBand(x: number, y: number): WaterMat | null {
   return d < SHALLOW_D ? "shallow" : d <= DEEP_D ? "water" : "waterDeep";
 }
 
-/** Posición dentro de la banda, +1 (borde somero, junto a tierra) … −1 (borde profundo), en pasos enteros. */
+/**
+ * Posición dentro de la banda, +1 (borde somero, junto a tierra) … −1 (borde profundo), continua:
+ * la redondea `water-anim.ts` junto con la ola, así el ruido por triángulo ditherea los contornos de
+ * profundidad (redondeada acá daban rectas largas en el mar abierto, donde la ola es baja).
+ */
 export function baseToneAt(x: number, y: number, mat: WaterMat): number {
   const d = depthAt(x, y);
   // "shallow" nunca ve d = 0 (depthAt cuantiza en pasos de CELL): la primera celda de agua ya está a
   // CELL de tierra, así que la fracción arranca ahí, no en 0, o toda la banda redondearía a 0.
   const frac = mat === "shallow" ? Math.max(0, (d - CELL) / (SHALLOW_D - CELL)) : mat === "water" ? (d - SHALLOW_D) / (DEEP_D - SHALLOW_D) : mat === "waterDeep" ? Math.min(1, (d - DEEP_D) / DEEP_D) : Math.min(1, Math.max(0, (x - abyssX(y)) / ABYSS_RAMP));
-  return Math.max(-1, Math.min(1, Math.round(1 - 2 * frac)));
+  return Math.max(-1, Math.min(1, 1 - 2 * frac));
 }
 
 type WaterTris = Record<WaterMat, Tri[]>;
