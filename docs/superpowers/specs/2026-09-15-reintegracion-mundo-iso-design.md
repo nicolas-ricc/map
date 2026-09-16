@@ -151,10 +151,15 @@ export function veilPolygons(): Record<WorldZone, number[][]>;
 Recorre el rectángulo `WORLD ± BLEED` en celdas de `CELL_BLEED = 18`. Si las
 cuatro esquinas y el centro de una celda dan la misma zona por `worldZoneAt`,
 la celda entera va a esa zona; si no, se subdivide en celdas de `CELL = 6`
-clasificadas por su centro. Cada celda es un cuadrilátero proyectado con
-`project` a z 0. Las celdas no se solapan, así una `Graphics` por zona con
-alpha global no oscurece dos veces (no hace falta `AlphaFilter`). Estimación:
-≈ 4 700 celdas de 18 más las subdivididas de las costuras; se dibujan una vez.
+clasificadas por su centro (`veilCells`, sin cambios). `veilRuns()` funde,
+antes de proyectar, las celdas contiguas en x de una misma fila (mismo `y`),
+mismo tamaño y misma zona en una sola tira `x0..x1 × y..y+h`; una fila
+uniforme de sangrado (por ejemplo Portfolio) pasa de ~70 celdas a una tira.
+`veilPolygons()` proyecta cada tira con `project` a z 0 (un cuadrilátero por
+tira, no por celda). Las tiras no se solapan, así una `Graphics` por zona con
+alpha global no oscurece dos veces (no hace falta `AlphaFilter`). De
+≈ 5 800 celdas (18 más las subdivididas de las costuras) quedan 486 tiras;
+se dibujan una vez.
 
 El velo se pinta a z 0: un edificio alto de una zona velada se ve velado
 solo por su huella y no por su altura proyectada. Aceptado: la costura
@@ -275,7 +280,7 @@ log de `primer dibujo` / `peor redibujo` bajo `import.meta.env.DEV` en
   criterio de la spec original (< 200 KB gzip) probablemente no se cumple ya
   por Pixi solo; se anota, no se gatea.
 
-### Medidas (Task 8, 2026-09-16)
+### Medidas (Task 8, 2026-09-16) — antes del merge de celdas: 260 ms
 
 Mismo headless de siempre (Chrome vía CDP con `agent-browser`, sin GPU, DPR 2,
 viewport 1600×900), `npx vite --port 5199`, sobre `/map/` (el sitio):
@@ -323,6 +328,47 @@ Líneas de consola crudas (recorte de la sesión de medición):
 (La primera línea de `primer dibujo`, 513.5 ms, es la primera apertura de la
 pestaña, más fría; la spec pide la segunda, 260.4/261.0 ms, consistente entre
 dos aperturas sucesivas.)
+
+### Medidas (Task 8b, 2026-09-16) — después del merge de celdas en tiras
+
+Mismo headless (Chrome vía CDP con `agent-browser`, sin GPU, DPR 2, viewport
+1600×900), `npx vite --port 5199`, sobre `/map/`. `stage.staticCount` sigue
+en 32 050 (no cambia: son los sólidos, no el velo); el velo pasó de 5 816
+cuadriláteros a 486 tiras (123 Portfolio, 122 CV, 241 Blog).
+
+- **Primer dibujo (segunda apertura, misma pestaña recargada): 200.7 ms.**
+  A la altura del presupuesto (≤ 200 ms) — una mejora de ~60 ms sobre los
+  260–261 ms de antes del merge, aunque una tercera recarga dio 210.5 ms: la
+  medida es ruidosa alrededor de la propia línea del presupuesto, no
+  claramente por debajo. El resto de la escena (32 050 sólidos) sigue
+  pesando lo mismo y domina el primer dibujo; para bajar de forma holgada de
+  200 ms haría falta atacar ese conteo, fuera del alcance de esta tarea.
+- **Peor redibujo en 5 s (máximo de 10 lecturas, moviendo el puntero sobre el
+  canvas ~10 s con `agent-browser mouse move`): 14.70 ms.** Dentro del
+  presupuesto (≤ 15 ms), similar al 12.70 ms de antes del merge.
+
+Líneas de consola crudas:
+
+```
+[info] [mapa] primer dibujo: 251.1 ms, 32050 polígonos estáticos
+[info] [mapa] peor redibujo en 5 s: 11.40 ms
+[info] [mapa] primer dibujo: 200.7 ms, 32050 polígonos estáticos
+[info] [mapa] peor redibujo en 5 s: 9.70 ms
+[info] [mapa] primer dibujo: 210.5 ms, 32050 polígonos estáticos
+[info] [mapa] peor redibujo en 5 s: 9.80 ms
+[info] [mapa] peor redibujo en 5 s: 14.70 ms
+[info] [mapa] peor redibujo en 5 s: 7.60 ms
+[info] [mapa] peor redibujo en 5 s: 10.70 ms
+[info] [mapa] peor redibujo en 5 s: 7.50 ms
+[info] [mapa] peor redibujo en 5 s: 8.60 ms
+[info] [mapa] peor redibujo en 5 s: 10.10 ms
+[info] [mapa] peor redibujo en 5 s: 7.30 ms
+[info] [mapa] peor redibujo en 5 s: 8.40 ms
+```
+
+(La primera línea, 251.1 ms, es la primera apertura de la pestaña, más fría
+—el patrón sigue siendo el mismo que en Task 8: se toma la segunda,
+200.7 ms, y se anota la tercera, 210.5 ms, para mostrar el ruido.)
 
 ## 6. Tests
 
@@ -418,12 +464,22 @@ Respecto del texto de esta spec (Tasks 1–8, cerradas el 2026-09-16):
   de objetivos de alpha se extrajo a la función pura `focusAlphas` (testeada
   en `veil.test.ts`/`stage` según corresponda) y el resto del comportamiento
   visual se verificó a ojo en el laboratorio y con las capturas de la Task 8.
-- **Presupuesto de primer dibujo no cumplido.** Medido en Task 8: 260–261 ms
-  caliente en `/map/` (segunda apertura), por encima del objetivo de
-  ≤ 200 ms de §5. El peor redibujo sí cumple (12.70 ms ≤ 15 ms). Se anota
-  sin tocar código, según el alcance de la Task 8; el sospechoso natural
-  para una futura optimización es el velo (`veilPolygons`, ≈ 4 700 celdas)
-  y/o el total de sólidos estáticos del mundo completo (32 050). Ver §5.
+- **Presupuesto de primer dibujo no cumplido (Task 8), parcialmente
+  recuperado fundiendo celdas en tiras (Task 8b).** Medido en Task 8: 260–261
+  ms caliente en `/map/` (segunda apertura), por encima del objetivo de
+  ≤ 200 ms de §5. El peor redibujo sí cumplía (12.70 ms ≤ 15 ms). El
+  sospechoso señalado entonces era el velo (`veilPolygons`, 5 816
+  cuadriláteros: uno por celda de `veilCells`). En la Task 8b, `veilRuns()`
+  funde las celdas contiguas en x de una misma fila, tamaño y zona en una
+  sola tira antes de proyectar (486 tiras: 123 Portfolio, 122 CV, 241 Blog,
+  frente a las 5 816 celdas), sin cambiar la cobertura del sangrado (misma
+  área, mismo `worldZoneAt` por tira, verificado en `veil.test.ts`). El
+  primer dibujo bajó a ~200–210 ms (segunda apertura: 200.7 ms; tercera:
+  210.5 ms) — a la altura del presupuesto, pero no claramente por debajo: el
+  resto de la escena (32 050 sólidos estáticos, que no cambia con este
+  ajuste) sigue dominando el tiempo. El peor redibujo se mantuvo dentro del
+  presupuesto (14.70 ms ≤ 15 ms). Bajar de forma holgada de 200 ms queda
+  para una futura tarea de rendimiento sobre el conteo de sólidos. Ver §5.
 
 ### Checklist manual §6, ítems 1–8 (Task 8, 2026-09-16)
 
