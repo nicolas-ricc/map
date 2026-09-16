@@ -8,7 +8,7 @@ import { ship as buildShip, wake, type ShipKind } from "./ships";
  * Blog animado, sin Pixi: tres barcos que salen de la bahía, rodean la punta
  * por el este, cruzan la fosa y se desvanecen en el sangrado, sus estelas y
  * luces, el haz del faro y las dos boyas. El agua en sí (repartida por
- * profundidad en `terrain.ts`) queda estática: la anima Task 3/4. Spec §7.
+ * profundidad en `terrain.ts`) no es asunto de acá: la anima `water-animator.ts`. Spec §7.
  */
 // Nace en (326, -24), no más al oeste ni al sur: en la bahía el barco tiene max.y < 24 y quedaría detrás (isBehind por y) de los
 // galpones del muelle de alistamiento (x 304..324, y ≥ 24) y de su selva (x 332..340, y ≥ 26) si se superpusiera con ellos en pantalla.
@@ -32,9 +32,9 @@ export const FADE_U = 30, TURN_U = 20;
 export const BEAM_PERIOD_MS = 8000, BEAM_LEN = 24, BEAM_INNER = 12, BEAM_HALF = (7 * Math.PI) / 180;
 export const BUOY_PERIOD_MS = 2000;
 
-// Lancha de la feria: hace la lanzadera entre la punta del futuro muelle de la feria (Task 17, bahía
-// norte) y la orilla de la bahía frente al muelle de graneles. Los tres puntos están en agua hoy
-// (bayWater); la feria en sí todavía no existe.
+// Lancha de la feria: hace la lanzadera entre la punta del muelle de la feria (`fair.ts`, bahía
+// norte) y la orilla de la bahía frente al muelle de graneles. Los tres puntos están en agua
+// (bayWater), y el punto norte amarra en el muelle de la feria (ver el ajuste de la Task 17 abajo).
 //
 // Ruling del controller (Task 8, fix): una recta entre los dos muelles no sirve porque la costa oeste
 // de la bahía llega hasta x ≈ 277 cerca de y −204 (una saliente entre los dos muelles). Se agregó un

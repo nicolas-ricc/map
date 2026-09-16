@@ -2,7 +2,7 @@ import type { AnimLayer, Animator } from "./animator";
 import type { SeaScene } from "./sea";
 import { SHIPS, createSeaAnim } from "./sea-anim";
 
-/** Adapta el mar al contrato `Animator`: barcos, haz del faro y boyas. El agua queda estática (la reparte terrain.ts). */
+/** Adapta el mar al contrato `Animator`: barcos, haz del faro y boyas. El agua no: la reparte terrain.ts y la anima water-animator.ts. */
 export function seaAnimator(scene: SeaScene, opts: { reducedMotion: boolean }): Animator {
   const anim = createSeaAnim(scene, opts);
   const layers: Record<string, () => AnimLayer> = {

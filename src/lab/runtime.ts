@@ -44,7 +44,10 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
   drawLayer(gCore, staticItems, "shadowCore");
   drawLayer(gSolid, staticItems, "solid");
   drawAccents(gAccents, scene.accents);
-  // agua estática: todo cuerpo de agua (por profundidad, más la espuma) que ningún animador reclame; hoy ninguno la anima
+  // agua estática: todo cuerpo de agua (por profundidad, más la espuma) que ningún animador reclame.
+  // Es el camino de reserva: `waterAnimator` (scenes/water-animator.ts) reclama todo `terrain.water` más
+  // `terrain.foam`, así que en las páginas que lo registran no queda nada acá; en las que no, el agua se
+  // pinta una vez y queda quieta.
   const animatedWater = new Set(animators.flatMap((a) => [...(a.claims ?? []), ...a.ids.flatMap((id) => { const l = a.layer(id); return l.kind === "water" ? l.water : []; })]));
   const staticWater = new Graphics();
   waterSlot.addChild(staticWater);

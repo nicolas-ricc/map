@@ -15,9 +15,9 @@ import { bayShoreX, bayWater, beyondBuilt, builtAt, estuaryWater, inFairBox } fr
  * (de contenido y de sangrado) se reparte por profundidad (distancia a
  * tierra) en `TerrainMesh.water`, un `Solid` por `WaterMat` (`shallow`,
  * `water`, `waterDeep`, `abyss`), más `TerrainMesh.foam` junto a la costa;
- * queda estática acá. Un animador de agua futuro reclamará esos `Solid` y les
- * mutará `toneOffset` in place, igual que hoy hace el astillero con sus otros
- * cuerpos animados. El agua del sangrado se subdivide en celdas de
+ * se reparte acá una sola vez. `water-animator.ts` reclama esos `Solid` y les
+ * muta `toneOffset` in place a cada paso, igual que el astillero con sus otros
+ * cuerpos animados; el terreno no sabe nada de eso. El agua del sangrado se subdivide en celdas de
  * `CELL_BLEED` (se probó una subdivisión a 9 u dentro del cover; la
  * decisión gateada por medición la descartó, ver spec §"Desvíos de la
  * implementación").
