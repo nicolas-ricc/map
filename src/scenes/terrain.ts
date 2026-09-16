@@ -79,8 +79,28 @@ export function waterBand(x: number, y: number): WaterMat | null {
   const t = inside ? terrainAt(x, y) : bleedTerrainAt(x, y);
   if (inside ? !WATER_TERRAIN.has(t as Terrain) : !BLEED_WATER.has(t as BleedTerrain)) return null;
   if (t === "abyss") return "abyss";
-  const d = depthAt(x, y);
-  return d < SHALLOW_D ? "shallow" : d <= DEEP_D ? "water" : "waterDeep";
+  return depthBand(x, y);
+}
+const depthBand = (x: number, y: number): WaterMat => { const d = depthAt(x, y); return d < SHALLOW_D ? "shallow" : d <= DEEP_D ? "water" : "waterDeep"; };
+
+/** Ruido fijo por celda en [−1, 1) (mixing de enteros, como `triMix` en water-anim.ts). */
+const cellNoise = (x: number, y: number): number => {
+  let h = (Math.floor(x) * 374761393 + Math.floor(y) * 668265263 + 7 * 1013904223) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (((h ^ (h >>> 16)) >>> 0) / 4294967296) * 2 - 1;
+};
+const ABYSS_DITHER = 15;
+/**
+ * Material de una celda de agua: `waterBand`, salvo a menos de ABYSS_DITHER de `abyssX`, donde el
+ * borde de la fosa se decide con ruido por celda. Sin esto el cambio de material era una recta
+ * limpia de pantalla (la ola no cruza materiales y no la rompe).
+ */
+export function waterCellMat(x: number, y: number): WaterMat | null {
+  const m = waterBand(x, y);
+  if (!m) return null;
+  const off = x - abyssX(y);
+  if (Math.abs(off) >= ABYSS_DITHER) return m;
+  return off + ABYSS_DITHER * cellNoise(x, y) >= 0 ? "abyss" : depthBand(x, y);
 }
 
 /**
@@ -105,7 +125,7 @@ const newWaterTris = (): WaterTris => ({ shallow: [], water: [], waterDeep: [], 
  */
 function waterCell(w: WaterTris, foam: Tri[], x0: number, y0: number, x1: number, y1: number, i: number, j: number): void {
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  const mat = waterBand(cx, cy);
+  const mat = waterCellMat(cx, cy);
   if (!mat) return;
   const tmp: Tri[] = [];
   cellTris(tmp, x0, y0, x1, y1, WATER_Z, WATER_Z, WATER_Z, WATER_Z, WATER_Z, i, j);
