@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { bounds } from "../iso/solids";
+import { bounds, wheelPoint } from "../iso/solids";
 import { createRng } from "../map/seed";
-import { DROP, coasterAt, coasterLength, fair } from "./fair";
-import { DROP_CYCLE_MS, WHEEL_PERIOD_MS, WHEEL_STEP_MS, createFairAnim } from "./fair-anim";
+import { DROP, WHEEL, coasterAt, coasterLength, fair } from "./fair";
+import { DROP_CYCLE_MS, WHEEL_LIGHT_STEP_MS, WHEEL_PERIOD_MS, WHEEL_STEP_MS, createFairAnim } from "./fair-anim";
 
 const setup = (reducedMotion = false) => createFairAnim(fair(createRng(7)), { reducedMotion });
 
@@ -15,7 +15,18 @@ describe("fair-anim", () => {
     for (let t = WHEEL_STEP_MS + 50; t + 500 < WHEEL_PERIOD_MS; t += 500) a.tick(500);
     expect(a.angle()).toBeGreaterThan(6.2); expect(a.angle()).toBeLessThan(2 * Math.PI);
     expect(a.wheelLights()).toHaveLength(4);
-    expect(a.wheel()[0]!.kind).toBe("wheel");
+    // Las luces corren más seguido que la rueda (150 ms contra 250 ms): tras un paso de luces sin paso
+    // de rueda, la rueda en pantalla sigue siendo la dibujada antes (`drawn`), así que las luces tienen
+    // que caer en sus góndolas, o sea leer el ángulo cuantizado de la rueda y no el reloj continuo.
+    const drawn = a.wheel()[0]!;
+    if (drawn.kind !== "wheel") throw new Error("la rueda no es kind wheel");
+    expect(a.tick(WHEEL_LIGHT_STEP_MS).wheel).toBe(false);
+    const slots = Array.from({ length: WHEEL.sides }, (_, k) => wheelPoint(drawn.at, drawn.angle + (2 * Math.PI * (k + 0.5)) / WHEEL.sides, WHEEL.r - 0.6));
+    for (const l of a.wheelLights()) {
+      expect(l.kind).toBe("dot");
+      const at = l.kind === "dot" ? l.at : drawn.at;
+      expect(slots.some((s) => Math.hypot(s.x - at.x, s.y - at.y, s.z - at.z) < 1e-9)).toBe(true);
+    }
   });
   it("el tren nunca sale de la vía, sube despacio y baja rápido", () => {
     const a = setup();

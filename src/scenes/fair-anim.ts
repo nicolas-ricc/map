@@ -29,7 +29,10 @@ export function dropEase(ms: number): number {
 export function createFairAnim(scene: FairScene, opts: { reducedMotion: boolean }): FairAnim {
   const L = coasterLength(), base = scene.drop.at.z, top = DROP.h - 3;
   let clock = 0, wheelStep = 0, lightStep = 0, dropStep = 0, signStep = 0, dist = 0;
-  const angle = () => (opts.reducedMotion ? 0 : (2 * Math.PI * (clock % WHEEL_PERIOD_MS)) / WHEEL_PERIOD_MS);
+  // La rueda se redibuja cada WHEEL_STEP_MS, así que su ángulo se cuantiza al último paso. Las luces
+  // de la llanta corren más seguido (WHEEL_LIGHT_STEP_MS) y leen este mismo ángulo: si usaran el reloj
+  // continuo se adelantarían hasta un paso entero y quedarían fuera de la llanta dibujada.
+  const angle = () => (opts.reducedMotion ? 0 : (2 * Math.PI * ((wheelStep * WHEEL_STEP_MS) % WHEEL_PERIOD_MS)) / WHEEL_PERIOD_MS);
   const dropZ = () => base + (top - base) * (opts.reducedMotion ? 0 : dropEase(clock));
   return {
     wheel: () => [wheelSolid(angle())],
