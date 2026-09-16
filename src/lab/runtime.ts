@@ -3,11 +3,11 @@ import { SHADOW_BAND_ALPHA, buildRenderList } from "../iso/render-list";
 import { ISO_COLORS } from "../map/palette-iso";
 import type { AnimLayer, Animator } from "../scenes/animator";
 import type { WorldScene } from "../scenes/world";
-import { drawAccents, drawLayer, fitTransform, type LabFrame, zoneFrame } from "./draw";
+import { drawAccents, drawLayer, fitTransform, type Frame, zoneFrame } from "../world/frame";
 
-export interface LabOptions { reducedMotion: boolean; log?: boolean; frame?: LabFrame }
+export interface LabOptions { reducedMotion: boolean; log?: boolean; frame?: Frame }
 
-const KEY_ZONE: Record<string, LabFrame> = { "0": "all", "1": "portfolio", "2": "cv", "3": "blog", "4": "cover" };
+const KEY_ZONE: Record<string, Frame> = { "0": "all", "1": "portfolio", "2": "cv", "3": "blog", "4": "cover" };
 
 /**
  * Arma las capas de una escena del mundo y corre sus animadores. Orden, de
@@ -76,7 +76,7 @@ export async function bootLab(host: HTMLElement, scene: WorldScene, animators: A
   if (opts.log) console.info(`[lab] primer dibujo: ${(performance.now() - t0).toFixed(1)} ms, ${staticItems.length} polígonos estáticos`);
 
   // encuadre: mundo entero, la zona elegida con 0..3, o el cover 16:9 con 4
-  let frame: LabFrame = opts.frame ?? "all";
+  let frame: Frame = opts.frame ?? "all";
   const fit = (): void => {
     // cover toca el borde del sangrado en sus cuatro esquinas: con margen se asoma el cielo justo ahí.
     const f = fitTransform(zoneFrame(frame), host.clientWidth, host.clientHeight, frame === "cover" ? 0 : undefined);

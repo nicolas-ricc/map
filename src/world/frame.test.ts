@@ -3,7 +3,7 @@ import { v3 } from "../iso/geometry";
 import { project } from "../iso/project";
 import type { RenderItem } from "../iso/render-list";
 import { BLEED, WORLD } from "../map/geo";
-import { coverFrame, fitTransform, zoneFrame } from "./draw";
+import { coverFrame, fitTransform, zoneFrame } from "./frame";
 
 describe("fitTransform", () => {
   it("escala para que el bounding box entre con margen y quede centrado", () => {

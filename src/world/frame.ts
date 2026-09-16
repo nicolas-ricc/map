@@ -7,10 +7,10 @@ import { WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, coverQuad, type WorldZone } from "..
 
 const FRAME_H = 30; // alto de referencia para que entren los landmarks
 
-export type LabFrame = WorldZone | "all" | "cover";
+export type Frame = WorldZone | "all" | "cover";
 
 /** Caja de una zona (o del mundo) proyectada, como un RenderItem para fitTransform. `cover` es el rectángulo 16:9 inscripto en el rombo del sangrado. */
-export function zoneFrame(frame: LabFrame): RenderItem[] {
+export function zoneFrame(frame: Frame): RenderItem[] {
   if (frame === "cover") return coverFrame(16 / 9);
   const box = {
     all: [WORLD.x0, WORLD.y0, WORLD.x1, WORLD.y1],
