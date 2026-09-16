@@ -15,7 +15,8 @@ export type Solid =
   | { kind: "cone"; at: Vec3; r: number; h: number; mat: Material; sides?: number }
   | { kind: "hull"; at: Vec3; len: number; beam: number; h: number; mat: Material; topMat?: Material; heading?: number; sheer?: number }
   | { kind: "strip"; path: Vec2[]; width: number; z: number; mat: Material }
-  | { kind: "ground"; tris: Tri[]; mat: Material };
+  | { kind: "ground"; tris: Tri[]; mat: Material }
+  | { kind: "wheel"; at: Vec3; r: number; width: number; mat: Material; sides: number; angle: number; gondolas?: { mat: Material; w: number; d: number; h: number } };
 
 /** Hacia dónde baja la rampa: "e" tiene el borde alto al oeste, "s" lo tiene al norte. */
 export type RampDir = "e" | "w" | "n" | "s";
@@ -184,6 +185,39 @@ function ground(tris: Tri[], mat: Material): Face[] {
   });
 }
 
+const SQ = Math.SQRT1_2;
+/** El plano de la rueda: `u` es horizontal en pantalla (mundo (1, −1)); la normal mira a la cámara. */
+export const WHEEL_U: Vec3 = { x: SQ, y: -SQ, z: 0 };
+export const WHEEL_NORMAL: Vec3 = { x: SQ, y: SQ, z: 0 };
+export const wheelPoint = (at: Vec3, a: number, rho: number): Vec3 => v3(at.x + WHEEL_U.x * rho * Math.cos(a), at.y + WHEEL_U.y * rho * Math.cos(a), at.z + rho * Math.sin(a));
+
+/** Rueda de frente a la cámara: llanta en sectores, rayos, cubo (todos en el plano, tono `top`) y góndolas como prismas colgados de la llanta. */
+function wheel(s: Solid & { kind: "wheel" }): Face[] {
+  // Los planos de la rueda no siguen la regla habitual de sombreado por normal: una pared que
+  // mirase a la cámara se pintaría "shade" (la cara más oscura), pero el anillo debe leerse en
+  // el color base del material, así que se fuerza el tono "top" sin desplazamiento.
+  const flat = (pts: Vec3[]): Face => ({ pts, normal: WHEEL_NORMAL, mat: s.mat, tone: "top", toneOffset: 0 });
+  const out: Face[] = [];
+  const hub = s.r * 0.12, inner = s.r - s.width, half = s.width / 6;
+  for (let k = 0; k < s.sides; k++) {
+    const a0 = s.angle + (2 * Math.PI * k) / s.sides, a1 = s.angle + (2 * Math.PI * (k + 1)) / s.sides;
+    out.push(flat([wheelPoint(s.at, a0, inner), wheelPoint(s.at, a1, inner), wheelPoint(s.at, a1, s.r), wheelPoint(s.at, a0, s.r)]));
+    const px = -Math.sin(a0) * half, pz = Math.cos(a0) * half; // perpendicular al rayo dentro del plano
+    const off = (p: Vec3, sgn: number): Vec3 => v3(p.x + WHEEL_U.x * px * sgn, p.y + WHEEL_U.y * px * sgn, p.z + pz * sgn);
+    const i0 = wheelPoint(s.at, a0, hub), i1 = wheelPoint(s.at, a0, inner);
+    out.push(flat([off(i0, -1), off(i1, -1), off(i1, 1), off(i0, 1)]));
+  }
+  out.push(flat(Array.from({ length: 8 }, (_, k) => wheelPoint(s.at, s.angle + (2 * Math.PI * k) / 8, hub))));
+  if (s.gondolas) {
+    const g = s.gondolas;
+    for (let k = 0; k < s.sides; k++) {
+      const p = wheelPoint(s.at, s.angle + (2 * Math.PI * (k + 0.5)) / s.sides, s.r - s.width / 2);
+      out.push(...extrude(rect(p.x - g.w / 2, p.y - g.d / 2, g.w, g.d), p.z - g.h, g.h, g.mat));
+    }
+  }
+  return out;
+}
+
 export function tessellateAll(s: Solid): Face[] {
   switch (s.kind) {
     case "prism": {
@@ -201,6 +235,7 @@ export function tessellateAll(s: Solid): Face[] {
     case "hull": return hull(s);
     case "strip": return strip(s.path, s.width, s.z, s.mat);
     case "ground": return ground(s.tris, s.mat);
+    case "wheel": return wheel(s);
   }
 }
 

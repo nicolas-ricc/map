@@ -170,3 +170,19 @@ describe("bounds", () => {
     expect(b).toEqual({ min: { x: 0, y: 0, z: -1 }, max: { x: 6, y: 6, z: 1 } });
   });
 });
+
+describe("wheel", () => {
+  it("wheel: anillo vertical en el plano (1, −1, 0) con rayos, cubo y góndolas colgando; girar mueve las góndolas y todo el anillo cumple x + y = const", () => {
+    const w: Solid = { kind: "wheel", at: v3(100, 50, 17), r: 14, width: 1.2, mat: "steel", sides: 16, angle: 0, gondolas: { mat: "rust", w: 1.6, d: 1.2, h: 1.4 } };
+    const faces = tessellateAll(w);
+    expect(faces.filter((f) => f.mat === "steel").length).toBe(16 + 16 + 1); // sectores, rayos, cubo
+    for (const f of faces.filter((f) => f.mat === "steel")) { expect(f.tone).toBe("top"); for (const p of f.pts) expect(p.x + p.y).toBeCloseTo(150, 6); }
+    expect(faces.filter((f) => f.mat === "rust").length).toBe(16 * 6);
+    const b = bounds(w);
+    expect(b.max.z).toBeCloseTo(31, 6); expect(b.min.z).toBeLessThan(3.1);
+    const top0 = tessellateAll(w).filter((f) => f.mat === "rust").flatMap((f) => f.pts).sort((p, q) => q.z - p.z)[0]!;
+    const top1 = tessellateAll({ ...w, angle: Math.PI / 16 }).filter((f) => f.mat === "rust").flatMap((f) => f.pts).sort((p, q) => q.z - p.z)[0]!;
+    expect(Math.hypot(top0.x - top1.x, top0.y - top1.y)).toBeGreaterThan(1);
+    expect(tessellate(w).filter((f) => f.mat === "steel").length).toBe(33); // mira a la cámara: nada se descarta
+  });
+});
