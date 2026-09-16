@@ -96,7 +96,7 @@ function railYard(out: Solid[], rng: Rng): void {
     out.push({ kind: "cone", at: v3(rng.int(-25, -13), rng.int(44, 96), 0), r: big ? rng.int(6, 9) : 5, h: big ? rng.int(4, 6) : 3, mat: big ? "rust" : "sand", sides: 7 });
   }
   for (let i = 0; i < 8; i++) out.push(prism(RAIL_YARD_X[i % 3]! - 1.1, -46 + i * 14, 0, 2.2, 7, 2.8, i % 2 === 0 ? "rust" : "steel")); // vagones estacionados N-S sobre las vías; -46: el tercero termina en y -11, sin tocar el desvío E-O (y -9.2..-6.8)
-  jungle(out, rng, { x0: -58, x1: -6, y0: 110, y1: 140 }, 14, 0.4); // y1 140: un cono de r 4 no puede cruzar la costura y = 146
+  jungle(out, rng, { x0: -58, x1: -6, y0: 110, y1: 140 }, 14, 0.4, { y: [128, 131, 134] }); // y1 140: un cono de r 4 no puede cruzar la costura y = 146; ningún cono pisa el empalme ni las vías del oeste
 }
 
 function lamps(out: Solid[], accents: Accent[]): void {

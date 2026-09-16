@@ -16,15 +16,16 @@ import { FAIR, bayShoreX, bayWater, fairAt } from "./sprawl-grid";
  */
 export interface FairScene { ground: Solid[]; solids: Solid[]; accents: Accent[]; wheelAxis: Vec3; drop: { at: Vec3; h: number }; arcadeSigns: [Accent, Accent] }
 
-export const WHEEL = { x: 150, y: -300, r: 14, hub: 17, sides: 16 } as const;
-export const COASTER = { x0: 94, x1: 156, y0: -262, y1: -232 } as const;
+/** En la playa del sureste, entre el carrusel y el paseo de madera: 20 u de radio para que se lea desde el cover. Posición elegida para que nada estático quede delante de ella en pantalla (la regla del test). */
+export const WHEEL = { x: 216, y: -204, r: 20, hub: 23, sides: 20 } as const;
+export const COASTER = { x0: 94, x1: 156, y0: -226, y1: -196 } as const;
 export const COASTER_PROFILE: readonly number[] = [4, 6, 8, 10, 12, 14, 13, 9, 5, 4, 6, 9, 12, 10, 6, 4, 5, 8, 11, 8, 5, 4, 4, 4];
-export const DROP = { x: 120, y: -328, h: 24 } as const;
-export const PIER = { y: -282, d: 10, len: 46 } as const;
+export const DROP = { x: 150, y: -264, h: 24 } as const;
+export const PIER = { y: -246, d: 10, len: 46 } as const;
 export const BOARDWALK_W = 8;
-export const CAROUSEL = { x: 178, y: -248 } as const;
-export const ARCADE = { x: 96, y: -228 } as const;
-export const BUMPER = { x: 130, y: -230 } as const;
+export const CAROUSEL = { x: 178, y: -212 } as const;
+export const ARCADE = { x: 96, y: -192 } as const;
+export const BUMPER = { x: 130, y: -194 } as const;
 export const FAIR_MATS: readonly Material[] = ["deck", "whitewash", "rust", "steel", "copper", "stone", "concrete", "plaza", "paving", "sand", "rail", "glass", "hull", "leaf", "leafDark"];
 const BOOTH_MATS: readonly Material[] = ["whitewash", "rust", "copper"];
 const WATER_Z = -1;
@@ -91,7 +92,7 @@ export function dropSolids(z: number): Solid[] {
 // ---------------------------------------------------------------- escena estática
 
 function boardwalk(out: Solid[], accents: Accent[]): void {
-  for (let y = -336; y < -208; y += 18) {
+  for (let y = -300; y < -172; y += 18) {
     const x = Math.min(bayShoreX(y), bayShoreX(y + 9), bayShoreX(y + 18)) - 16; // la orilla se corre hasta 25 u en 18 de largo: el tramo entero queda en arena
     if (!onFair(x, y, BOARDWALK_W, 18)) continue;
     out.push(prism(x, y, 0, BOARDWALK_W, 18, 0.6, "deck"));
@@ -113,10 +114,10 @@ function pier(out: Solid[], accents: Accent[]): void {
 
 function wheelSupport(out: Solid[], accents: Accent[]): void {
   const s = Math.SQRT1_2, { x, y } = WHEEL;
-  for (const su of [-1, 1]) out.push(prism(x + su * 2.5 * s - 1.5 * s - 0.4, y - su * 2.5 * s - 1.5 * s - 0.4, 0, 0.8, 0.8, 17, "steel")); // dos columnas detrás del plano (lado −(1,1))
-  out.push(rotBox(x - 1.2 * s, y - 1.2 * s, 6, 0.8, -Math.PI / 4, 16.6, 0.8, "steel")); // viga del eje, detrás
-  out.push(prism(x - 5, y - 3, 0, 10, 6, 0.6, "concrete"));
-  out.push(prism(x + 6, y + 8, 0, 3, 3, 2.5, "whitewash", { roof: "gable" })); accents.push(sign(x + 6.3, x + 8.7, y + 11.02, 0.8, 1.8, "amber"));
+  for (const su of [-1, 1]) out.push(prism(x + su * 2.5 * s - 1.5 * s - 0.4, y - su * 2.5 * s - 1.5 * s - 0.4, 0, 0.8, 0.8, WHEEL.hub, "steel")); // dos columnas detrás del plano (lado −(1,1))
+  out.push(rotBox(x - 1.2 * s, y - 1.2 * s, 6, 0.8, -Math.PI / 4, WHEEL.hub - 0.4, 0.8, "steel")); // viga del eje, detrás
+  out.push(prism(x - 6, y - 4, 0, 12, 8, 0.6, "concrete"));
+  out.push(prism(x - 12, y - 8, 0, 3, 3, 2.5, "whitewash", { roof: "gable" })); accents.push(sign(x - 11.7, x - 9.3, y - 4.98, 0.8, 1.8, "amber")); // boletería, detrás del plano de la rueda
   accents.push(dot(x, y, WHEEL.hub, 0.9, "amber"));
 }
 
@@ -157,7 +158,7 @@ function arcade(out: Solid[]): [Accent, Accent] {
 
 function booths(out: Solid[], accents: Accent[]): void {
   for (let k = 0; k < 8; k++) {
-    const y = -330 + k * 12, x = bayShoreX(y + 1.5) - 16 - 6;
+    const y = -294 + k * 12, x = bayShoreX(y + 1.5) - 16 - 6;
     if (!onFair(x, y, 4, 3)) continue;
     out.push(prism(x, y, 0, 4, 3, 2.8, BOOTH_MATS[k % 3]!, { roof: "gable" }));
     accents.push(sign(x + 0.8, x + 3.2, y + 3.02, 1.2, 2, "amber"));
@@ -177,19 +178,19 @@ function bumperCars(out: Solid[], accents: Accent[]): void {
 function beach(out: Solid[], rng: Rng): void {
   let placed = 0, tries = 0;
   while (placed < 12 && tries++ < 200) {
-    const y = rng.int(-334, -212), x = bayShoreX(y) - rng.int(3, 7);
+    const y = rng.int(-298, -176), x = bayShoreX(y) - rng.int(3, 7);
     if (!fairAt(x, y) || bayWater(x, y)) continue;
     out.push(prism(x - 0.12, y - 0.12, 0, 0.25, 0.25, 2, "steel"), cone(x, y, 2, 1.6, 0.7, rng.chance(0.5) ? "whitewash" : "rust", 8));
     placed++;
   }
-  for (let k = 0; k < 4; k++) { const y = -320 + k * 28, x = bayShoreX(y) - 9; if (fairAt(x, y)) out.push({ kind: "hull", at: v3(x, y, 0), len: 5, beam: 1.8, h: 0.8, mat: "whitewash", heading: rng.next() * Math.PI, sheer: 0.3 }); }
+  for (let k = 0; k < 4; k++) { const y = -284 + k * 28, x = bayShoreX(y) - 9; if (fairAt(x, y)) out.push({ kind: "hull", at: v3(x, y, 0), len: 5, beam: 1.8, h: 0.8, mat: "whitewash", heading: rng.next() * Math.PI, sheer: 0.3 }); }
 }
 
 function gate(out: Solid[], accents: Accent[]): void {
-  for (const x of [86, 93]) out.push(prism(x, -215.5, 0, 1.5, 1.5, 6, "stone"));
-  out.push(prism(85.75, -215.5, 6, 9, 1.5, 1, "copper"));
-  accents.push(sign(86.5, 93.5, -213.98, 6.1, 7, "amber"));
-  for (const [y0, y1] of [[FAIR.y0 + 8, -218], [-208, FAIR.y1]] as const) if (y1 > y0) out.push(prism(FAIR.x0, y0, 0, 0.3, y1 - y0, 1.2, "steel"));
+  for (const x of [86, 93]) out.push(prism(x, -179.5, 0, 1.5, 1.5, 6, "stone"));
+  out.push(prism(85.75, -179.5, 6, 9, 1.5, 1, "copper"));
+  accents.push(sign(86.5, 93.5, -177.98, 6.1, 7, "amber"));
+  for (const [y0, y1] of [[FAIR.y0 + 8, -182], [-172, FAIR.y1]] as const) if (y1 > y0) out.push(prism(FAIR.x0, y0, 0, 0.3, y1 - y0, 1.2, "steel"));
 }
 
 export function fair(rng: Rng): FairScene {

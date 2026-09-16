@@ -15,8 +15,8 @@ export const REACH = { n: 16 * CELL_BLEED, w: 8 * CELL_BLEED, s: 16 * CELL_BLEED
 const WOBBLE = 2 * CELL_BLEED;
 
 /** La feria: franja de arena al norte de la fábrica hasta la orilla de la bahía. Bordes alineados a la grilla del sangrado (anclada en (−402, −438)). */
-export const FAIR = { x0: 84, y0: -348, y1: -204 } as const;
-/** Orilla oeste de la bahía para cada y (≈ 212..277 en la franja de la feria). */
+export const FAIR = { x0: 84, y0: -312, y1: -168 } as const;
+/** Orilla oeste de la bahía para cada y (≈ 213..270 en la franja de la feria). */
 export const bayShoreX = (y: number): number => riverCenter(y) - RIVER_HALF;
 
 /** El rectángulo geométrico de la feria, agua incluida (a diferencia de `fairAt`, que excluye la bahía). Lo comparten `builtAt` y el aplanado de vértices del sangrado en terrain.ts. */

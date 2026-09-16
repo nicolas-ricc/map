@@ -31,7 +31,7 @@ const ROW_Y = [36, 56] as const;
 const ROW_H = 16;
 const HALL_X = 8, HALL_W = 90, HALL_H = 10;
 const SLIP_X = 110;
-const RAIL_Y = [131, 134] as const; // vías del oeste
+export const RAIL_Y = [131, 134] as const; // vías del oeste; el hinterland las prolonga hacia el oeste hasta el borde del sangrado
 const GANTRY_X = 150, GANTRY_H = 24;
 const WATER_Z = -1;
 

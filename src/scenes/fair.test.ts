@@ -33,7 +33,7 @@ describe("fair", () => {
     for (const x of scene().solids) {
       const b = bounds(x), cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
       const pier = x.kind === "prism" && x.mat === "deck" && x.at.z === -1;
-      const onPier = b.min.y >= -282.5 && b.max.y <= -271 && b.min.x > bayShoreX(PIER.y) - 16; // pilotes (lado sur) y guirnalda sobre el muelle
+      const onPier = b.min.y >= PIER.y - 0.5 && b.max.y <= PIER.y + PIER.d + 1 && b.min.x > bayShoreX(PIER.y) - 16; // pilotes (lado sur) y guirnalda sobre el muelle
       const pavilionCone = x.kind === "cone" && x.mat === "copper" && x.r === 5.6; // el techo del pabellón, en la punta del muelle
       if (!pier && !onPier && !pavilionCone) expect(bayWater(cx, cy)).toBe(false);
       if (!slender(x)) expect(b.max.z).toBeLessThanOrEqual(18.5);
@@ -55,14 +55,16 @@ describe("fair", () => {
     expect(new Set(s.accents.map((a) => a.color)).size).toBeGreaterThanOrEqual(3); // ámbar, cian y magenta
   });
 
-  it("vuelta al mundo: eje a 17, r 14, 16 góndolas; nada estático queda delante de ella en pantalla", () => {
+  it("vuelta al mundo: en la playa, eje a 23, r 20, 20 góndolas; nada estático queda delante de ella en pantalla", () => {
     const s = scene();
     const w = wheelSolid(0);
     expect(w).toMatchObject({ kind: "wheel", r: WHEEL.r, sides: WHEEL.sides, at: { x: WHEEL.x, y: WHEEL.y, z: WHEEL.hub } });
-    expect(bounds(w).max.z).toBeCloseTo(31, 6);
+    expect(bounds(w).max.z).toBeCloseTo(WHEEL.hub + WHEEL.r, 6);
+    expect(WHEEL.x + WHEEL.r * Math.SQRT1_2 + 6).toBeLessThan(bayShoreX(WHEEL.y) - 16); // en la arena, al oeste del paseo de madera
+    expect(WHEEL.y).toBeGreaterThan(PIER.y + PIER.d); // en la playa al sur del muelle
     const wb = bounds(w);
     for (const x of s.solids) { const sb = bounds(x); if (overlaps(screenBounds(wb), screenBounds(sb))) expect(isBehind(wb, sb)).toBe(false); }
-    expect(s.solids.filter((x) => x.kind === "prism" && x.mat === "steel" && x.h === 17)).toHaveLength(2); // columnas detrás del plano
+    expect(s.solids.filter((x) => x.kind === "prism" && x.mat === "steel" && x.h === WHEEL.hub)).toHaveLength(2); // columnas detrás del plano
   });
 
   it("montaña rusa: 24 segmentos con z entre 4 y 14, subida al principio; el tren y la góndola se arman a cualquier distancia/altura", () => {
@@ -79,6 +81,6 @@ describe("fair", () => {
   });
 
   it("todo el suelo de la feria es arena", () => {
-    for (const [x, y] of [[100, -330], [150, -250], [200, -300], [120, -210]] as const) expect(bleedTerrainAt(x, y)).toBe("fair");
+    for (const [x, y] of [[100, -294], [150, -214], [200, -264], [120, -174]] as const) expect(bleedTerrainAt(x, y)).toBe("fair");
   });
 });

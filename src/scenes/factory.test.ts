@@ -12,10 +12,10 @@ const PORTFOLIO_MATS: readonly Material[] = ["slab", "concrete", "rust", "steel"
 const slender = (s: Solid) => (s.kind === "cylinder" && s.r <= 3) || (s.kind === "prism" && ((s.w <= 3 && s.d <= 3) || s.h <= 1)); // mástiles, chimeneas y vigas finas (pluma)
 
 describe("factory", () => {
-  it("es determinística y trae más de 100 sólidos elevados dentro de Portfolio", () => {
+  it("es determinística y trae más de 90 sólidos elevados dentro de Portfolio", () => {
     expect(JSON.stringify(factory(createRng(7)))).toBe(JSON.stringify(factory(createRng(7))));
     const s = scene();
-    expect(s.solids.filter((x) => !isFlat(x)).length).toBeGreaterThan(100);
+    expect(s.solids.filter((x) => !isFlat(x)).length).toBeGreaterThan(90); // la selva del cinturón descarta los conos que pisarían las vías del oeste
     for (const x of [...s.ground, ...s.solids]) {
       const b = bounds(x);
       expect(b.min.x).toBeGreaterThanOrEqual(WORLD.x0 - 1); expect(b.max.x).toBeLessThanOrEqual(ZONE_SPLIT_X);
