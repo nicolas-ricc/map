@@ -60,7 +60,9 @@ describe("water-anim", () => {
       if (triHash(a) === triHash(b)) sameAsNeighbor++;
       checked++;
     }
-    expect(sameAsNeighbor).toBeLessThan(checked); // no todos iguales en la diagonal
+    // Con el hash de hoy la proporción medida es 74/300 = 0.247. El tope es 0.4: "menos que checked"
+    // solo fallaba con el 100 % de coincidencias, y el bug original (franjas diagonales) daba ~50 %.
+    expect(sameAsNeighbor).toBeLessThan(0.4 * checked);
   });
   it("waveOffset aplana −2..2 a la escalera real (un solo escalón sobre top)", () => {
     expect(waveOffset(-2)).toBe(-2);

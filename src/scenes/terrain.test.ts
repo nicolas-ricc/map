@@ -163,8 +163,13 @@ describe("buildTerrain", () => {
     const m = buildTerrain(createRng(7));
     const side = (t: Tri) => Math.max(...t.pts.map((p) => p.x)) - Math.min(...t.pts.map((p) => p.x));
     const at = (x: number, y: number) => m.water.flatMap(tris).filter((t) => t.pts.some((p) => Math.abs(p.x - x) < 1 && Math.abs(p.y - y) < 1));
-    // vértices reales de la grilla (anclada en bx0=-402, by0=-438): dentro del cover, (597,300); afuera, (858,660).
-    expect(at(597, 300).every((t) => side(t) === 18)).toBe(true);
+    // vértices reales de la grilla (anclada en bx0=-402, by0=-438): dentro del cover, (264,−348), en la
+    // bahía al norte de la feria; afuera, (858,660), mar abierto al sureste. Los `every` no dicen nada
+    // sobre un conjunto vacío (era el caso del (597,300) de antes, que caía en el centro de una celda,
+    // no en un vértice): primero hay que haber encontrado celdas ahí.
+    expect(at(264, -348).length).toBeGreaterThan(0);
+    expect(at(858, 660).length).toBeGreaterThan(0);
+    expect(at(264, -348).every((t) => side(t) === 18)).toBe(true);
     expect(at(858, 660).every((t) => side(t) === 18)).toBe(true);
   });
   it("la punta está alta y cae al mar; el dique seco no tiene suelo (lo pone la escena)", () => {
