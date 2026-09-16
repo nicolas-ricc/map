@@ -1,18 +1,6 @@
-import { MAP_H, MAP_W } from "./map/zones";
-
-export const ZOOM = 2.5;
 export const DURATION_MS = 500;
 
 export interface CameraState { x: number; y: number; scale: number }
-
-export function coverTransform(viewW: number, viewH: number, focus?: { x: number; y: number; zoom: number }): CameraState {
-  const cover = Math.max(viewW / MAP_W, viewH / MAP_H);
-  if (!focus) {
-    return { x: (viewW - MAP_W * cover) / 2, y: (viewH - MAP_H * cover) / 2, scale: cover };
-  }
-  const scale = cover * focus.zoom;
-  return { x: viewW / 2 - focus.x * scale, y: viewH / 2 - focus.y * scale, scale };
-}
 
 export function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);

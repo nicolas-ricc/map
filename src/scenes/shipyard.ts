@@ -7,7 +7,7 @@ import { jungle as flora } from "./flora";
 
 
 /**
- * Portfolio: astillero en 2.5D. Mismo plano que terrain-portfolio.ts: línea de
+ * Portfolio: astillero en 2.5D. Mismo plano que terrain.ts: línea de
  * producción de oeste a este que termina en el agua (patio de material → nave
  * de montaje → grada → río), calle de transferencia N-S, ribera dragada recta
  * en QUAY_X, dique seco al NE, talleres y playa al SO, muelle de alistamiento

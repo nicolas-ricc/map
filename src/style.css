@@ -7,12 +7,14 @@
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
 #app { height: 100%; }
 /* clip y no hidden: un contenedor con overflow:hidden igual scrollea cuando el
-   browser enfoca un hijo fuera de vista (los divs de accesibilidad de Pixi) y
-   eso desplazaba el canvas; overflow:clip no es scrolleable. Como clip no crea
-   un scroll container, el min-width automático de grid seguiría al ancho del
-   canvas y la columna no podría encogerse: por eso el min-width/height: 0. */
+   browser enfoca un hijo fuera de vista, y los links de #zonas están
+   posicionados en absoluto sobre el canvas, algunos fuera del host mientras
+   la cámara los mueve: eso desplazaba el canvas al enfocarlos; overflow:clip
+   no es scrolleable. Como clip no crea un scroll container, el min-width
+   automático de grid seguiría al ancho del canvas y la columna no podría
+   encogerse: por eso el min-width/height: 0. */
 #canvas-host { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: clip; }
-#canvas-host canvas { display: block; image-rendering: pixelated; }
+#canvas-host canvas { display: block; }
 #app { display: grid; grid-template-columns: 1fr 0fr; grid-template-rows: 100%; height: 100%; transition: grid-template-columns 500ms cubic-bezier(0.33, 1, 0.68, 1); }
 body.zone #app { grid-template-columns: 2fr 3fr; }
 #content { overflow-y: auto; padding: 2rem clamp(1rem, 4vw, 3rem); opacity: 0; transition: opacity 200ms ease 500ms; }
@@ -38,19 +40,37 @@ body.zone #content { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   #app, #content { transition: none; }
 }
-/* divs de accesibilidad de Pixi sobre el canvas: el foco se dibuja como un marco
-   fino sobre la zona, además de que la zona se enciende (spec §5). */
-#canvas-host > div > button:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
-
-/* Nav de zonas: existe siempre en el DOM para que los links a /portfolio/, /cv/ y
-   /blog/ sean crawleables y navegables sin JS. Fuera del flujo (position:absolute,
-   clip) para no romper la grilla de #app; se vuelve visible solo si el canvas no
-   arrancó (.no-canvas, ver el catch de boot() en main.ts). */
-#zonas { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* Rótulos de zona: el nav existe siempre en el DOM (links crawleables y navegables
+   sin JS) y es la capa de etiquetas sobre el canvas: main.ts posiciona cada link
+   sobre el landmark proyectado de su zona en cada frame. Los links son los
+   controles accesibles del mapa: orden de tab natural, foco visible nativo. */
+#zonas { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+#zonas ul { list-style: none; margin: 0; padding: 0; }
+#zonas a {
+  position: absolute; left: 0; top: 0; pointer-events: auto; will-change: transform;
+  font-size: 0.8rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; text-decoration: none;
+  text-shadow: 0 0 6px #000, 0 1px 2px #000; transition: opacity 200ms ease;
+}
+/* ocultos hasta que main.ts los coloque sobre su landmark (primer jumpTo de la
+   cámara): si no, se ven apilados en la esquina y saltan a su lugar. Solo con
+   JS presente: sin JS nadie los va a posicionar, así que quedan visibles y
+   accesibles desde el primer render (prerenderizado, sin canvas). Sin canvas
+   el nav vuelve al flujo y debe verse: por eso también se excluye .no-canvas. */
+.js:not(.mapa-listo):not(.no-canvas) #zonas a { visibility: hidden; }
+#zonas a[data-zone="portfolio"] { color: #7cf5ff; }
+#zonas a[data-zone="cv"] { color: #ffc457; }
+#zonas a[data-zone="blog"] { color: #ff5ee0; }
+#zonas a:hover, #zonas a:focus-visible { text-decoration: underline; text-underline-offset: 0.3em; filter: brightness(1.25); }
+#zonas a:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+#zonas a.dim { opacity: 0.35; }
+#titulo { position: absolute; left: 1rem; bottom: 0.75rem; margin: 0; z-index: 1; pointer-events: none; font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: #ffc457; text-shadow: 0 0 6px #000, 0 1px 2px #000; transition: opacity 200ms ease; }
+body.zone #titulo { opacity: 0; }
 .no-canvas, .no-canvas body { height: auto; overflow: auto; }
-.no-canvas #canvas-host { display: none; }
+/* sin canvas el host solo aloja el nav, en flujo */
+.no-canvas #canvas-host { height: auto; overflow: visible; }
+.no-canvas #canvas-host canvas, .no-canvas #hud, .no-canvas #titulo { display: none; }
 .no-canvas #app { display: block; height: auto; }
 .no-canvas #content { opacity: 1; }
-.no-canvas #zonas { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: normal; padding: 2rem clamp(1rem, 4vw, 3rem) 0; }
-.no-canvas #zonas ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.5rem; flex-wrap: wrap; }
-.no-canvas #zonas a { color: #7cf5ff; font-size: 1.1rem; }
+.no-canvas #zonas { position: static; pointer-events: auto; padding: 2rem clamp(1rem, 4vw, 3rem) 0; }
+.no-canvas #zonas ul { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.no-canvas #zonas a { position: static; transform: none !important; visibility: visible; font-size: 1.1rem; letter-spacing: 0; text-transform: none; text-decoration: underline; }
