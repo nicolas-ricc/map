@@ -241,6 +241,15 @@ Desvíos puntuales de las Tareas 1–18 que no habían quedado escritos arriba
   caras de la vuelta al mundo llevan `tone: "top"` fijo en vez de calculado.
   El bucle del test de la vuelta al mundo se corrigió para que el reloj se
   mantenga bajo 40 s.
+- **Cinta transportadora del acopio.** Es un `strip` a `z 4`, como manda la
+  spec §4.2, así que vive en la capa de suelo: su punta este queda ordenada
+  *debajo* de la cara sur del galpón de turbinas en vez de apoyarse encima.
+  Un `poly` de 0.2 de alto ordenaría bien, pero se dejó como pide la spec.
+- **Presupuesto del distrito tecnológico.** Con las cantidades de la spec
+  restauradas (4 conos de atrio, 4..6 unidades de techo, 6..8 autos) el
+  distrito queda en 1 190 sólidos elevados contra un presupuesto de 1 200:
+  las cantidades y el presupuesto de la spec son apenas compatibles entre
+  sí, sin margen para agregar nada más ahí.
 
 Líneas de consola crudas (tres corridas):
 
