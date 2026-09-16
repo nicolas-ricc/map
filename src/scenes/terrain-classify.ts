@@ -62,7 +62,7 @@ export function bleedTerrainAt(x: number, y: number): BleedTerrain {
   if (x > WORLD.x1) return x >= abyssX(y) ? "abyss" : "sea";
   if (y > WORLD.y1 && x >= ZONE_SPLIT_X) { const t = seaTerrainAt(x, y); return t === "abyss" || t === "shore" ? t : "sea"; }
   if (estuaryWater(x, y)) return "river";
-  if (bayWater(x, y)) return "sea";
+  if (bayWater(x, y)) return x >= abyssX(y) ? "abyss" : "sea"; // la fosa sigue al norte: cortada en y = WORLD.y0 dibujaba una L con su borde oeste
   return builtAt(x, y) ?? "jungle";
 }
 

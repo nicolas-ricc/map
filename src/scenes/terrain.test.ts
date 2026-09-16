@@ -92,7 +92,8 @@ describe("clasificación", () => {
     expect(bleedTerrainAt(560, 500)).toBe("abyss");
     expect(bleedTerrainAt(250, 460)).toBe("river");         // en y 460 el estuario ya llegó a 344: agua continua hasta el mar
     expect(bleedTerrainAt(343, 460)).toBe("river");
-    expect(bleedTerrainAt(400, -100)).toBe("sea");
+    expect(bleedTerrainAt(360, -100)).toBe("sea");         // bahía al norte, al oeste de la fosa
+    expect(bleedTerrainAt(440, -100)).toBe("abyss");       // la fosa sigue al norte del contenido (abyssX(−100) ≈ 382)
     expect(bleedTerrainAt(600, 100)).toBe("abyss");
     expect(bleedZ(-380, 100)).toBeGreaterThan(9);   // loma al oeste, más allá de la tierra construida
     expect(bleedZ(-380, -430)).toBeGreaterThan(9);  // loma al norte, dentro de la grilla del sangrado
