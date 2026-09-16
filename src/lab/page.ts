@@ -49,10 +49,12 @@ export function bootWorldPage(zones: readonly WorldZone[] | undefined, frame: Fr
       if (e.key === "5") { focusIdx = (focusIdx + 1) % focusCycle.length; stage.setFocus(focusCycle[focusIdx]!); }
     });
 
+    // ?speed=0.1 ralentiza el reloj de los animadores (revisión de materiales en cámara lenta); solo el laboratorio.
+    const speed = Number(new URLSearchParams(location.search).get("speed")) || 1;
     let worst = 0, since = 0;
     app.ticker.add((ticker) => {
       const t = performance.now();
-      stage.tick(ticker.deltaMS);
+      stage.tick(ticker.deltaMS * speed);
       const dt = performance.now() - t;
       worst = Math.max(worst, dt);
       since += ticker.deltaMS;

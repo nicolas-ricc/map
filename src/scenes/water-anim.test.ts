@@ -1,54 +1,98 @@
 import { describe, expect, it } from "vitest";
 import type { Tri } from "../iso/solids";
 import { v3 } from "../iso/geometry";
+import { project } from "../iso/project";
 import { createRng } from "../map/seed";
 import { buildTerrain } from "./terrain";
-import { BANDS, WATER_STEP_MS, WAVE_LAMBDA, WAVE_T_MS, createWaterAnim, triHash, waveOffset, waveTone } from "./water-anim";
+import { BANDS, CHOP, FOAM_STEP_MS, GLINT_H, SWELL, WATER_STEP_MS, createWaterAnim, foamOn, glintShape, glints, triHash, triNoise, waveField, waveTone } from "./water-anim";
 
 const tri = (x: number, y: number, base = 0): Tri => ({ pts: [v3(x, y, -1), v3(x + 6, y, -1), v3(x + 6, y + 6, -1)], baseTone: base });
 const tris = (s: { kind: string; tris?: Tri[] }) => (s.kind === "ground" ? s.tris! : []);
 
 describe("water-anim", () => {
-  it("la ola es periódica, viaja hacia el noroeste y nunca sale de [−2, 2]", () => {
+  it("la ola es periódica, acotada, y el mar de fondo viaja hacia el noroeste", () => {
+    const T = SWELL.T * CHOP.T / 500; // múltiplo común de los dos períodos (9000 y 5500): 99 000
     for (let k = 0; k < 200; k++) {
       const t = tri(k * 3, (k * 7) % 100, (k % 3) - 1);
-      expect(waveTone(t, "water", 1234)).toBe(waveTone(t, "water", 1234 + WAVE_T_MS));
-      for (let c = 0; c < WAVE_T_MS; c += 250) expect(Math.abs(waveTone(t, "water", c))).toBeLessThanOrEqual(2);
+      expect(waveField(t, "water", 1234)).toBeCloseTo(waveField(t, "water", 1234 + T), 6);
+      for (let c = 0; c < SWELL.T; c += 250) {
+        expect(Math.abs(waveField(t, "water", c))).toBeLessThan(1.5);
+        const v = waveTone(t, "water", c);
+        expect(v).toBeGreaterThanOrEqual(-2);
+        expect(v).toBeLessThanOrEqual(1);
+      }
     }
-    let towardNW = 0, towardSE = 0; // la cresta en s a t está en s − λ/4 a t + T/4 (s = x + 0.5 y)
+    // la cresta que está en s a t está en s − λ/4 a t + T/4, con s la coordenada a lo largo de k (viaja contra k: hacia el NO)
+    const dir = { x: SWELL.k.x, y: SWELL.k.y }, q = SWELL.lambda / 4;
+    let towardNW = 0, towardSE = 0;
     for (let x = 0; x < 400; x += 6) {
-      const a = waveTone(tri(x, 0), "water", 0);
-      towardNW += Math.abs(waveTone(tri(x - WAVE_LAMBDA / 4, 0), "water", WAVE_T_MS / 4) - a);
-      towardSE += Math.abs(waveTone(tri(x + WAVE_LAMBDA / 4, 0), "water", WAVE_T_MS / 4) - a);
+      const a = waveField(tri(x, 0), "water", 0);
+      towardNW += Math.abs(waveField(tri(x - q * dir.x, -q * dir.y), "water", SWELL.T / 4) - a);
+      towardSE += Math.abs(waveField(tri(x + q * dir.x, q * dir.y), "water", SWELL.T / 4) - a);
     }
     expect(towardNW).toBeLessThan(towardSE);
   });
-  it("el destello (+2) solo aparece en triángulos con hash 0; en promedio la ola respeta el baseTone", () => {
+  it("en promedio la ola respeta el baseTone (orilla más clara que el borde profundo) y la fosa es más mansa que el mar", () => {
+    let sea = 0, abyss = 0, n = 0;
+    const mean = (t: Tri): number => { let sum = 0, m = 0; for (let c = 0; c < SWELL.T; c += 50) { sum += waveTone(t, "water", c); m++; } return sum / m; };
     for (let k = 0; k < 300; k++) {
-      const t = tri(k * 5, k * 2, 1);
-      let sum = 0, n = 0;
-      for (let c = 0; c < WAVE_T_MS; c += 50) { const v = waveTone(t, "water", c); if (v === 2) expect(triHash(t)).toBe(0); sum += v; n++; }
-      expect(Math.abs(sum / n - 1)).toBeLessThan(0.6);
+      expect(Math.abs(mean(tri(k * 5, k * 2, 0)))).toBeLessThan(0.45);
+      expect(mean(tri(k * 5, k * 2, 1))).toBeGreaterThan(mean(tri(k * 5, k * 2, -1)) + 0.8);
+      for (let c = 0; c < SWELL.T; c += 50) { sea += Math.abs(waveField(tri(k * 5, k * 2), "water", c)); abyss += Math.abs(waveField(tri(k * 5, k * 2), "abyss", c)); n++; }
     }
+    expect(abyss / n).toBeLessThan(sea / n);
   });
-  it("reparte el agua en seis bandas parejas, pinta una por paso en ronda y alterna la espuma", () => {
+  it("las crestas no son rectas: a lo largo de una horizontal de pantalla el tono cambia a menudo", () => {
+    // Con una sola ola plana hacia el NO, la cresta era horizontal en pantalla (x − y constante) y
+    // decenas de triángulos seguidos compartían tono. Ahora, en 60 celdas seguidas de la misma
+    // horizontal, hay tramos iguales pero ninguno largo.
+    let longest = 0;
+    for (let clock = 0; clock < SWELL.T; clock += 900) {
+      let run = 1;
+      for (let k = 1; k < 60; k++) {
+        const same = waveTone(tri(k * 6, k * 6), "waterDeep", clock) === waveTone(tri((k - 1) * 6, (k - 1) * 6), "waterDeep", clock);
+        run = same ? run + 1 : 1;
+        longest = Math.max(longest, run);
+      }
+    }
+    expect(longest).toBeLessThan(9);
+  });
+  it("reparte el agua en seis bandas parejas y entrelazadas, pinta una por paso en ronda y mueve la espuma", () => {
     const terrain = buildTerrain(createRng(7));
     const a = createWaterAnim(terrain, { reducedMotion: false });
-    const sizes = Array.from({ length: BANDS }, (_, k) => a.band(k).reduce((n, s) => n + tris(s).length, 0));
+    const water = (k: number) => a.band(k).filter((s) => s.mat !== "glint");
+    const sizes = Array.from({ length: BANDS }, (_, k) => water(k).reduce((n, s) => n + tris(s).length, 0));
     const total = terrain.water.reduce((n, s) => n + tris(s).length, 0);
     expect(sizes.reduce((x, y) => x + y, 0)).toBe(total);
-    expect(Math.max(...sizes)).toBeLessThan(2 * Math.min(...sizes));
+    expect(Math.max(...sizes)).toBeLessThan(1.5 * Math.min(...sizes));
+    // entrelazadas: cada banda cubre todo el ancho de pantalla, no una franja
+    const sx = (t: Tri) => project(t.pts[0]).x;
+    const span = (ts: Tri[]) => Math.max(...ts.map(sx)) - Math.min(...ts.map(sx));
+    const all = terrain.water.flatMap(tris);
+    for (let k = 0; k < BANDS; k++) expect(span(water(k).flatMap(tris))).toBeGreaterThan(0.9 * span(all));
     expect(a.band(0).some((s) => tris(s).some((t) => (t.toneOffset ?? 0) !== 0))).toBe(true);
     const c1 = a.tick(WATER_STEP_MS), c2 = a.tick(WATER_STEP_MS), c3 = a.tick(WATER_STEP_MS), c4 = a.tick(WATER_STEP_MS), c5 = a.tick(WATER_STEP_MS), c6 = a.tick(WATER_STEP_MS);
     expect([c1, c2, c3, c4, c5, c6].map((c) => [...c.bands])).toEqual([[1], [2], [3], [4], [5], [0]]);
-    expect(a.tick(500).foam).toBe(true);
+    expect(a.tick(FOAM_STEP_MS).foam).toBe(true);
     expect(a.foam()[0]!.mat).toBe("foam");
+    const foam = tris(a.foam()[0]!);
+    expect(foam.some((t) => t.toneOffset === -1)).toBe(true);
+    expect(foam.filter((t) => t.toneOffset === 0).length).toBeGreaterThan(foam.length / 2);
   });
-  it("triHash reparte parejo mod 4 sobre la grilla y no queda en franjas diagonales", () => {
+  it("la espuma lame: cada triángulo alterna a lo largo del ciclo y los vecinos no van todos juntos", () => {
+    const t = tri(200, 300);
+    const states = new Set<boolean>();
+    for (let c = 0; c < 5200; c += 100) states.add(foamOn(t, c));
+    expect(states.size).toBe(2);
+    let differ = 0;
+    for (let k = 0; k < 40; k++) if (foamOn(tri(k * 6, 0), 0) !== foamOn(tri(k * 6 + 6, 0), 0)) differ++;
+    expect(differ).toBeGreaterThan(3);
+  });
+  it("triHash reparte parejo mod 4 sobre la grilla y no queda en franjas diagonales; triNoise está en [−1, 1)", () => {
     const terrain = buildTerrain(createRng(7));
-    const all = terrain.water.flatMap((s) => tris(s));
+    const all = terrain.water.flatMap(tris);
     const counts = [0, 0, 0, 0];
-    for (const t of all) counts[triHash(t)]!++;
+    for (const t of all) { counts[triHash(t)]!++; expect(triNoise(t)).toBeGreaterThanOrEqual(-1); expect(triNoise(t)).toBeLessThan(1); }
     for (const n of counts) {
       const share = n / all.length;
       expect(share).toBeGreaterThan(0.15);
@@ -60,28 +104,32 @@ describe("water-anim", () => {
       if (triHash(a) === triHash(b)) sameAsNeighbor++;
       checked++;
     }
-    // Con el hash de hoy la proporción medida es 74/300 = 0.247. El tope es 0.4: "menos que checked"
-    // solo fallaba con el 100 % de coincidencias, y el bug original (franjas diagonales) daba ~50 %.
     expect(sameAsNeighbor).toBeLessThan(0.4 * checked);
   });
-  it("waveOffset aplana −2..2 a la escalera real (un solo escalón sobre top)", () => {
-    expect(waveOffset(-2)).toBe(-2);
-    expect(waveOffset(-1)).toBe(-1);
-    expect(waveOffset(0)).toBe(0);
-    expect(waveOffset(1)).toBe(0);
-    expect(waveOffset(2)).toBe(1);
+  it("los destellos son rombos chicos, horizontales en pantalla, dentro de la celda, y solo donde la ola es alta", () => {
+    const t = tri(30, 60);
+    const [a, b] = glintShape(t, 2.2);
+    const pts = [...a.pts, ...b.pts].map(project);
+    const w = Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x)), h = Math.max(...pts.map((p) => p.y)) - Math.min(...pts.map((p) => p.y));
+    const cell = project(v3(36, 60, -1)).x - project(v3(30, 66, -1)).x; // ancho de pantalla de la celda (12 u)
+    expect(w).toBeLessThan(0.7 * cell);
+    expect(h).toBeLessThan(w / 4);
+    for (const p of [...a.pts, ...b.pts]) { expect(p.x).toBeGreaterThan(30); expect(p.x).toBeLessThan(36); expect(p.y).toBeGreaterThan(60); expect(p.y).toBeLessThan(66); }
+    for (let c = 0; c < SWELL.T; c += 50) {
+      const g = glints(t, "water", c);
+      if (g.length) { expect(waveField(t, "water", c)).toBeGreaterThanOrEqual(GLINT_H); expect(g).toHaveLength(2); expect(g.every((x) => x.toneOffset === 0 || x.toneOffset === 1)).toBe(true); }
+    }
   });
-  it("solo un puñado de triángulos llega a la cresta (toneOffset === 1) en el terreno real", () => {
+  it("en el terreno real los destellos son pocos y las bandas los llevan como material glint al final", () => {
     const terrain = buildTerrain(createRng(7));
-    const a = createWaterAnim(terrain, { reducedMotion: false }); // pintado inicial, clock 0
-    const all = Array.from({ length: BANDS }, (_, k) => a.band(k)).flat().flatMap((s) => tris(s));
-    const crest = all.filter((t) => t.toneOffset === 1).length;
-    const share = crest / all.length;
-    expect(share).toBeLessThan(0.12);
-    expect(share).toBeGreaterThan(0.005);
-  });
-  it("con reduced-motion no cambia nada", () => {
-    const a = createWaterAnim(buildTerrain(createRng(7)), { reducedMotion: true });
-    expect(a.tick(1000)).toEqual({ bands: new Set(), foam: false });
+    const a = createWaterAnim(terrain, { reducedMotion: false });
+    let glint = 0, water = 0;
+    for (let k = 0; k < BANDS; k++) {
+      const band = a.band(k);
+      expect(band[band.length - 1]!.mat).toBe("glint");
+      for (const s of band) if (s.mat === "glint") glint += tris(s).length / 2; else water += tris(s).length;
+    }
+    expect(glint / water).toBeLessThan(0.08);
+    expect(glint / water).toBeGreaterThan(0.005);
   });
 });
