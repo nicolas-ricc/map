@@ -1,11 +1,11 @@
 import { v3 } from "../iso/geometry";
 import type { Solid, Tri } from "../iso/solids";
-import { BLEED, BOTTOM, CELL, CELL_BLEED, DOCK, QUAY_X, SHORE_W, WORLD, ZONE_SPLIT_X, ZONE_SPLIT_Y, abyssX, distToHeadland, eastBank, inHeadland, inMouth, shoreWidth, worldZoneAt, type WorldZone } from "../map/geo";
+import { BLEED, CELL, CELL_BLEED, DOCK, WORLD, abyssX, worldZoneAt, type WorldZone } from "../map/geo";
 import type { Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
-import { CITY_EDGE, DISTRICT_BANK_Y, EAST_RING, MALECON_STREET_X, estuaryEast, inCrater } from "./city-grid";
 import { depthAt } from "./depth-map";
-import { bayShoreX, bayWater, beyondBuilt, builtAt, estuaryWater, inFairBox } from "./sprawl-grid";
+import { bayShoreX, beyondBuilt, inFairBox } from "./sprawl-grid";
+import { BLEED_WATER, WATER_TERRAIN, bleedTerrainAt, terrainAt, type BleedTerrain, type Terrain } from "./terrain-classify";
 
 /**
  * Terreno de todo el mundo: una grilla facetada de CELL sobre WORLD (el
@@ -22,13 +22,12 @@ import { bayShoreX, bayWater, beyondBuilt, builtAt, estuaryWater, inFairBox } fr
  * decisión gateada por medición la descartó, ver spec §"Desvíos de la
  * implementación").
  */
-export type Terrain = "slab" | "water" | "east" | "jungle" | "dock" | "asphalt" | "sea" | "shore" | "headland" | "reef" | "abyss";
-/** Sangrado: selva y lomas, agua (mar, orilla, fosa, estuario) y tierra construida (industrial de Portfolio, urbana de Resume). */
-export type BleedTerrain = "jungle" | "sea" | "shore" | "abyss" | "river" | "industrial" | "urban" | "fair";
+// La clasificación vive en `terrain-classify.ts` (abajo de `depth-map.ts`, que la necesita): acá se
+// reexporta tal cual, así quien ya la pedía a `terrain.ts` sigue igual.
+export { bleedTerrainAt, cityTerrainAt, seaTerrainAt, shipyardTerrainAt, terrainAt, type BleedTerrain, type Terrain } from "./terrain-classify";
 
 export { CELL };
 const WATER_Z = -1;
-const REEF_W = 6;
 
 export type WaterMat = "shallow" | "water" | "waterDeep" | "abyss";
 export const WATER_MATS: readonly WaterMat[] = ["shallow", "water", "waterDeep", "abyss"];
@@ -40,52 +39,8 @@ const ABYSS_RAMP = 60;
 
 export interface TerrainMesh { ground: Solid[]; bleed: Solid[]; water: Solid[]; foam: Solid }
 
-export function shipyardTerrainAt(x: number, y: number): Terrain {
-  if (x < 0) return y < 110 ? "slab" : "jungle"; // columna oeste: playa de vías y acopios, selva al sur
-  if (x >= DOCK.x && x < DOCK.x + DOCK.w && y >= DOCK.y && y < DOCK.y + DOCK.d) return "dock";
-  if (x < QUAY_X) return x < 42 && y > 100 ? "jungle" : y >= BOTTOM ? "jungle" : "slab"; // la banda norte (y < 0) es losa de fábrica
-  if (x <= eastBank(y) || inMouth(x, y)) return "water";
-  return x > 330 || y > 124 ? "jungle" : "east";
-}
-
-export function cityTerrainAt(x: number, y: number): Terrain {
-  if (x >= QUAY_X && x <= estuaryEast(y)) return "water";
-  if (y < CITY_EDGE.north) return "jungle"; // cinturón de costura con el astillero
-  if (y >= DISTRICT_BANK_Y && x > QUAY_X) return x >= MALECON_STREET_X ? "asphalt" : "jungle"; // ribera este del distrito: selva, y la calle del malecón
-  if (y >= CITY_EDGE.south || x < CITY_EDGE.west) return "asphalt"; // bordes oeste y sur: el distrito tecnológico del sangrado sigue derecho desde la ciudad
-  if (x > QUAY_X && x < EAST_RING.x0) return "jungle";
-  if (inCrater(x, y)) return "jungle";
-  return "asphalt";
-}
-
-export function seaTerrainAt(x: number, y: number): Terrain {
-  if (inHeadland(x, y)) return "headland";
-  const d = distToHeadland(x, y);
-  if (d < REEF_W) return "reef";
-  if (d < SHORE_W) return "shore";
-  if (x < ZONE_SPLIT_X + shoreWidth(y)) return "shore"; // bajío frente a la costa del astillero, la bahía y el malecón
-  return x >= abyssX(y) ? "abyss" : "sea";
-}
-
-/** Despacha por geografía, no por zona clickeable: el mar y la punta son de seaTerrainAt aunque clickeen Portfolio o Resume. */
-export function terrainAt(x: number, y: number): Terrain {
-  if (x >= ZONE_SPLIT_X || inHeadland(x, y)) return seaTerrainAt(x, y);
-  return y >= ZONE_SPLIT_Y ? cityTerrainAt(x, y) : shipyardTerrainAt(x, y);
-}
-
-/**
- * Sangrado: mar y fosa al este; al sur, el estuario y el mar siguen hasta
- * juntarse (`seaTerrainAt` clasifica orilla, mar y fosa al este de 344); al
- * norte, la bahía sigue al este del río. La tierra restante es construida
- * (industrial, urbana o la feria de arena, `builtAt`) hasta `REACH` y selva con lomas más allá.
- */
-export function bleedTerrainAt(x: number, y: number): BleedTerrain {
-  if (x > WORLD.x1) return x >= abyssX(y) ? "abyss" : "sea";
-  if (y > WORLD.y1 && x >= ZONE_SPLIT_X) { const t = seaTerrainAt(x, y); return t === "abyss" || t === "shore" ? t : "sea"; }
-  if (estuaryWater(x, y)) return "river";
-  if (bayWater(x, y)) return "sea";
-  return builtAt(x, y) ?? "jungle";
-}
+/** Terrenos que sí van a la malla de tierra: sin el pozo del dique ni el agua. */
+type GroundTerrain = Exclude<Terrain, "dock" | "water" | "sea" | "shore" | "abyss">;
 
 const HILL_H = 12, HILL_REACH = 180, HILL_JITTER = 3, ROCK_FROM_Z = 9;
 const HILL_TAPER = 72; // las lomas del norte bajan a 0 en las 4 celdas antes del corte selva/bahía, así la selva llega al agua a 0.6 y no hay acantilado sin cara
@@ -105,11 +60,10 @@ export const headlandZ = (x: number): number => {
 
 const BASE_Z: Record<Terrain, number> = { slab: 0, water: WATER_Z, east: 0, jungle: 0.6, dock: -DOCK.depth, asphalt: 0, sea: WATER_Z, shore: WATER_Z, headland: HEADLAND_TOP_Z, reef: 0.5, abyss: WATER_Z };
 const JITTER: Record<Terrain, number> = { slab: 0.4, water: 0, east: 0.5, jungle: 0.8, dock: 0, asphalt: 0.1, sea: 0, shore: 0, headland: 1.5, reef: 0.3, abyss: 0 };
-const MAT: Record<Exclude<Terrain, "dock">, Material> = { slab: "slab", water: "water", east: "sand", jungle: "leafDark", asphalt: "asphalt", sea: "waterDeep", shore: "water", headland: "rock", reef: "rock", abyss: "abyss" };
-const FLAT = new Set<Terrain>(["dock"]);
+// Solo los terrenos que llegan a `ground()`: el pozo del dique lo amuebla la escena y el agua se
+// reparte por profundidad en `WATER_MATS`, así que ninguno de los dos tiene material acá.
+const MAT: Record<GroundTerrain, Material> = { slab: "slab", east: "sand", jungle: "leafDark", asphalt: "asphalt", headland: "rock", reef: "rock" };
 const BLEED_MAT: Record<Exclude<BleedTerrain, "sea" | "shore" | "abyss" | "river">, Material> = { jungle: "leafDark", industrial: "slab", urban: "asphalt", fair: "sand" };
-const WATER_TERRAIN = new Set<Terrain>(["water", "sea", "shore", "abyss"]);
-const BLEED_WATER = new Set<BleedTerrain>(["sea", "shore", "abyss", "river"]);
 const BLEED_BUILT = new Set<BleedTerrain>(["industrial", "urban", "fair"]);
 
 const onSeam = (x: number, y: number): boolean => x === WORLD.x0 || x === WORLD.x1 || y === WORLD.y0 || y === WORLD.y1;
@@ -232,9 +186,9 @@ export function buildTerrain(rng: Rng, zones?: readonly WorldZone[]): TerrainMes
     const t = terrainAt(cx, cy);
     if (t === "dock") continue; // el pozo lo amuebla la escena del astillero
     if (WATER_TERRAIN.has(t)) { waterCell(w, foam, x0, y0, x1, y1, i, j); continue; }
-    cellTris(tris[t], x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, FLAT.has(t) ? BASE_Z[t] : null, i, j);
+    cellTris(tris[t], x0, y0, x1, y1, z[j]![i]!, z[j]![i + 1]!, z[j + 1]![i + 1]!, z[j + 1]![i]!, null, i, j); // ningún terreno que llegue acá es plano: el pozo del dique salió arriba
   }
-  const ground = (t: Exclude<Terrain, "dock" | "water" | "sea" | "shore" | "abyss">): Solid => ({ kind: "ground", mat: MAT[t], tris: tris[t] });
+  const ground = (t: GroundTerrain): Solid => ({ kind: "ground", mat: MAT[t], tris: tris[t] });
   return {
     ground: [ground("slab"), ground("east"), ground("jungle"), ground("asphalt"), ground("headland"), ground("reef")],
     bleed: zones ? [] : buildBleed(rng, w, foam),
