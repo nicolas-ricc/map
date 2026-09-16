@@ -4,8 +4,8 @@ import { bounds, isFlat, type Solid } from "../iso/solids";
 import { worldZoneAt } from "../map/geo";
 import type { Material } from "../map/palette-iso";
 import { createRng } from "../map/seed";
-import { COASTER_PROFILE, DROP, FAIR_MATS, WHEEL, coasterPath, dropSolids, fair, trainSolids, wheelSolid } from "./fair";
-import { FAIR, bayWater, fairAt } from "./sprawl-grid";
+import { COASTER_PROFILE, DROP, FAIR_MATS, PIER, WHEEL, coasterPath, dropSolids, fair, trainSolids, wheelSolid } from "./fair";
+import { FAIR, bayShoreX, bayWater, fairAt } from "./sprawl-grid";
 import { bleedTerrainAt } from "./terrain";
 
 const scene = () => fair(createRng(7));
@@ -24,14 +24,18 @@ describe("fair", () => {
       expect(worldZoneAt(b.min.x, b.min.y)).toBe("portfolio");
       expect(b.min.x).toBeGreaterThanOrEqual(FAIR.x0 - 0.5); expect(b.min.y).toBeGreaterThanOrEqual(FAIR.y0); expect(b.max.y).toBeLessThanOrEqual(FAIR.y1 + 0.5);
     }
+    // los carteles de los arcades los dibuja solo la capa animada (Task 18): no deben colarse en los acentos estáticos.
+    expect(s.accents).not.toContain(s.arcadeSigns[0]);
+    expect(s.accents).not.toContain(s.arcadeSigns[1]);
   });
 
   it("nada apoya en agua salvo el muelle, sus pilotes y el pabellón; nada no esbelto supera 18", () => {
     for (const x of scene().solids) {
       const b = bounds(x), cx = (b.min.x + b.max.x) / 2, cy = (b.min.y + b.max.y) / 2;
       const pier = x.kind === "prism" && x.mat === "deck" && x.at.z === -1;
-      const onPier = b.min.y >= -282.5 && b.max.y <= -271 && b.min.x > 200; // pilotes (lado sur), guirnalda y pabellón sobre el muelle
-      if (!pier && !onPier && x.kind !== "cone") expect(bayWater(cx, cy)).toBe(false);
+      const onPier = b.min.y >= -282.5 && b.max.y <= -271 && b.min.x > bayShoreX(PIER.y) - 16; // pilotes (lado sur) y guirnalda sobre el muelle
+      const pavilionCone = x.kind === "cone" && x.mat === "copper" && x.r === 5.6; // el techo del pabellón, en la punta del muelle
+      if (!pier && !onPier && !pavilionCone) expect(bayWater(cx, cy)).toBe(false);
       if (!slender(x)) expect(b.max.z).toBeLessThanOrEqual(18.5);
     }
   });

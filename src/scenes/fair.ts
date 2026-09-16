@@ -24,6 +24,7 @@ export const PIER = { y: -282, d: 10, len: 46 } as const;
 export const BOARDWALK_W = 8;
 export const CAROUSEL = { x: 178, y: -248 } as const;
 export const ARCADE = { x: 96, y: -228 } as const;
+export const BUMPER = { x: 130, y: -230 } as const;
 export const FAIR_MATS: readonly Material[] = ["deck", "whitewash", "rust", "steel", "copper", "stone", "concrete", "plaza", "paving", "sand", "rail", "glass", "hull", "leaf", "leafDark"];
 const BOOTH_MATS: readonly Material[] = ["whitewash", "rust", "copper"];
 const WATER_Z = -1;
@@ -33,7 +34,7 @@ const cyl = (x: number, y: number, z: number, r: number, h: number, mat: Materia
 const cone = (x: number, y: number, z: number, r: number, h: number, mat: Material, sides = 8): Solid => ({ kind: "cone", at: v3(x, y, z), r, h, mat, sides });
 const dot = (x: number, y: number, z: number, r: number, color: AccentColor): Accent => ({ kind: "dot", at: v3(x, y, z), r, color });
 /** Cartel: poly de luz en un plano vertical paralelo al eje x (cara sur), de `x0..x1` y `z0..z1`. */
-const sign = (x0: number, x1: number, y: number, z0: number, z1: number, color: AccentColor, alpha = 1): Accent => ({ kind: "poly", pts: [v3(x0, y, z0), v3(x1, y, z0), v3(x1, y, z1), v3(x0, y, z1)], color, alpha });
+const sign = (x0: number, x1: number, y: number, z0: number, z1: number, color: AccentColor): Accent => ({ kind: "poly", pts: [v3(x0, y, z0), v3(x1, y, z0), v3(x1, y, z1), v3(x0, y, z1)], color });
 /** Caja rotada `heading` con centro en (cx, cy): para vías, vigas y autos del tren. */
 const rotBox = (cx: number, cy: number, len: number, wid: number, heading: number, z: number, h: number, mat: Material): Solid => {
   const c = Math.cos(heading), s = Math.sin(heading), hl = len / 2, hw = wid / 2;
@@ -60,15 +61,18 @@ export function coasterPath(): Vec3[] {
   });
 }
 
-const segs = (): { a: Vec3; b: Vec3; len: number; heading: number }[] => { const p = coasterPath(); return p.map((a, k) => { const b = p[(k + 1) % p.length]!; return { a, b, len: Math.hypot(b.x - a.x, b.y - a.y), heading: Math.atan2(b.y - a.y, b.x - a.x) }; }); };
-export const coasterLength = (): number => segs().reduce((n, s) => n + s.len, 0);
+// El circuito es constante (no depende del rng): se calcula una sola vez al cargar el módulo, no en
+// cada llamada. `coasterAt`/`trainSolids` los llama el animador a cada cuadro (Task 18).
+type Seg = { a: Vec3; b: Vec3; len: number; heading: number };
+const COASTER_SEGS: readonly Seg[] = ((p: Vec3[]) => p.map((a, k) => { const b = p[(k + 1) % p.length]!; return { a, b, len: Math.hypot(b.x - a.x, b.y - a.y), heading: Math.atan2(b.y - a.y, b.x - a.x) }; }))(coasterPath());
+const COASTER_LENGTH = COASTER_SEGS.reduce((n, s) => n + s.len, 0);
+export const coasterLength = (): number => COASTER_LENGTH;
 
 /** Punto y rumbo del circuito a `dist` del inicio (z interpolada). */
 export function coasterAt(dist: number): { x: number; y: number; z: number; heading: number; seg: number } {
-  const ss = segs(), L = coasterLength();
-  let d = ((dist % L) + L) % L;
-  for (let k = 0; k < ss.length; k++) { const s = ss[k]!; if (d <= s.len) { const t = d / s.len; return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, z: s.a.z + (s.b.z - s.a.z) * t, heading: s.heading, seg: k }; } d -= s.len; }
-  const s = ss[ss.length - 1]!; return { x: s.b.x, y: s.b.y, z: s.b.z, heading: s.heading, seg: ss.length - 1 };
+  let d = ((dist % COASTER_LENGTH) + COASTER_LENGTH) % COASTER_LENGTH;
+  for (let k = 0; k < COASTER_SEGS.length; k++) { const s = COASTER_SEGS[k]!; if (d <= s.len) { const t = d / s.len; return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, z: s.a.z + (s.b.z - s.a.z) * t, heading: s.heading, seg: k }; } d -= s.len; }
+  const s = COASTER_SEGS[COASTER_SEGS.length - 1]!; return { x: s.b.x, y: s.b.y, z: s.b.z, heading: s.heading, seg: COASTER_SEGS.length - 1 };
 }
 
 /** Tres autos del tren a `dist`, `dist − 2.6`, `dist − 5.2` sobre la vía: caja `rust` y asiento `steel`. */
@@ -163,7 +167,7 @@ function booths(out: Solid[], accents: Accent[]): void {
 }
 
 function bumperCars(out: Solid[], accents: Accent[]): void {
-  const x = 130, y = -230;
+  const { x, y } = BUMPER;
   out.push(prism(x, y, 0, 14, 10, 0.3, "plaza"));
   for (const [dx, dy] of [[0, 0], [7, 0], [14, 0], [0, 10], [7, 10], [14, 10], [0, 5], [14, 5]] as const) out.push(prism(x + dx - 0.2, y + dy - 0.2, 0.3, 0.4, 0.4, 4, "steel"));
   out.push(prism(x - 0.3, y - 0.3, 4.3, 14.6, 10.6, 0.4, "steel"), prism(x - 0.3, y + 10, 3.7, 14.6, 0.3, 0.6, "rust"));
