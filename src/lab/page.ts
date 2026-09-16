@@ -3,6 +3,7 @@ import { createRng } from "../map/seed";
 import type { Animator } from "../scenes/animator";
 import { cityAnimator } from "../scenes/city-animator";
 import { factoryAnimator } from "../scenes/factory-animator";
+import { fairAnimator } from "../scenes/fair-animator";
 import { seaAnimator } from "../scenes/sea-animator";
 import { shipyardAnimator } from "../scenes/shipyard-animator";
 import { techAnimator } from "../scenes/tech-animator";
@@ -24,6 +25,7 @@ export function bootWorldPage(zones: readonly WorldZone[] | undefined, frame: La
   if (scene.city) animators.push(cityAnimator(scene.city, createRng(SEED + 2), { reducedMotion }));
   if (scene.factory) animators.push(factoryAnimator({ ...scene.factory, stacks: [...scene.factory.stacks, ...(scene.hinterland?.stacks ?? [])] }, createRng(SEED + 4), { reducedMotion }));
   if (scene.tech) animators.push(techAnimator(scene.tech, createRng(SEED + 5), { reducedMotion }));
+  if (scene.fair) animators.push(fairAnimator(scene.fair, { reducedMotion }));
   if (scene.sea) animators.push(seaAnimator(scene.sea, { reducedMotion }));
   void bootLab(host, scene, animators, { reducedMotion, log: import.meta.env.DEV, frame });
 }
