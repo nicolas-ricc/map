@@ -1,5 +1,5 @@
 import type { Accent } from "../iso/accent";
-import { v3, type Vec2, type Vec3 } from "../iso/geometry";
+import { polyline, v3, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid } from "../iso/solids";
 import type { SeaScene } from "./sea";
 import { ship as buildShip, wake, type ShipKind } from "./ships";
@@ -52,22 +52,19 @@ export const BUOY_PERIOD_MS = 2000;
 export const FERRY_ROUTE: readonly Vec2[] = [{ x: 254, y: -288 }, { x: 290, y: -212 }, { x: 241, y: -84 }];
 export const FERRY_SPEED = 3, FERRY_PAUSE_MS = 4000;
 
-const seg = ROUTE.slice(1).map((b, i) => { const a = ROUTE[i]!; const len = Math.hypot(b.x - a.x, b.y - a.y); return { a, b, len, heading: Math.atan2(b.y - a.y, b.x - a.x) }; });
-const cum = seg.reduce<number[]>((acc, s) => [...acc, (acc[acc.length - 1] ?? 0) + s.len], [0]);
-export const routeLength = (): number => cum[cum.length - 1]!;
+const route = polyline(ROUTE);
+export const routeLength = (): number => route.length;
 
 const lerpAngle = (a: number, b: number, t: number): number => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * t; };
 
 /** Punto y rumbo a `dist` unidades del inicio; el rumbo se interpola en los TURN_U alrededor de cada vértice. */
 export function routeAt(dist: number): { x: number; y: number; heading: number } {
-  const d = Math.max(0, Math.min(routeLength(), dist));
-  let i = 0;
-  while (i < seg.length - 1 && d > cum[i + 1]!) i++;
-  const s = seg[i]!, local = d - cum[i]!, t = local / s.len;
+  const p = route.at(dist), seg = route.segs, i = p.seg, s = seg[i]!;
+  const local = Math.hypot(p.x - s.a.x, p.y - s.a.y); // lo andado dentro del tramo: `at` no devuelve la acumulada
   let heading = s.heading;
   if (local < TURN_U / 2 && i > 0) heading = lerpAngle(seg[i - 1]!.heading, s.heading, 0.5 + local / TURN_U);
   else if (s.len - local < TURN_U / 2 && i < seg.length - 1) heading = lerpAngle(s.heading, seg[i + 1]!.heading, (TURN_U / 2 - (s.len - local)) / TURN_U);
-  return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, heading };
+  return { x: p.x, y: p.y, heading };
 }
 
 export interface ShipFrame { solids: Solid[]; lights: Accent[]; wake: Solid[]; alpha: number }
@@ -88,19 +85,12 @@ export function createSeaAnim(scene: SeaScene, opts: { reducedMotion: boolean })
   const dists = SHIPS.map((s) => s.phase * L);
   const alphaAt = (d: number): number => Math.max(0, Math.min(1, d / FADE_U, (L - d) / FADE_U));
 
-  // Camina la polilínea de FERRY_ROUTE igual que routeAt/routeLength caminan ROUTE, pero sin
-  // suavizado de giro en los vértices (la lancha, a diferencia de los barcos, dobla en el momento):
-  // el rumbo es el del tramo actual, invertido cuando vuelve.
-  const fseg = FERRY_ROUTE.slice(1).map((b, i) => { const a = FERRY_ROUTE[i]!; const len = Math.hypot(b.x - a.x, b.y - a.y); return { a, b, len, heading: Math.atan2(b.y - a.y, b.x - a.x) }; });
-  const fcum = fseg.reduce<number[]>((acc, s) => [...acc, (acc[acc.length - 1] ?? 0) + s.len], [0]);
-  const ferryLen = fcum[fcum.length - 1]!;
-  const ferryPointAt = (dist: number): { x: number; y: number; heading: number } => {
-    const d = Math.max(0, Math.min(ferryLen, dist));
-    let i = 0;
-    while (i < fseg.length - 1 && d > fcum[i + 1]!) i++;
-    const s = fseg[i]!, local = d - fcum[i]!, t = local / s.len;
-    return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, heading: s.heading };
-  };
+  // La lancha camina FERRY_ROUTE sin suavizado de giro en los vértices (a diferencia de los barcos,
+  // dobla en el momento): el rumbo es el del tramo actual, invertido cuando vuelve. `polyline.at` ya
+  // recorta la distancia a las dos puntas, que es justo donde la lancha para.
+  const ferryLine = polyline(FERRY_ROUTE);
+  const ferryLen = ferryLine.length;
+  const ferryPointAt = ferryLine.at;
   let ferryDist = 0, ferryDir = 1, ferryPause = FERRY_PAUSE_MS;
   const ferryFrame = (): ShipFrame => {
     const pt = ferryPointAt(ferryDist), p = { x: pt.x, y: pt.y }, heading = ferryDir > 0 ? pt.heading : pt.heading + Math.PI;

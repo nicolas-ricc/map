@@ -1,5 +1,5 @@
 import type { Accent } from "../iso/accent";
-import { v3, type Vec2, type Vec3 } from "../iso/geometry";
+import { polyline, v3, type PolyPoint, type Vec2, type Vec3 } from "../iso/geometry";
 import type { Solid } from "../iso/solids";
 import type { AccentColor, Material } from "../map/palette-iso";
 import type { Rng } from "../map/seed";
@@ -14,7 +14,7 @@ import { FAIR, bayShoreX, bayWater, fairAt } from "./sprawl-grid";
  * de la torre) las arma el animador con los builders puros de acá.
  * Spec: docs/superpowers/specs/2026-09-15-mundo-3-tecnologico-feria-agua-barcos-design.md §4.3.
  */
-export interface FairScene { ground: Solid[]; solids: Solid[]; accents: Accent[]; wheelAxis: Vec3; coaster: Vec3[]; drop: { at: Vec3; h: number }; arcadeSigns: [Accent, Accent] }
+export interface FairScene { ground: Solid[]; solids: Solid[]; accents: Accent[]; wheelAxis: Vec3; drop: { at: Vec3; h: number }; arcadeSigns: [Accent, Accent] }
 
 export const WHEEL = { x: 150, y: -300, r: 14, hub: 17, sides: 16 } as const;
 export const COASTER = { x0: 94, x1: 156, y0: -262, y1: -232 } as const;
@@ -62,17 +62,16 @@ export function coasterPath(): Vec3[] {
 }
 
 // El circuito es constante (no depende del rng): se calcula una sola vez al cargar el módulo, no en
-// cada llamada. `coasterAt`/`trainSolids` los llama el animador a cada cuadro (Task 18).
-type Seg = { a: Vec3; b: Vec3; len: number; heading: number };
-const COASTER_SEGS: readonly Seg[] = ((p: Vec3[]) => p.map((a, k) => { const b = p[(k + 1) % p.length]!; return { a, b, len: Math.hypot(b.x - a.x, b.y - a.y), heading: Math.atan2(b.y - a.y, b.x - a.x) }; }))(coasterPath());
-const COASTER_LENGTH = COASTER_SEGS.reduce((n, s) => n + s.len, 0);
+// cada llamada. `coasterAt`/`trainSolids` los llama el animador a cada cuadro (Task 18). El primer
+// punto va otra vez al final: `polyline` es abierta y el circuito cierra.
+const COASTER_PATH = coasterPath();
+const COASTER_LINE = polyline([...COASTER_PATH, COASTER_PATH[0]!]);
+const COASTER_LENGTH = COASTER_LINE.length;
 export const coasterLength = (): number => COASTER_LENGTH;
 
-/** Punto y rumbo del circuito a `dist` del inicio (z interpolada). */
-export function coasterAt(dist: number): { x: number; y: number; z: number; heading: number; seg: number } {
-  let d = ((dist % COASTER_LENGTH) + COASTER_LENGTH) % COASTER_LENGTH;
-  for (let k = 0; k < COASTER_SEGS.length; k++) { const s = COASTER_SEGS[k]!; if (d <= s.len) { const t = d / s.len; return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, z: s.a.z + (s.b.z - s.a.z) * t, heading: s.heading, seg: k }; } d -= s.len; }
-  const s = COASTER_SEGS[COASTER_SEGS.length - 1]!; return { x: s.b.x, y: s.b.y, z: s.b.z, heading: s.heading, seg: COASTER_SEGS.length - 1 };
+/** Punto y rumbo del circuito a `dist` del inicio (z interpolada); el tren da vueltas, así que la distancia se envuelve. */
+export function coasterAt(dist: number): PolyPoint {
+  return COASTER_LINE.at(((dist % COASTER_LENGTH) + COASTER_LENGTH) % COASTER_LENGTH);
 }
 
 /** Tres autos del tren a `dist`, `dist − 2.6`, `dist − 5.2` sobre la vía: caja `rust` y asiento `steel`. */
@@ -206,5 +205,5 @@ export function fair(rng: Rng): FairScene {
   bumperCars(solids, accents);
   beach(solids, rng);
   gate(solids, accents);
-  return { ground: [], solids, accents, wheelAxis: v3(WHEEL.x, WHEEL.y, WHEEL.hub), coaster: coasterPath(), drop: { at: v3(DROP.x, DROP.y, 1), h: DROP.h }, arcadeSigns };
+  return { ground: [], solids, accents, wheelAxis: v3(WHEEL.x, WHEEL.y, WHEEL.hub), drop: { at: v3(DROP.x, DROP.y, 1), h: DROP.h }, arcadeSigns };
 }
